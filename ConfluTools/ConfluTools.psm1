@@ -5,7 +5,8 @@ class ConfluDAO {
     [xml] $doc
     [string] $base_url
     [string] $page_id
-    [string] $token = "MTAwNjk4NTA1MTcwOltz9manllOlRKkh3oAyY/xyX/z/"
+    #    [string] $token = "MTAwNjk4NTA1MTcwOltz9manllOlRKkh3oAyY/xyX/z/"
+    [string] $token = "ATATT3xFfGF0-DE_7AWjU81CaeXyz4HZghwPc5bdjtb7gXYyA2UDZHQOEEWLLS4zgtQwqsedLgzyTNMZzFwD1pbhjKTF48hRwnAfo6l2jysvkGKZCzqPkl9Ktavu0eub-mxbRK1__Ped5aT5gYmQmg2IdhDRBuhOv0w2LIBNTxPm4q0du3GIcnA=5E67F475"
     $headers = @{
         "Authorization" = "Bearer $($this.token)"
         "Content-Type"  = "application/json; charset=UTF-8" 
@@ -28,7 +29,7 @@ class ConfluDAO {
         $this.page = "<p class='wrapped'>こんにちは<BR></p>"
 
         $this.doc = New-Object System.Xml.XmlDocument       
-        $this.doc.LoadXml('<page xmlns:ci="ci" xmlns:li="li">'+$this.page+'</page>')           
+        $this.doc.LoadXml('<page xmlns:ci="ci" xmlns:li="li">' + $this.page + '</page>')           
 
         return $true
     }
@@ -44,7 +45,7 @@ class ConfluDAO {
             body    = @{
                 storage = @{
                     representation = "storage"
-                    value          =  this.doc.page.innerXML
+                    value          = this.doc.page.innerXML
                 }
             }
         }

@@ -1,6 +1,6 @@
 function DMSort {
     param ([System.xml.XmlElement]$table, [ScriptBlock] $orderfunc) 
-    $table.tbody.tr | Sort-Object -Property @{Exp = { &$orderfunc $_ } } | % { $table.tbody.appendChild($_) } | Out-Null
+    $table.tbody.tr | Sort-Object -Property @{Exp = { &$orderfunc $_ } } | ForEach-Object { $table.tbody.appendChild($_) } | Out-Null
 }
 function DMSearch {
     param ([System.Xml.XmlElement]$table, [Object]$data, [ScriptBlock] $compfunc) 
@@ -8,15 +8,15 @@ function DMSearch {
 }
 function DMAddrow {
     param ([System.xml.XmlElement]$table, [Object] $data) 
-    $tr=$table.tbody.AppendChild($table.ownerdocument.CreateElement("tr")) 
-    $header | %{$tr.AppendChild($table.ownerdocument.CreateElement("td")).InnerText = $data[$_]}
+    $tr = $table.tbody.AppendChild($table.ownerdocument.CreateElement("tr")) 
+    $header | ForEach-Object { $tr.AppendChild($table.ownerdocument.CreateElement("td")).InnerText = $data[$_] }
     return [System.Xml.XmlElement]$tr
 }
 function DMAppendrow {
     param ([System.xml.XmlElement]$table, [Object] $data, [ScriptBlock] $compfunc)
     $tr = DMSearch $table $data $compfunc
-    if($tr -eq $null){
-        $tr=DMAddrow $table $data 
+    if ($tr -eq $null) {
+        $tr = DMAddrow $table $data 
     }
     return [System.Xml.XmlElement]$tr
 }
@@ -27,26 +27,26 @@ function DMCreateTable {
     $tbody = $table.AppendChild($doc.CreateElement("tbody"))
     $tr = $tbody.AppendChild($doc.CreateElement("tr")) 
     
-    $tdata.header | %{$tr.AppendChild($doc.CreateElement("th")).InnerText = $_}
-    $tdata.data | %{DMAddrow $table $_|Out-Null}
+    $tdata.header | ForEach-Object { $tr.AppendChild($doc.CreateElement("th")).InnerText = $_ }
+    $tdata.data | ForEach-Object { DMAddrow $table $_ | Out-Null }
 
     return [System.Xml.XmlElement]$table
 }
-function DMConvertTable{
+function DMConvertTable {
     param ([System.xml.XmlElement]$table) 
     $header = [array]$table.tbody.tr[0].th 
-    $data = @();    
-    foreach($tr in $table.tbody.tr) {
-        if($tr.td.length -gt 0){
-          $dt = [array] $tr.td
-          $dt2 = @{}
-          for($i = 0; $i -lt $header.length; $i++){
-            $dt2 += @{$header[$i]=$dt[$i]}
-          }
-          $data += $dt2
+    $data = @()    
+    foreach ($tr in $table.tbody.tr) {
+        if ($tr.td.length -gt 0) {
+            $dt = [array] $tr.td
+            $dt2 = @{}
+            for ($i = 0; $i -lt $header.length; $i++) {
+                $dt2 += @{$header[$i] = $dt[$i] }
+            }
+            $data += $dt2
         }
     }      
-    return @{header=$header;data=$data}
+    return @{header = $header; data = $data }
 }
 function OLfilter {
     param ([Object]$items, [Object]$keywords) 
@@ -54,8 +54,8 @@ function OLfilter {
     $filter = "@SQL=urn:schemas:httpmail:subject LIKE '" + [string]::Join("' OR urn:schemas:httpmail:subject LIKE '", $keyword) + "'" 
     return $items.Restrict($filter)
 }
-function OLformatDT ([Object]$dt){
-    if($dt -is [datetime]){$dt = $dt.toString("yyyy/M/d hh:mm")} 
+function OLformatDT ([Object]$dt) {
+    if ($dt -is [datetime]) { $dt = $dt.toString("yyyy/M/d HH:mm") } 
     return $dt
 }
 class OutlookDAO {
@@ -72,7 +72,12 @@ class OutlookDAO {
         $this.setFolder()
     }
     [void] initialize() {
-        $this.outlook = New-Object -ComObject Outlook.Application
+        try {
+            $this.outlook = [System.Runtime.InteropServices.Marshal]::GetActiveObject("Outlook.Application")
+        }
+        catch {
+            $this.outlook = New-Object -ComObject Outlook.Application
+        }
         $this.namespace = $this.outlook.GetNamespace("MAPI")
     }
     [void] setFolder() {
@@ -115,4 +120,123 @@ class OutlookDAO {
         $item.End = OLformatDT($endDT)
         return $item
     }
+}
+class EXTableDAO {
+    [object] $excel
+    [object] $book
+    [object] $sheet
+    [object] $range
+    [object] $header
+    [object] $table
+
+    [void]Show(){
+        $this.book.Visible = $true
+    }
+    [void]Close(){
+        $this.book.Quit()
+    }
+    EXTableDAO([string]$path, [string]$sheetname, [string]$address) {
+        $this.initialize($path, $sheetname)
+
+        $this.range = $this.sheet.Range($address)
+        $this.header = $this.GetHeader()
+        $this.table = $this.GetTable()
+    }
+    EXTableDAO([string]$path, [string]$sheetname) {
+        $this.initialize($path, $sheetname)
+    }
+    [void] initialize([string]$path, [string]$sheetname) {
+        try {
+            $this.excel = [System.Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
+        }
+        catch {
+            $this.excel = New-Object -ComObject Excel.Application
+        }
+        if ($path -match "[^\\]+\.xls[m]*") {
+            $bookname = $Matches[0]
+            $this.book = $this.excel.Workbooks | Where-Object Name -eq $bookname
+            if ($this.book -eq $null) {
+                $this.book = $this.excel.Workbooks.Open($path, 0, $true)
+            }
+        }
+        $this.sheet = $this.book.Worksheets($sheetname)
+    }
+    [object] GetHeader() {
+        $this.header = @{}
+        if ($this.range.rows.count -eq 1) {
+            $this.range | ForEach-Object { if ($_.Text -ne "") { $this.header.Add($_.Text, $_) } }  
+        }
+        else {
+            $this.range.rows(1).Columns | ForEach-Object {
+                if ($_.Text -ne "") {
+                    if ($_.MergeArea.Columns.Count -gt 1) {
+                        $this.header.Add($_.Text, $_.Offset(1, 0).Resize(1, $_.MergeArea.Count))
+                    }
+                    else {    
+                        $this.header.Add($_.Text, $_) 
+                    }
+                }
+            }  
+        }
+        return $this.header  
+    }
+    [object] AddRow([object]$data) {
+        $this.book.ChangeFileAccess(2) | Out-Null   
+        $this.excel.Visible = $true
+        $rrange = $this.range.End(-4121).Offset(1, 0)
+
+        $data | ForEach-Object {
+            $d = $_
+            $this.header.keys | ForEach-Object {
+                $cell = $this.header[$_]
+                if ($cell.MergeArea.Columns.Count -eq 1) {
+                    $rrange.Resize(1, 1).Offset(0, $cell.Column - $rrange.Column) = $d[$_]
+                }
+                elseif ($cell.MergeCells) {
+                    if ($d[$_].Count -gt 0) {
+                        $rrange.Offset(0, $cell.Column - $rrange.Column).Resize(1, $d[$_].Count) = $d[$_]
+                    }
+                }
+                else {
+                }
+            }
+            $rrange = $rrange.Offset(1, 0)
+        }
+        $this.book.Save()
+        return $this.GetTable()
+    }
+    [object] GetRow($range) {
+        $data = @{}
+        $this.header.keys | ForEach-Object {
+            $value = ""
+            $cell = $this.header[$_]
+
+            if ($cell.MergeArea.Columns.Count -eq 1) {
+                $value = $range.Resize(1, 1).Offset(0, $cell.Column - $range.Column).Text
+            }
+            elseif ($cell.MergeCells) {
+                $value = @()
+                $range.Offset(0, $cell.Column - $range.Column).Resize(1, $cell.MergeArea.Count).Columns | ForEach-Object { if ($_.Text -ne "") { $value += $_.Text } }
+            }
+            else {
+                $value = @{}
+                $cell | ForEach-Object { 
+                    $vcell = $range.Resize(1, 1).Offset(0, $_.Column - $range.Column)
+                    if ($vcell.Text -ne "") { $value.Add($_.Text, $vcell.Text) } }
+            }
+            $data.Add($_, $value)
+        }
+        return $data
+    }
+    [Object] GetTable() {
+        $rrange = $this.range.Offset($this.range.Rows.Count, 0).Resize($this.range.End(-4121).row - $this.range.row - $this.range.Rows.Count + 1)
+        $data = @()
+        $rrange.rows | ForEach-Object { $data += $this.GetRow($_) }  
+        $this.table = @{
+            header = $this.header.keys | Sort-Object -Property @{Exp = { $this.header[$_].Column } } 
+            data   = $data
+        }
+        return $this.table
+    }
+
 }
