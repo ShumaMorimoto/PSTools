@@ -9,7 +9,7 @@
     [string] $page_id
     $headers = @{
         "Authorization" = "Bearer $token"
-        "Content-Type"  = "application/json; charset=UTF-8" 
+        "Content-Type"  = "application/json; charset=Shift_JIS" 
     }
     ConfluDAO([string]$base_url, [string] $page_id) {
         $this.Load($base_url, $page_id)
@@ -32,7 +32,7 @@
         return $true
     }
     [Object] Save() {
-        $url = $this.baseUrl + $this.pageId
+        $url = $this.base_url + $this.page_id
 
         $payload = @{
             title   = $this.title
