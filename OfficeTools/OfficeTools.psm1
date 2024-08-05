@@ -1,4 +1,4 @@
-function DMSort {
+﻿function DMSort {
     param ([System.xml.XmlElement]$table, [ScriptBlock] $orderfunc) 
     $table.tbody.tr | Sort-Object -Property @{Exp = { &$orderfunc $_ } } | ForEach-Object { $table.tbody.appendChild($_) } | Out-Null
 }
@@ -129,10 +129,10 @@ class EXTableDAO {
     [object] $header
     [object] $table
 
-    [void]Show(){
+    [void]Show() {
         $this.book.Visible = $true
     }
-    [void]Close(){
+    [void]Close() {
         $this.book.Quit()
     }
     EXTableDAO([string]$path, [string]$sheetname, [string]$address) {
@@ -229,7 +229,7 @@ class EXTableDAO {
         return $data
     }
     [Object] GetTable() {
-        $rrange = $this.range.Offset($this.range.Rows.Count, 0).Resize($this.range.End(-4121).row - $this.range.row - $this.range.Rows.Count + 1)
+        $rrange = $this.GetRange()
         $data = @()
         $rrange.rows | ForEach-Object { $data += $this.GetRow($_) }  
         $this.table = @{
@@ -238,5 +238,76 @@ class EXTableDAO {
         }
         return $this.table
     }
+    [object] GetRange() {
+        return $this.range.Offset($this.range.Rows.Count, 0).Resize($this.range.End(-4121).row - $this.range.row - $this.range.Rows.Count + 1)
+    }
+    [boolean] Sort([ScriptBlock] $orderfunc) {
+        $this.book.ChangeFileAccess(2) | Out-Null   
+        $this.excel.Visible = $true
 
+        $rrange = $this.GetRange()
+        $keycol = 10
+        $rrange = $rrange.Resize($rrange.Rows.Count, $keycol)
+        $key = $rrange.columns[$keycol]
+    
+        $rrange.rows | ForEach-Object { $_.Columns[$keycol] = &$orderfunc $_ }
+        # $key.ClearContents()
+
+        return $rrange.Sort($key, 1)
+    }
+    
+}
+function datenormalizer {
+    param([string]$val1,[string]$val2)
+    
+    switch -Regex ($val1) {       
+        '(\d\d)/(\d+)/(\d+)$' {
+            $order = $Matches[1] + $Matches[2].PadLeft(2, "0") + $Matches[3].Padleft(2, "0")
+            if ($val2 -match "(\d+):(\d+)") {
+                $order += $Matches[1].PadLeft(2, "0") + $Matches[2].PadLeft(2, "0")
+            }
+            else {
+                $order += "9999"
+            }
+            break
+        }
+        '(2\d/\d+)' {
+            $order = [DateTime]::ParseExact($Matches[1], "yy/M", $null).ToString("yyMM019999")
+            break
+        }
+        '(\d+)  ' {
+            $order = (Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1].PadLeft(2, "0") + "019999"
+            break
+        }
+        '(2\d/\d+)[/]*([上中下末])' {
+            $date = [DateTime]::ParseExact($Matches[1], "yy/M", $null)
+            switch ($Matches[2]) {
+                "上" { $order = $date.ToString("yyMM") + "109999" }
+                "中" { $order = $date.ToString("yyMM") + "209999" }
+                "下" { $order = $date.AddMonths(1).ToString("yyMMdd0000") }
+                "末" { $order = $date.AddMonths(1).ToString("yyMMdd0000") }
+            }
+            break
+        }
+        '(\d+)[/]*([上中下末])' {
+            $date = [DateTime]::ParseExact((Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1], "yyM", $null)
+            switch ($Matches[2]) {
+                "上" { $order = $date.ToString("yyMM") + "109999" }
+                "中" { $order = $date.ToString("yyMM") + "209999" }
+                "下" { $order = $date.AddMonths(1).ToString("yyMMdd0000") }
+                "末" { $order = $date.AddMonths(1).ToString("yyMMdd0000") }
+            }
+            break
+        }
+        '(2\d)/(\d+)/(\d+)[週-]*' {
+            $order = $Matches[1] + $Matches[2].PadLeft(2, "0") + $Matches[3].Padleft(2, "0") + "9999"
+            break
+        }
+        '(\d+)/(\d+)[週-]*' {
+            $order = (Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1].PadLeft(2, "0") + $Matches[2].Padleft(2, "0") + "9999"
+            break
+        }
+        default {$order = "9999999999"}
+    }
+    return $order
 }
