@@ -281,6 +281,10 @@ function datenormalizer {
             }
             break
         }
+        '(\d+)月' {
+            $order = (Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1].PadLeft(2, "0") + "019999"
+            break
+        }
         '(\d+)/*([上中下末])' {
             $date = [DateTime]::ParseExact((Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1], "yyM", $null)
             switch ($Matches[2]) {
@@ -291,16 +295,12 @@ function datenormalizer {
             }
             break
         }
-        '(\d+)/(\d+)[週-]*' {
-            $order = (Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1].PadLeft(2, "0") + $Matches[2].Padleft(2, "0") + "9999"
-            break
-        }
         '(2\d/\d+)' {
             $order = [DateTime]::ParseExact($Matches[1], "yy/M", $null).ToString("yyMM019999")
             break
         }
-        '(\d+)月' {
-            $order = (Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1].PadLeft(2, "0") + "019999"
+        '(\d+)/(\d+)[週-]*' {
+            $order = (Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1].PadLeft(2, "0") + $Matches[2].Padleft(2, "0") + "9999"
             break
         }
         default {$order = "9999999999"}
