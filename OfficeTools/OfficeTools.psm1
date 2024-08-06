@@ -261,8 +261,8 @@ function datenormalizer {
     param([string]$val1,[string]$val2)
     
     switch -Regex ($val1) {       
-        '(\d\d)/(\d+)/(\d+)$' {
-            $order = $Matches[1] + $Matches[2].PadLeft(2, "0") + $Matches[3].Padleft(2, "0")
+        '(2\d/\d+/\d+)' {
+            $order = [DateTime]::ParseExact($Matches[1], "yy/M/d", $null).toString("yyMMdd")
             if ($val2 -match "(\d+):(\d+)") {
                 $order += $Matches[1].PadLeft(2, "0") + $Matches[2].PadLeft(2, "0")
             }
@@ -271,15 +271,7 @@ function datenormalizer {
             }
             break
         }
-        '(2\d/\d+)' {
-            $order = [DateTime]::ParseExact($Matches[1], "yy/M", $null).ToString("yyMM019999")
-            break
-        }
-        '(\d+)  ' {
-            $order = (Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1].PadLeft(2, "0") + "019999"
-            break
-        }
-        '(2\d/\d+)[/]*([上中下末])' {
+        '(2\d/\d+)/*([上中下末])' {
             $date = [DateTime]::ParseExact($Matches[1], "yy/M", $null)
             switch ($Matches[2]) {
                 "上" { $order = $date.ToString("yyMM") + "109999" }
@@ -289,7 +281,7 @@ function datenormalizer {
             }
             break
         }
-        '(\d+)[/]*([上中下末])' {
+        '(\d+)/*([上中下末])' {
             $date = [DateTime]::ParseExact((Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1], "yyM", $null)
             switch ($Matches[2]) {
                 "上" { $order = $date.ToString("yyMM") + "109999" }
@@ -299,12 +291,16 @@ function datenormalizer {
             }
             break
         }
-        '(2\d)/(\d+)/(\d+)[週-]*' {
-            $order = $Matches[1] + $Matches[2].PadLeft(2, "0") + $Matches[3].Padleft(2, "0") + "9999"
-            break
-        }
         '(\d+)/(\d+)[週-]*' {
             $order = (Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1].PadLeft(2, "0") + $Matches[2].Padleft(2, "0") + "9999"
+            break
+        }
+        '(2\d/\d+)' {
+            $order = [DateTime]::ParseExact($Matches[1], "yy/M", $null).ToString("yyMM019999")
+            break
+        }
+        '(\d+)月' {
+            $order = (Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1].PadLeft(2, "0") + "019999"
             break
         }
         default {$order = "9999999999"}
