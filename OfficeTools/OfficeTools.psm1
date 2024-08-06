@@ -59,8 +59,8 @@ function OLformatDT ([Object]$dt) {
     return $dt
 }
 class OutlookDAO {
-    [object] $outlook
-    [object] $namespace
+    static [object] $outlook
+    static [object] $namespace
     [object] $folder
 
     OutlookDAO([string]$receiver) {
@@ -72,23 +72,20 @@ class OutlookDAO {
         $this.setFolder()
     }
     [void] initialize() {
-        try {
-            $this.outlook = [System.Runtime.InteropServices.Marshal]::GetActiveObject("Outlook.Application")
+        if($null -eq [OutlookDAO]::outlook) {
+            [OutlookDAO]::outlook = New-Object -ComObject Outlook.Application
+            [OutlookDAO]::namespace = [OutlookDAO]::outlook.GetNamespace("MAPI")
         }
-        catch {
-            $this.outlook = New-Object -ComObject Outlook.Application
-        }
-        $this.namespace = $this.outlook.GetNamespace("MAPI")
     }
     [void] setFolder() {
-        $this.folder = $this.namespace.GetDefaultFolder(9) 
+        $this.folder = [OutlookDAO]::namespace.GetDefaultFolder(9) 
     }
     [void] setFolder([string]$reciever) {
-        $rec = $this.namespace.CreateRecipient($reciever)
-        $this.folder = $this.namespace.GetSharedDefaultFolder($rec, 9) 
+        $rec = [OutlookDAO]::namespace.CreateRecipient($reciever)
+        $this.folder = [OutlookDAO]::namespace.GetSharedDefaultFolder($rec, 9) 
     }
     [object] getApo([object] $id) {
-        return $this.namespace.GetItemFromID($id)
+        return [OutlookDAO]::namespace.GetItemFromID($id)
     }
     [object] getApos([string] $startDT, [string] $endDT) {
         $items = $this.folder.Items
@@ -114,17 +111,17 @@ class OutlookDAO {
         return $items.Restrict($filter)
     }
     [object] createMail() {
-        return $this.outlook.CreateItem(0)
+        return [OutlookDAO]::outlook.CreateItem(0)
     }
     [object] createApos([object]$startDT, [object]$endDT) {
-        $item = $this.outlook.CreateItem(1) #olAppointmentItem
+        $item = [OutlookDAO]::outlook.CreateItem(1) #olAppointmentItem
         $item.Start = OLFormatDT($startDT)
         $item.End = OLformatDT($endDT)
         return $item
     }
 }
 class EXTableDAO {
-    [object] $excel
+    static [object] $excel
     [object] $book
     [object] $sheet
     [object] $range
@@ -132,8 +129,8 @@ class EXTableDAO {
     [object] $table
 
     [void]Show() {
-        if (-not $this.excel.Visible) {
-            $this.excel.Visible = $true
+        if (-not [EXtableDAO]::excel.Visible) {
+            [EXtableDAO]::excel.Visible = $true
             $this.book.ChangeFileAccess(2)
         } 
     }
@@ -151,17 +148,14 @@ class EXTableDAO {
         $this.initialize($path, $sheetname)
     }
     [void] initialize([string]$path, [string]$sheetname) {
-        try {
-            $this.excel = [System.Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
-        }
-        catch {
-            $this.excel = New-Object -ComObject Excel.Application
+        if($null -eq [EXtableDAO]::excel){
+            [EXtableDAO]::excel = New-Object -ComObject Excel.Application
         }
         if ($path -match "[^\\]+\.xls[m]*") {
             $bookname = $Matches[0]
-            $this.book = $this.excel.Workbooks | Where-Object Name -eq $bookname
+            $this.book = [EXtableDAO]::excel.Workbooks | Where-Object Name -eq $bookname
             if ($null -eq $this.book ) {
-                $this.book = $this.excel.Workbooks.Open($path, 0, $true)
+                $this.book = [EXtableDAO]::excel.Workbooks.Open($path, 0, $true)
             }
         }
         $this.sheet = $this.book.Worksheets($sheetname)
