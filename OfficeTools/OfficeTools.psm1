@@ -51,7 +51,7 @@ function DMConvertTable {
 function OLfilter {
     param ([Object]$items, [Object]$keywords) 
 
-    $filter = "@SQL=urn:schemas:httpmail:subject LIKE '" + [string]::Join("' OR urn:schemas:httpmail:subject LIKE '", $keyword) + "'" 
+    $filter = "@SQL=urn:schemas:httpmail:subject LIKE '" + [string]::Join("' OR urn:schemas:httpmail:subject LIKE '", $keywords) + "'" 
     return $items.Restrict($filter)
 }
 function OLformatDT ([Object]$dt) {
@@ -84,15 +84,17 @@ class OutlookDAO {
         $this.folder = $this.namespace.GetDefaultFolder(9) 
     }
     [void] setFolder([string]$reciever) {
-        $rec = $this.outlook.CreateRecipient($reciever)
+        $rec = $this.namespace.CreateRecipient($reciever)
         $this.folder = $this.namespace.GetSharedDefaultFolder($rec, 9) 
+    }
+    [object] getApo([object] $id) {
+        return $this.namespace.GetItemFromID($id)
     }
     [object] getApos([string] $startDT, [string] $endDT) {
         $items = $this.folder.Items
         $items.IncludeRecurrences = $true       
         $items.Sort("[Start]")
-        $filter = "[Start] < '$endDT' AND [End] > '$startDT'"
-    
+        $filter = "[Start] < '$endDT' AND [End] > '$startDT'"   
         return $items.Restrict($filter)
     }
     [object] getApos() {
@@ -130,10 +132,13 @@ class EXTableDAO {
     [object] $table
 
     [void]Show() {
-        $this.book.Visible = $true
+        if (-not $this.excel.Visible) {
+            $this.excel.Visible = $true
+            $this.book.ChangeFileAccess(2)
+        } 
     }
     [void]Close() {
-        $this.book.Quit()
+        $this.book.close()
     }
     EXTableDAO([string]$path, [string]$sheetname, [string]$address) {
         $this.initialize($path, $sheetname)
@@ -155,7 +160,7 @@ class EXTableDAO {
         if ($path -match "[^\\]+\.xls[m]*") {
             $bookname = $Matches[0]
             $this.book = $this.excel.Workbooks | Where-Object Name -eq $bookname
-            if ($this.book -eq $null) {
+            if ($null -eq $this.book ) {
                 $this.book = $this.excel.Workbooks.Open($path, 0, $true)
             }
         }
@@ -181,8 +186,7 @@ class EXTableDAO {
         return $this.header  
     }
     [object] AddRow([object]$data) {
-        $this.book.ChangeFileAccess(2) | Out-Null   
-        $this.excel.Visible = $true
+        $this.show()
         $rrange = $this.range.End(-4121).Offset(1, 0)
 
         $data | ForEach-Object {
@@ -239,14 +243,18 @@ class EXTableDAO {
         return $this.table
     }
     [object] GetRange() {
-        return $this.range.Offset($this.range.Rows.Count, 0).Resize($this.range.End(-4121).row - $this.range.row - $this.range.Rows.Count + 1)
+        $r = $this.range.Offset($this.range.Rows.Count, 0)
+        if ($r.Cells(1, 1) -eq "") { $r = $null }
+        else {
+            $r = $r.Resize($this.range.End(-4121).row - $this.range.row - $this.range.Rows.Count + 1)
+        }
+        return $r
     }
     [boolean] Sort([ScriptBlock] $orderfunc) {
-        $this.book.ChangeFileAccess(2) | Out-Null   
-        $this.excel.Visible = $true
+        $this.Show()
 
         $rrange = $this.GetRange()
-        $keycol = 10
+        $keycol = $this.sheet.Columns.Count
         $rrange = $rrange.Resize($rrange.Rows.Count, $keycol)
         $key = $rrange.columns[$keycol]
     
@@ -258,7 +266,7 @@ class EXTableDAO {
     
 }
 function datenormalizer {
-    param([string]$val1,[string]$val2)
+    param([string]$val1, [string]$val2)
     
     switch -Regex ($val1) {       
         '(2\d/\d+/\d+)' {
@@ -300,10 +308,19 @@ function datenormalizer {
             break
         }
         '(\d+)/(\d+)[週-]*' {
-            $order = (Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1].PadLeft(2, "0") + $Matches[2].Padleft(2, "0") + "9999"
+            $order = (Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1].PadLeft(2, "0") + $Matches[2].Padleft(2, "0") 
+            if ($val2 -match "(\d+):(\d+)") {
+                $order += $Matches[1].PadLeft(2, "0") + $Matches[2].PadLeft(2, "0")
+            }
+            else {
+                $order += "9999"
+            }
             break
         }
-        default {$order = "9999999999"}
+        default { $order = "9999999999" }
     }
-    return $order
+    return [string]$order
 }
+
+
+
