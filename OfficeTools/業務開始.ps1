@@ -40,3 +40,7 @@ $select | %{$item = $o.GetApo($_.EntryID)
     $item.Display()
 }
 
+
+$o = New-Object PPTableDAO("D:\tool\tmp\テスト.pptx")
+$o.GetTable()
+ConvertTo-JSON $o.table | Set-Content -path "D:\tool\tmp\table.json"

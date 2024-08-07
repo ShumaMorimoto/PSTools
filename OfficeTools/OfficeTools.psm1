@@ -316,5 +316,58 @@ function datenormalizer {
     return [string]$order
 }
 
+class PPTableDAO {
+    static [object] $powerpoint
+    [object] $presen
+    [object] $table
+
+    PPTableDAO([string]$path) {
+        $this.initialize()
+        $this.presen = [PPTableDAO]::powerpoint.Presentations.Open($path)
+    }
+    [void] initialize() {
+        if ($null -eq [PPTableDAO]::powerpoint) {
+            [PPTableDAO]::powerpoint = New-Object -ComObject PowerPoint.Application
+        }
+    }
+    [void] SetHeader([object]$header) {
+        $this.header = $header
+    }
+    [object] GetTablesFromSlide([object]$slide) {       
+        return ($slide.shapes | Where-Object { $null -ne $_.table } | ForEach-Object { $_.table })
+    }
+    [object] GetTables() {
+        return ($this.presen.slides | ForEach-Object { ($this.GetTablesFromSlide($_)) })
+    }
+    [object] GetTable() {
+        $tables = $this.presen.slides | ForEach-Object { ($this.GetTablesFromSlide($_)) }
+        $data = @()
+        $tables | ForEach-Object { 
+            $_.rows | ForEach-Object {
+                $r = @() 
+                $_.Cells | ForEach-Object { $r += $_.Shape.TextFrame.TextRange.Text }
+                $data += $null
+                $data[$data.length - 1] = $r
+            }
+        }
+        $header = $data[0]
+        $data = $data | Where-Object { $_[0] -ne $header[0] }
+        $hdata = @()
+        $data | ForEach-Object {
+            $i = 0; $rc = @{}
+            foreach ($key in $header) {
+                $rc.add($key, $_[$i])
+                $i++
+            }
+            $rc
+            $hdata += $rc
+        }
+        $this.table = @{
+            header = $header
+            data   = $hdata
+        }
+        return $this.table
+    }
+}
 
 
