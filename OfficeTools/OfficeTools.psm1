@@ -142,7 +142,7 @@ class EXTableDAO {
 
         $this.range = $this.sheet.Range($address)
         $this.header = $this.GetHeader()
-        $this.table = $this.GetTable()
+#        $this.table = $this.GetTable()
     }
     EXTableDAO([string]$path, [string]$sheetname) {
         $this.initialize($path, $sheetname)
@@ -240,7 +240,7 @@ class EXTableDAO {
         $r = $this.range.Offset($this.range.Rows.Count, 0)
         if ($r.Cells(1, 1) -eq "") { $r = $null }
         else {
-            $r = $r.Resize($this.range.End(-4121).row - $this.range.row - $this.range.Rows.Count + 1)
+            $r = $r.Resize($r.End(-4121).row - $r.row + 1)
         }
         return $r
     }
