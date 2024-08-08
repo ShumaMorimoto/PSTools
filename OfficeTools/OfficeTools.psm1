@@ -1,62 +1,50 @@
-﻿function DMSort {
-    param ([System.xml.XmlElement]$table, [ScriptBlock] $orderfunc) 
-    $table.tbody.tr | Sort-Object -Property @{Exp = { &$orderfunc $_ } } | ForEach-Object { $table.tbody.appendChild($_) } | Out-Null
-}
-function DMSearch {
-    param ([System.Xml.XmlElement]$table, [Object]$data, [ScriptBlock] $compfunc) 
-    return $table.tbody.tr | Where-Object { &$compfunc $_ $data }
-}
-function DMAddrow {
-    param ([System.xml.XmlElement]$table, [Object] $data) 
-    $tr = $table.tbody.AppendChild($table.ownerdocument.CreateElement("tr")) 
-    $header | ForEach-Object { $tr.AppendChild($table.ownerdocument.CreateElement("td")).InnerText = $data[$_] }
-    return [System.Xml.XmlElement]$tr
-}
-function DMAppendrow {
-    param ([System.xml.XmlElement]$table, [Object] $data, [ScriptBlock] $compfunc)
-    $tr = DMSearch $table $data $compfunc
-    if ($tr -eq $null) {
-        $tr = DMAddrow $table $data 
-    }
-    return [System.Xml.XmlElement]$tr
-}
-function DMCreateTable {
-    param ([xml]$doc, [Object] $tdata) 
-
-    $table = $doc.CreateElement("table")
-    $tbody = $table.AppendChild($doc.CreateElement("tbody"))
-    $tr = $tbody.AppendChild($doc.CreateElement("tr")) 
+﻿Class DMTableDAO :System.Xml.XmlDocument {
+    [object]$tables
     
-    $tdata.header | ForEach-Object { $tr.AppendChild($doc.CreateElement("th")).InnerText = $_ }
-    $tdata.data | ForEach-Object { DMAddrow $table $_ | Out-Null }
-
-    return [System.Xml.XmlElement]$table
-}
-function DMConvertTable {
-    param ([System.xml.XmlElement]$table) 
-    $header = [array]$table.tbody.tr[0].th 
-    $data = @()    
-    foreach ($tr in $table.tbody.tr) {
-        if ($tr.td.length -gt 0) {
-            $dt = [array] $tr.td
+    DMTableDAO([string]$xml) {
+        $this.LoadXML($xml)  
+    }
+    DMTableDAO() {
+    }
+    [void]LoadXML($xml) {
+        [System.Xml.XmlDocument]$this.LoadXML($xml)
+        $this.tables = $this.GetElementsByTagName("table")
+    }
+    [object]CreateTable([object] $tdata) {
+        $table = $this.CreateElement("table")
+        $tr = $table.AppendChild($this.CreateElement("tbody")).AppendChild($this.CreateElement("tr"))
+        $tdata.header | ForEach-Object { $tr.AppendChild($this.CreateElement("th")).InnerText = $_ }
+        $tdata.data | ForEach-Object { $this.Addrow($table, $tdata.header, $_) | Out-Null }
+        $this.tables = $this.GetElementsByTagName("table")
+        return $this.ChildNodes[0].appendChild($table)
+    }
+    [object]Addrow([System.xml.XmlElement]$table, [object]$header, [Object] $data) { 
+        $tr = $table.tbody.AppendChild($this.CreateElement("tr")) 
+        $header | ForEach-Object { $tr.AppendChild($this.CreateElement("td")).InnerText = $data[$_] }
+        return [System.Xml.XmlElement]$tr
+    }
+    [object] GetTables() {       
+        return ($this.getElementsByTagName("table") | ForEach-Object { $this.GetTable($_) })
+    }
+    [object] GetTable($table) {
+        $header = [array]$table.tbody.tr[0].th 
+        $data = @() 
+        $table.tbody.tr | Where-Object { $_.td.length -gt 0 } | ForEach-Object {
+            $dt = [array] $_.td
             $dt2 = @{}
             for ($i = 0; $i -lt $header.length; $i++) {
                 $dt2 += @{$header[$i] = $dt[$i] }
             }
             $data += $dt2
         }
-    }      
-    return @{header = $header; data = $data }
-}
-function OLfilter {
-    param ([Object]$items, [Object]$keywords) 
-
-    $filter = "@SQL=urn:schemas:httpmail:subject LIKE '" + [string]::Join("' OR urn:schemas:httpmail:subject LIKE '", $keywords) + "'" 
-    return $items.Restrict($filter)
-}
-function OLformatDT ([Object]$dt) {
-    if ($dt -is [datetime]) { $dt = $dt.toString("yyyy/M/d HH:mm") } 
-    return $dt
+        return @{header = $header; data = $data }
+    }
+    static [object] Search([System.Xml.XmlElement]$table, [Object]$data, [ScriptBlock] $compfunc) {
+        return $table.tbody.tr | Where-Object { $_.td.length -gt 0 } | Where-Object { &$compfunc $_ $data }
+    }
+    static [void] Sort([System.xml.XmlElement]$table, [ScriptBlock] $orderfunc) {
+        $table.tbody.tr | Where-Object { $_.td.length -gt 0 } | Sort-Object -Property @{Exp = { &$orderfunc $_ } } | ForEach-Object { $table.tbody.appendChild($_) } | Out-Null
+    }
 }
 class OutlookDAO {
     static [object] $outlook
@@ -72,7 +60,7 @@ class OutlookDAO {
         $this.setFolder()
     }
     [void] initialize() {
-        if($null -eq [OutlookDAO]::outlook) {
+        if ($null -eq [OutlookDAO]::outlook) {
             [OutlookDAO]::outlook = New-Object -ComObject Outlook.Application
             [OutlookDAO]::namespace = [OutlookDAO]::outlook.GetNamespace("MAPI")
         }
@@ -105,8 +93,8 @@ class OutlookDAO {
         $items = $this.folder.Items
         $items.IncludeRecurrences = $true       
         $items.Sort("[Start]")
-        $startDT = OLformatDT($startDT)
-        $endDT = OLformatDT($endDT)
+        $startDT = [OutlookDAO]::formatDT($startDT)
+        $endDT = [OutlookDAO]::formatDT($endDT)
         $filter = "[Start] = '$startDT' AND [End] = '$endDT'"
         return $items.Restrict($filter)
     }
@@ -114,10 +102,18 @@ class OutlookDAO {
         return [OutlookDAO]::outlook.CreateItem(0)
     }
     [object] createApos([object]$startDT, [object]$endDT) {
-        $item = [OutlookDAO]::outlook.CreateItem(1) #olAppointmentItem
-        $item.Start = OLFormatDT($startDT)
-        $item.End = OLformatDT($endDT)
+        $item = $this.folder.Items.Add()
+        $item.Start = [OutlookDAO]::FormatDT($startDT)
+        $item.End = [OutlookDAO]::formatDT($endDT)
         return $item
+    }
+    static [object] filter([Object]$items, [Object]$keywords) { 
+        $filter = "@SQL=urn:schemas:httpmail:subject LIKE '" + [string]::Join("' OR urn:schemas:httpmail:subject LIKE '", $keywords) + "'" 
+        return $items.Restrict($filter)
+    }
+    static [string] formatDT ([Object]$dt) {
+        if ($dt -is [datetime]) { $dt = $dt.toString("yyyy/M/d HH:mm") } 
+        return $dt
     }
 }
 class EXTableDAO {
@@ -142,13 +138,13 @@ class EXTableDAO {
 
         $this.range = $this.sheet.Range($address)
         $this.header = $this.GetHeader()
-#        $this.table = $this.GetTable()
+        #        $this.table = $this.GetTable()
     }
     EXTableDAO([string]$path, [string]$sheetname) {
         $this.initialize($path, $sheetname)
     }
     [void] initialize([string]$path, [string]$sheetname) {
-        if($null -eq [EXtableDAO]::excel){
+        if ($null -eq [EXtableDAO]::excel) {
             [EXtableDAO]::excel = New-Object -ComObject Excel.Application
         }
         if ($path -match "[^\\]+\.xls[m]*") {
@@ -256,8 +252,7 @@ class EXTableDAO {
         # $key.ClearContents()
 
         return $rrange.Sort($key, 1)
-    }
-    
+    }   
 }
 function datenormalizer {
     param([string]$val1, [string]$val2)
@@ -315,7 +310,6 @@ function datenormalizer {
     }
     return [string]$order
 }
-
 class PPTableDAO {
     static [object] $powerpoint
     [object] $presen
@@ -369,5 +363,3 @@ class PPTableDAO {
         return $this.table
     }
 }
-
-
