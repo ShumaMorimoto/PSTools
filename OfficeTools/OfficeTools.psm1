@@ -101,7 +101,7 @@ class OutlookDAO {
     [object] createMail() {
         return [OutlookDAO]::outlook.CreateItem(0)
     }
-    [object] createApos([object]$startDT, [object]$endDT) {
+    [object] createApo([object]$startDT, [object]$endDT) {
         $item = $this.folder.Items.Add()
         $item.Start = [OutlookDAO]::FormatDT($startDT)
         $item.End = [OutlookDAO]::formatDT($endDT)
