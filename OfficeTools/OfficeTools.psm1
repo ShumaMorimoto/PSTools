@@ -10,7 +10,7 @@
         [System.Xml.XmlDocument]$this.LoadXML($xml)
         $this.tables = $this.GetElementsByTagName("table")
     }
-    [object]CreateTable([object] $tdata) {
+    [System.xml.XmlElement]CreateTable([object] $tdata) {
         $table = $this.CreateElement("table")
         $tr = $table.AppendChild($this.CreateElement("tbody")).AppendChild($this.CreateElement("tr"))
         $tdata.header | ForEach-Object { $tr.AppendChild($this.CreateElement("th")).InnerText = $_ }
@@ -18,7 +18,7 @@
         $this.tables = $this.GetElementsByTagName("table")
         return $this.ChildNodes[0].appendChild($table)
     }
-    [object]Addrow([System.xml.XmlElement]$table, [object]$header, [Object] $data) { 
+    [System.xml.XmlElement]Addrow([System.xml.XmlElement]$table, [object]$header, [Object] $data) { 
         $tr = $table.tbody.AppendChild($this.CreateElement("tr")) 
         $header | ForEach-Object { $tr.AppendChild($this.CreateElement("td")).InnerText = $data[$_] }
         return [System.Xml.XmlElement]$tr
@@ -26,7 +26,7 @@
     [object] GetTables() {       
         return ($this.getElementsByTagName("table") | ForEach-Object { $this.GetTable($_) })
     }
-    [object] GetTable($table) {
+    [object] GetTable([System.xml.XmlElement]$table) {
         $header = [array]$table.tbody.tr[0].th 
         $data = @() 
         $table.tbody.tr | Where-Object { $_.td.length -gt 0 } | ForEach-Object {
@@ -39,7 +39,7 @@
         }
         return @{header = $header; data = $data }
     }
-    static [object] Search([System.Xml.XmlElement]$table, [Object]$data, [ScriptBlock] $compfunc) {
+    static [System.xml.XmlElement] Search([System.Xml.XmlElement]$table, [Object]$data, [ScriptBlock] $compfunc) {
         return $table.tbody.tr | Where-Object { $_.td.length -gt 0 } | Where-Object { &$compfunc $_ $data }
     }
     static [void] Sort([System.xml.XmlElement]$table, [ScriptBlock] $orderfunc) {
