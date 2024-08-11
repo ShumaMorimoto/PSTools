@@ -127,7 +127,7 @@ class EXTableDAO {
     [void]Show() {
         if (-not [EXtableDAO]::excel.Visible) {
             [EXtableDAO]::excel.Visible = $true
-            $this.book.ChangeFileAccess(2)
+            if($this.book.ReadOnly){$this.book.ChangeFileAccess(2)}
         } 
     }
     [void]Close() {
