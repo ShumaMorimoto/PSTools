@@ -3,7 +3,7 @@ class AbstractTable {
     [pscustomobject[]] $data = @()
 
     [pscustomobject] toObject() {
-        return [pscustomobject]@{header=$this.header;data=$this.data}
+        return [pscustomobject]@{header = $this.header; data = $this.data }
     }
     [object] toJSON() {
         return ConvertTo-JSON -depth 3 $this.toObject()
@@ -16,7 +16,7 @@ class AbstractTable {
     [object]AddRow([pscustomobject[]] $data) { 
         return $null
     }
-    [object]SetHeader([Object] $header) { 
+    [object]SetHeader([string[]] $header) { 
         return $null
     }
 }
@@ -37,7 +37,7 @@ class DomTable : AbstractTable {
             }
             $this.data += [pscustomobject]$dt2
         }
-        return [pscustomobject]@{header = $this.header; data = $data }
+        return [pscustomobject]@{header = $this.header; data = $this.data }
     }
     [object] Search([pscustomobject]$data, [ScriptBlock] $compfunc) {
         return $this.element.tbody.tr | Where-Object { $_.td.length -gt 0 } | Where-Object { &$compfunc $_ $data }
@@ -48,7 +48,7 @@ class DomTable : AbstractTable {
     [System.xml.XmlElement]AddRow([pscustomobject[]] $data) { 
         foreach ($d in $data) {
             $tr = $this.element.tbody.AppendChild($this.element.OwnerDocument.CreateElement("tr")) 
-            $this.header | ForEach-Object { $tr.AppendChild($this.element.OwnerDocument.CreateElement("td")).InnerText = $d[$_] }
+            $this.header | ForEach-Object { $tr.AppendChild($this.element.OwnerDocument.CreateElement("td")).InnerText = $d.$_ }
         }
         return $this.element
     }
@@ -75,7 +75,7 @@ Class OTDomDAO :System.Xml.XmlDocument {
     [DomTable]CreateTable([pscustomobject] $tdata) {
         $element = $this.CreateElement("table")
         $table = New-Object DomTable($element, $tdata.header)
-        $tdata.data | ForEach-Object { $table.AddRow($_) | Out-Null }
+        $table.AddRow($tdata.data) | Out-Null
         $this.tables += $table
         return $table
     }
@@ -85,44 +85,40 @@ Class OTDomDAO :System.Xml.XmlDocument {
 }
 class ExTable :AbstractTable {
     [object] $range
-    [object] $table
+    [hashtable] $eheader = [ordered]@{}
 
     ExTable([object]$range) {
         $this.range = $range
-        $this.header = $this.GetHeader()
-        #        $this.table = $this.GetTable()
+        $this.eheader = $this.GetHeader()
     }
     [object] GetHeader() {
-        $this.header = @{}
+        $this.eheader = [ordered]@{}
         if ($this.range.rows.count -eq 1) {
-            $this.range | ForEach-Object { if ($_.Text -ne "") { $this.header.Add($_.Text, $_) } }  
-        }
+            $this.range | where-object Text -ne "" | ForEach-Object { $this.eheader.Add($_.Text, $_) }
+        }  
         else {
-            $this.range.rows(1).Columns | ForEach-Object {
-                if ($_.Text -ne "") {
-                    if ($_.MergeArea.Columns.Count -gt 1) {
-                        $this.header.Add($_.Text, $_.Offset(1, 0).Resize(1, $_.MergeArea.Count))
-                    }
-                    else {    
-                        $this.header.Add($_.Text, $_) 
-                    }
+            $this.range.rows(1).Columns | Where-Object Text -ne "" | ForEach-Object {
+                if ($_.MergeArea.Columns.Count -gt 1) {
+                    $this.eheader.Add($_.Text, $_.Offset(1, 0).Resize(1, $_.MergeArea.Count))
                 }
-            }  
+                else {    
+                    $this.eheader.Add($_.Text, $_) 
+                }
+            }
         }
-        return $this.header  
+        return $this.eheader  
     }
-    [object] AddRow([object]$data) {
+    [object] AddRow([pscustomobject[]]$data) {
         $rrange = $this.range.End(-4121).Offset(1, 0)
-        $data | ForEach-Object {
-            $d = $_
-            $this.header.keys | ForEach-Object {
-                $cell = $this.header[$_]
+        foreach ($record in $data) {
+            $this.eheader.keys | ForEach-Object {
+                $cell = $this.eheader[$_]
                 if ($cell.MergeArea.Columns.Count -eq 1) {
-                    $rrange.Resize(1, 1).Offset(0, $cell.Column - $rrange.Column) = $d[$_]
+                    $rrange.Resize(1, 1).Offset(0, $cell.Column - $rrange.Column) = $record.$_
                 }
                 elseif ($cell.MergeCells) {
-                    if ($d[$_].Count -gt 0) {
-                        $rrange.Offset(0, $cell.Column - $rrange.Column).Resize(1, $d[$_].Count) = $d[$_]
+                    if ($record.$_.Count -gt 0) {
+                        $rrange.Offset(0, $cell.Column - $rrange.Column).Resize(1, $record.$_.Count) = $record.$_
                     }
                 }
             }
@@ -132,9 +128,9 @@ class ExTable :AbstractTable {
     }
     [PSCustomObject] GetRow($range) {
         $data = [ordered]@{}
-        $this.header.keys | ForEach-Object {
+        $this.eheader.keys | ForEach-Object {
             $value = ""
-            $cell = $this.header[$_]
+            $cell = $this.eheader[$_]
 
             if ($cell.MergeArea.Columns.Count -eq 1) {
                 $value = $range.Resize(1, 1).Offset(0, $cell.Column - $range.Column).Text
@@ -147,21 +143,20 @@ class ExTable :AbstractTable {
                 $value = @{}
                 $cell | ForEach-Object { 
                     $vcell = $range.Resize(1, 1).Offset(0, $_.Column - $range.Column)
-                    if ($vcell.Text -ne "") { $value.Add($_.Text, $vcell.Text) } }
+                    if ($vcell.Text -ne "") { $value.Add($_.Text, $vcell.Text) } 
+                }
             }
             $data.Add($_, $value)
         }
         return [pscustomobject]$data
     }
-    [Object] toObject() {
+    [pscustomobject] toObject() {
         $rrange = $this.GetRange()
         $data = @()
         $rrange.rows | ForEach-Object { $data += $this.GetRow($_) }  
-        $this.table = @{
-            header = $this.header.keys | Sort-Object -Property @{Exp = { $this.header[$_].Column } } 
-            data   = $data
-        }
-        return $this.table
+        $this.header = $this.eheader.keys | Sort-Object -Property @{Exp = { $this.header[$_].Column } } 
+        $this.data = $data
+        return [pscustomobject]@{header = $this.header; data = $this.data }
     }
     [object] GetRange() {
         $r = $this.range.Offset($this.range.Rows.Count, 0)
@@ -185,7 +180,7 @@ class ExTable :AbstractTable {
 class OTExcelDAO {
     static [object] $excel
     [object] $book
-    [object] $tables = @{}
+    [hashtable] $tables = @{}
 
     [void]Show() {
         if (-not [OTExcelDAO]::excel.Visible) {
@@ -200,6 +195,7 @@ class OTExcelDAO {
         $this.initialize($path, $readOnly)
     }
     [void] initialize([string]$path, [boolean]$readOnly) {
+        Get-Process | where-object name -eq "Excel" | Stop-Process
         if ($null -eq [OTExcelDAO]::excel) {
             [OTExcelDAO]::excel = New-Object -ComObject Excel.Application
         }
@@ -211,7 +207,7 @@ class OTExcelDAO {
             }
         }
     }
-    [Object] GetTable([string]$sheetname, [string]$address) {
+    [Extable] GetTable([string]$sheetname, [string]$address) {
         $sheet = $this.book.Worksheets($sheetname)
         $range = $sheet.Range($address)
         $table = New-Object ExTable($range)
@@ -221,6 +217,7 @@ class OTExcelDAO {
 }
 class OlTable:AbstractTable {
     [object]$folder
+
     static [object]$header = @(
         @{label = "日程"; expression = { $_.Start.toString("M/d(ddd)") } },
         @{label = "時間"; expression = { $_.Start.toString("HH:mm - ") + $_.End.toString("HH:mm") } },
@@ -231,10 +228,10 @@ class OlTable:AbstractTable {
         $this.folder.items.IncludeRecurrences = $true       
         $this.folder.items.Sort("[Start]")
     }
-    [object] toObject() {
+    [pscustomobject] toObject() {
         return $null
     }
-    [object] Search([Object]$data, [ScriptBlock] $compfunc) {
+    [object] Search([pscustomobject]$data, [ScriptBlock] $compfunc) {
         return $null
     }
     [object] SearchApos([object] $startDT, [object] $endDT) {
@@ -257,14 +254,11 @@ class OlTable:AbstractTable {
     [void] Sort([ScriptBlock] $orderfunc) {
         $this.folder.items.Sort("[Start]")
     }
-    [object]AddRow([Object] $data) { 
+    [object]AddRow([pscustomobject] $data) { 
         $item = $this.folder.items.Add()
-        $item.Start = [OTOutlookDAO]::FormatDT($data["Start"])
-        $item.End = [OTOutlookDAO]::formatDT($data["End"])
+        $item.Start = [OTOutlookDAO]::FormatDT($data."Start")
+        $item.End = [OTOutlookDAO]::formatDT($data."End")
         return $item
-    }
-    [object]SetHeader([Object] $header) { 
-        return $null
     }
 }
 class OTOutlookDAO {
@@ -307,20 +301,12 @@ class OTOutlookDAO {
     }
 }
 class PpTable:AbstractTable {
-    [object] $header
-    [object] $table
 
     PpTable([object]$presen) {
-        $this.table = [PpTable]::GetTable($presen)
-        $this.header = $this.table.header
+        $this.GetTable($presen) | Out-Null
     }
-
-    static [object] GetTable($presen) {
-        $tables = $presen.slides | ForEach-Object {
-            (
-                $_.shapes | Where-Object { $null -ne $_.table } | ForEach-Object { $_.table }
-            ) 
-        }
+    [pscustomobject] GetTable($presen) {
+        $tables = $presen.slides | ForEach-Object { ($_.shapes | Where-Object { $null -ne $_.table } | ForEach-Object { $_.table }) }
         $data = @()
         $tables | ForEach-Object { 
             $_.rows | ForEach-Object {
@@ -330,21 +316,20 @@ class PpTable:AbstractTable {
                 $data[$data.length - 1] = $r
             }
         }
-        $hheader = $data[0]
-        $data = $data | Where-Object { $_[0] -ne $hheader[0] }
-        $hdata = @()
-        $data | ForEach-Object {
+        $this.header = $data[0]
+        $this.data = @()
+        $data | Where-Object { $_[0] -ne $data[0][0] } | ForEach-Object {
             $i = 0; $rc = [ordered]@{}
-            foreach ($key in $hheader) {
+            foreach ($key in $this.header) {
                 $rc.add($key, $_[$i])
                 $i++
             }
-            $hdata += [pscustomobject]$rc
+            $this.data += [pscustomobject]$rc
         }
-        return @{header = $hheader; data = $hdata }
+        return [pscustomobject]@{header = $this.header; data = $this.data }
     }
-    [object] toObject() {
-        return $this.table
+    [pscustomobject] toObject() {
+        return [pscustomobject]@{header = $this.header; data = $this.data }
     }
 }
 class OTPowerpointDAO {
@@ -360,7 +345,7 @@ class OTPowerpointDAO {
             [OTPowerpointDAO]::powerpoint = New-Object -ComObject PowerPoint.Application
         }
     }
-    [object] GetTable() {
+    [PpTable] GetTable() {
         return New-Object PpTable($this.presen)
     }
 }
