@@ -218,18 +218,25 @@ class OTExcelDAO {
 class OlTable:AbstractTable {
     [object]$folder
 
-    static [object]$header = @(
-        @{label = "日程"; expression = { $_.Start.toString("M/d(ddd)") } },
-        @{label = "時間"; expression = { $_.Start.toString("HH:mm - ") + $_.End.toString("HH:mm") } },
+    static $selectheader = @(
+        @{label = "日付"; expression = { $_.Start.toString("M/d(ddd)") } },
+        @{label = "時間"; expression = { $_.Start.toString("HH:mm-") + $_.End.toString("HH:mm") } },
         "Subject", "Location", "Body", "EntryID"
     )
+
     OlTable([object]$folder) {
         $this.folder = $folder
         $this.folder.items.IncludeRecurrences = $true       
         $this.folder.items.Sort("[Start]")
     }
     [pscustomobject] toObject() {
-        return $null
+        return [OlTable]::toObject($this.folder.items)
+    }
+    static [pscustomobject] toObject([object]$items) {
+        return [pscustomobject]@{
+            header = @("日付", "時間", "Subject", "Location", "Body", "EntryID")
+            data   = $items | Select-Object ([OlTable]::selectheader) 
+        }
     }
     [object] Search([pscustomobject]$data, [ScriptBlock] $compfunc) {
         return $null
