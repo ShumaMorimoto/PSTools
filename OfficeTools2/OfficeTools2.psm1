@@ -1,18 +1,19 @@
 class AbstractTable {
-    [object] $header
+    [string[]] $header = @()
+    [pscustomobject[]] $data = @()
 
-    [object] toObject() {
-        return $null
+    [pscustomobject] toObject() {
+        return [pscustomobject]@{header=$this.header;data=$this.data}
     }
     [object] toJSON() {
-        return ConvertTo-JSON $this.toObject()
+        return ConvertTo-JSON -depth 3 $this.toObject()
     }
-    [object] Search([Object]$data, [ScriptBlock] $compfunc) {
+    [object] Search([pscustomobject]$data, [ScriptBlock] $compfunc) {
         return $null
     }
     [void] Sort([ScriptBlock] $orderfunc) {
     }
-    [object]AddRow([Object] $data) { 
+    [object]AddRow([pscustomobject[]] $data) { 
         return $null
     }
     [object]SetHeader([Object] $header) { 
@@ -26,32 +27,32 @@ class DomTable : AbstractTable {
         $this.element = $table
         $this.SetHeader($header) | Out-Null
     }
-    [object] toObject() {
-        $data = @() 
+    [pscustomobject] toObject() {
+        $this.data = @() 
         $this.element.tbody.tr | Where-Object { $_.td.length -gt 0 } | ForEach-Object {
             $dt = [array] $_.td
-            $dt2 = @{}
+            $dt2 = [ordered]@{}
             for ($i = 0; $i -lt $this.header.length; $i++) {
                 $dt2 += @{$this.header[$i] = $dt[$i] }
             }
-            $data += $dt2
+            $this.data += [pscustomobject]$dt2
         }
-        return @{header = $this.header; data = $data }
+        return [pscustomobject]@{header = $this.header; data = $data }
     }
-    [object] Search([Object]$data, [ScriptBlock] $compfunc) {
+    [object] Search([pscustomobject]$data, [ScriptBlock] $compfunc) {
         return $this.element.tbody.tr | Where-Object { $_.td.length -gt 0 } | Where-Object { &$compfunc $_ $data }
     }
     [void] Sort([ScriptBlock] $orderfunc) {
         $this.element.tbody.tr | Where-Object { $_.td.length -gt 0 } | Sort-Object -Property @{Exp = { &$orderfunc $_ } } | ForEach-Object { $this.element.tbody.appendChild($_) } | Out-Null
     }
-    [System.xml.XmlElement]AddRow([Object] $data) { 
+    [System.xml.XmlElement]AddRow([pscustomobject[]] $data) { 
         foreach ($d in $data) {
             $tr = $this.element.tbody.AppendChild($this.element.OwnerDocument.CreateElement("tr")) 
             $this.header | ForEach-Object { $tr.AppendChild($this.element.OwnerDocument.CreateElement("td")).InnerText = $d[$_] }
         }
         return $this.element
     }
-    [System.xml.XmlElement]SetHeader([Object] $header) { 
+    [System.xml.XmlElement]SetHeader([string[]] $header) { 
         $tbody = $this.element.AppendChild($this.element.OwnerDocument.CreateElement("tbody"))
         $tr = $tbody.AppendChild($this.element.OwnerDocument.CreateElement("tr")) 
         $header | ForEach-Object {
@@ -71,7 +72,7 @@ Class OTDomDAO :System.Xml.XmlDocument {
         [System.Xml.XmlDocument]$this.LoadXML($xml)
         $this.tables = $this.GetElementsByTagName("table")
     }
-    [DomTable]CreateTable([object] $tdata) {
+    [DomTable]CreateTable([pscustomobject] $tdata) {
         $element = $this.CreateElement("table")
         $table = New-Object DomTable($element, $tdata.header)
         $tdata.data | ForEach-Object { $table.AddRow($_) | Out-Null }
@@ -82,7 +83,7 @@ Class OTDomDAO :System.Xml.XmlDocument {
         return ($this.getElementsByTagName("table") | ForEach-Object { New-Object DomTTable($_) })
     }
 }
-class ExTable {
+class ExTable :AbstractTable {
     [object] $range
     [object] $table
 
@@ -129,8 +130,8 @@ class ExTable {
         }
         return $this.range
     }
-    [object] GetRow($range) {
-        $data = @{}
+    [PSCustomObject] GetRow($range) {
+        $data = [ordered]@{}
         $this.header.keys | ForEach-Object {
             $value = ""
             $cell = $this.header[$_]
@@ -150,7 +151,7 @@ class ExTable {
             }
             $data.Add($_, $value)
         }
-        return $data
+        return [pscustomobject]$data
     }
     [Object] toObject() {
         $rrange = $this.GetRange()
@@ -184,7 +185,7 @@ class ExTable {
 class OTExcelDAO {
     static [object] $excel
     [object] $book
-    [object] $tables =@{}
+    [object] $tables = @{}
 
     [void]Show() {
         if (-not [OTExcelDAO]::excel.Visible) {
@@ -195,7 +196,7 @@ class OTExcelDAO {
     [void]Close() {
         $this.book.close()
     }
-    OTExcelDAO([string]$path, [boolean]$readOnly=$true) {
+    OTExcelDAO([string]$path, [boolean]$readOnly = $true) {
         $this.initialize($path, $readOnly)
     }
     [void] initialize([string]$path, [boolean]$readOnly) {
@@ -214,7 +215,209 @@ class OTExcelDAO {
         $sheet = $this.book.Worksheets($sheetname)
         $range = $sheet.Range($address)
         $table = New-Object ExTable($range)
-        $this.tables.Add($sheetname,$table)
+        $this.tables.Add($sheetname, $table)
         return $table
     }
+}
+class OlTable:AbstractTable {
+    [object]$folder
+    static [object]$header = @(
+        @{label = "日程"; expression = { $_.Start.toString("M/d(ddd)") } },
+        @{label = "時間"; expression = { $_.Start.toString("HH:mm - ") + $_.End.toString("HH:mm") } },
+        "Subject", "Location", "Body", "EntryID"
+    )
+    OlTable([object]$folder) {
+        $this.folder = $folder
+        $this.folder.items.IncludeRecurrences = $true       
+        $this.folder.items.Sort("[Start]")
+    }
+    [object] toObject() {
+        return $null
+    }
+    [object] Search([Object]$data, [ScriptBlock] $compfunc) {
+        return $null
+    }
+    [object] SearchApos([object] $startDT, [object] $endDT) {
+        $startDT = [OTOutlookDAO]::formatDT($startDT)
+        $endDT = [OTOutlookDAO]::formatDT($endDT)
+        $filter = "[Start] = '$startDT' AND [End] = '$endDT'"
+        return $this.folder.items.Restrict($filter)
+    }
+    [object] GetApos([string] $startDT, [string] $endDT) {
+        $filter = "[Start] < '$endDT' AND [End] > '$startDT'"   
+        return $this.folder.Items.Restrict($filter)
+    }
+    [object] GetApos() {
+        return $this.GetApos(1)
+    }
+    [object] GetApos([int]$term) {
+        $date = Get-Date  
+        return $this.GetApos($date.toString("yyyy/M/d 00:00"), $date.adddays($term).toString("yyyy/M/d 00:00"))
+    }
+    [void] Sort([ScriptBlock] $orderfunc) {
+        $this.folder.items.Sort("[Start]")
+    }
+    [object]AddRow([Object] $data) { 
+        $item = $this.folder.items.Add()
+        $item.Start = [OTOutlookDAO]::FormatDT($data["Start"])
+        $item.End = [OTOutlookDAO]::formatDT($data["End"])
+        return $item
+    }
+    [object]SetHeader([Object] $header) { 
+        return $null
+    }
+}
+class OTOutlookDAO {
+    static [object] $outlook
+    static [object] $namespace
+
+    OTOutlookDAO() {
+        $this.initialize()
+    }
+    [void] initialize() {
+        if ($null -eq [OTOutlookDAO]::outlook) {
+            [OTOutlookDAO]::outlook = New-Object -ComObject Outlook.Application
+            [OTOutlookDAO]::namespace = [OTOutlookDAO]::outlook.GetNamespace("MAPI")
+        }
+    }
+    [object] GetTable([string]$receiver) {        
+        $folder = switch ($receiver) {
+            "" {
+                [OTOutlookDAO]::namespace.GetDefaultFolder(9)
+            }
+            default {
+                $rec = [OTOutlookDAO]::namespace.CreateRecipient($receiver)
+                [OTOutlookDAO]::namespace.GetSharedDefaultFolder($rec, 9)           
+            }
+        } 
+        return New-Object OlTable($folder)
+    }
+    [object] GetTable() {        
+        return $this.GetTable($null)
+    }
+    static [string] formatDT ([Object]$dt) {
+        if ($dt -is [datetime]) { $dt = $dt.toString("yyyy/M/d HH:mm") } 
+        return $dt
+    }
+    [object] SearchApo([object] $id) {
+        return [OTOutlookDAO]::namespace.GetItemFromID($id)
+    }
+    [object] createMail() {
+        return [OTOutlookDAO]::outlook.CreateItem(0)
+    }
+}
+class PpTable:AbstractTable {
+    [object] $header
+    [object] $table
+
+    PpTable([object]$presen) {
+        $this.table = [PpTable]::GetTable($presen)
+        $this.header = $this.table.header
+    }
+
+    static [object] GetTable($presen) {
+        $tables = $presen.slides | ForEach-Object {
+            (
+                $_.shapes | Where-Object { $null -ne $_.table } | ForEach-Object { $_.table }
+            ) 
+        }
+        $data = @()
+        $tables | ForEach-Object { 
+            $_.rows | ForEach-Object {
+                $r = @() 
+                $_.Cells | ForEach-Object { $r += $_.Shape.TextFrame.TextRange.Text }
+                $data += $null
+                $data[$data.length - 1] = $r
+            }
+        }
+        $hheader = $data[0]
+        $data = $data | Where-Object { $_[0] -ne $hheader[0] }
+        $hdata = @()
+        $data | ForEach-Object {
+            $i = 0; $rc = [ordered]@{}
+            foreach ($key in $hheader) {
+                $rc.add($key, $_[$i])
+                $i++
+            }
+            $hdata += [pscustomobject]$rc
+        }
+        return @{header = $hheader; data = $hdata }
+    }
+    [object] toObject() {
+        return $this.table
+    }
+}
+class OTPowerpointDAO {
+    static [object] $powerpoint
+    [object] $presen
+
+    OTPowerpointDAO([string]$path) {
+        [OTPowerpointDAO]::initialize()
+        $this.presen = [OTPowerpointDAO]::powerpoint.Presentations.Open($path)
+    }
+    static [void] initialize() {
+        if ($null -eq [OTPowerpointDAO]::powerpoint) {
+            [OTPowerpointDAO]::powerpoint = New-Object -ComObject PowerPoint.Application
+        }
+    }
+    [object] GetTable() {
+        return New-Object PpTable($this.presen)
+    }
+}
+
+function datenormalizer {
+    param([string]$val1, [string]$val2)
+    
+    switch -Regex ($val1) {       
+        '(2\d/\d+/\d+)' {
+            $order = [DateTime]::ParseExact($Matches[1], "yy/M/d", $null).toString("yyMMdd")
+            if ($val2 -match "(\d+):(\d+)") {
+                $order += $Matches[1].PadLeft(2, "0") + $Matches[2].PadLeft(2, "0")
+            }
+            else {
+                $order += "9999"
+            }
+            break
+        }
+        '(2\d/\d+)/*([上中下末])' {
+            $date = [DateTime]::ParseExact($Matches[1], "yy/M", $null)
+            switch ($Matches[2]) {
+                "上" { $order = $date.ToString("yyMM") + "109999" }
+                "中" { $order = $date.ToString("yyMM") + "209999" }
+                "下" { $order = $date.AddMonths(1).ToString("yyMMdd0000") }
+                "末" { $order = $date.AddMonths(1).ToString("yyMMdd0000") }
+            }
+            break
+        }
+        '(\d+)月' {
+            $order = (Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1].PadLeft(2, "0") + "019999"
+            break
+        }
+        '(\d+)/*([上中下末])' {
+            $date = [DateTime]::ParseExact((Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1], "yyM", $null)
+            switch ($Matches[2]) {
+                "上" { $order = $date.ToString("yyMM") + "109999" }
+                "中" { $order = $date.ToString("yyMM") + "209999" }
+                "下" { $order = $date.AddMonths(1).ToString("yyMMdd0000") }
+                "末" { $order = $date.AddMonths(1).ToString("yyMMdd0000") }
+            }
+            break
+        }
+        '(2\d/\d+)' {
+            $order = [DateTime]::ParseExact($Matches[1], "yy/M", $null).ToString("yyMM019999")
+            break
+        }
+        '(\d+)/(\d+)[週-]*' {
+            $order = (Get-Date).AddYears(1).AddMonths(-$Matches[1]).toString("yy") + $Matches[1].PadLeft(2, "0") + $Matches[2].Padleft(2, "0") 
+            if ($val2 -match "(\d+):(\d+)") {
+                $order += $Matches[1].PadLeft(2, "0") + $Matches[2].PadLeft(2, "0")
+            }
+            else {
+                $order += "9999"
+            }
+            break
+        }
+        default { $order = "9999999999" }
+    }
+    return [string]$order
 }
