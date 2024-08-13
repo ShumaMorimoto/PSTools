@@ -217,6 +217,7 @@ class OTExcelDAO {
 }
 class OlTable:AbstractTable {
     [object]$folder
+    [object]$items
 
     static $selectheader = @(
         @{label = "日付"; expression = { $_.Start.toString("M/d(ddd)") } },
@@ -226,8 +227,9 @@ class OlTable:AbstractTable {
 
     OlTable([object]$folder) {
         $this.folder = $folder
-        $this.folder.items.IncludeRecurrences = $true       
-        $this.folder.items.Sort("[Start]")
+        $this.items = $this.folder.items       
+        $this.items.IncludeRecurrences = $true       
+        $this.items.Sort("[Start]")
     }
     [pscustomobject] toObject() {
         return [OlTable]::toObject($this.folder.items)
@@ -245,7 +247,7 @@ class OlTable:AbstractTable {
         $startDT = [OTOutlookDAO]::formatDT($startDT)
         $endDT = [OTOutlookDAO]::formatDT($endDT)
         $filter = "[Start] = '$startDT' AND [End] = '$endDT'"
-        return $this.folder.items.Restrict($filter)
+        return $this.items.Restrict($filter)
     }
     [object] GetApos([string] $startDT, [string] $endDT) {
         $filter = "[Start] < '$endDT' AND [End] > '$startDT'"   
@@ -259,10 +261,10 @@ class OlTable:AbstractTable {
         return $this.GetApos($date.toString("yyyy/M/d 00:00"), $date.adddays($term).toString("yyyy/M/d 00:00"))
     }
     [void] Sort([ScriptBlock] $orderfunc) {
-        $this.folder.items.Sort("[Start]")
+        $this.items.Sort("[Start]")
     }
     [object]AddRow([pscustomobject] $data) { 
-        $item = $this.folder.items.Add()
+        $item = $this.items.Add()
         $item.Start = [OTOutlookDAO]::FormatDT($data."Start")
         $item.End = [OTOutlookDAO]::formatDT($data."End")
         return $item
@@ -299,6 +301,10 @@ class OTOutlookDAO {
     static [string] formatDT ([Object]$dt) {
         if ($dt -is [datetime]) { $dt = $dt.toString("yyyy/M/d HH:mm") } 
         return $dt
+    }
+    static [object] filterItems([Object]$items, [Object]$keywords) { 
+        $filter = "@SQL=urn:schemas:httpmail:subject LIKE '" + [string]::Join("' OR urn:schemas:httpmail:subject LIKE '", $keywords) + "'" 
+        return $items.Restrict($filter)
     }
     [object] SearchApo([object] $id) {
         return [OTOutlookDAO]::namespace.GetItemFromID($id)
