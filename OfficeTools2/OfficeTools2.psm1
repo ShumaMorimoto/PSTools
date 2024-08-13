@@ -195,23 +195,24 @@ class OTExcelDAO {
         $this.initialize($path, $readOnly)
     }
     [void] initialize([string]$path, [boolean]$readOnly) {
-
+        $path -match "[^\\]+\.xls[m]*"
+        $bookname = $Matches[0]
         try {
             if ($null -ne [OTExcelDAO]::excel) {
-                if ($path -match "[^\\]+\.xls[m]*") {
-                    $bookname = $Matches[0]
-                    $this.book = [OTExcelDAO]::excel.Workbooks | Where-Object Name -eq $bookname
-                    if ($null -eq $this.book ) {
-                        $this.book = [OTExcelDAO]::excel.Workbooks.Open($path, 0, $readOnly)
-                    }
-                    return
-                } 
+                $this.book = [OTExcelDAO]::excel.Workbooks | Where-Object Name -eq $bookname
+                if ($null -eq $this.book ) {
+                    $this.book = [OTExcelDAO]::excel.Workbooks.Open($path, 0, $readOnly)
+                }
             }
-        } catch {}
-
-        Get-Process | where-object name -eq "Excel" | Stop-Process
-        [OTExcelDAO]::excel = New-Object -ComObject Excel.Application
-        $this.book = [OTExcelDAO]::excel.Workbooks.Open($path, 0, $readOnly)
+            else {
+                throw "New Object"
+            }
+        }
+        catch {
+            Get-Process | where-object name -eq "Excel" | Stop-Process
+            [OTExcelDAO]::excel = New-Object -ComObject Excel.Application
+            $this.book = [OTExcelDAO]::excel.Workbooks.Open($path, 0, $readOnly)  
+        }
     }
 
     [Extable] GetTable([string]$sheetname, [string]$address) {
@@ -277,6 +278,53 @@ class OlTable:AbstractTable {
         return $item
     }
 }
+class OlMailTable:AbstractTable {
+    [object]$folder
+    [object]$items
+    
+    static $selectheader = @(
+        @{label = "受信日時"; expression = { $_.ReceivedTime } },
+        @{label = "送信者"; expression = { $_.Sender.Address } },
+        @{label = "宛先"; expression = { $_.To } },
+        @{label = "CC"; expression = { $_.Cc } },
+        "Subject", "Body", "EntryID"
+    )   
+    OlMailTable([object]$folder) {
+        $this.folder = $folder
+        $this.items = $this.folder.items
+        $this.items.Sort("[ReceivedTime]")
+    }
+    [pscustomobject] toObject() {
+        return [OlMailTable]::toObject($this.items)
+    }
+    static [pscustomobject] toObject([object]$items) {
+        return [pscustomobject]@{
+            header = @("受信日時", "送信者", "宛先", "CC", "Subject", "Body", "EntryID")
+            data   = $items | Select-Object ([OlMailTable]::selectheader)
+        }
+    }
+    [object] Search([pscustomobject]$data, [ScriptBlock] $compfunc) {
+        return $null
+    }
+    [object] GetMessages([string] $startDT, [string] $endDT) {
+        $filter = "[ReceivedTime] < '$endDT' AND [ReceivedTime] > '$startDT'"
+        return $this.Items.Restrict($filter)
+    }
+    [object] GetMessages() {
+        return $this.GetMessages(1)
+    }
+    [object] GetMessages([int]$term) {
+        $date = Get-Date
+        return $this.GetMessages($date.addDays(-$term).toString("yyyy/M/d 23:59"), $date.toString("yyyy/M/d 23:59"))
+    }
+    [void] Sort([ScriptBlock] $orderfunc) {
+        $this.items.Sort("[ReceivedTime]")
+    }
+    [object]AddRow([pscustomobject] $data) {
+        $item = $this.items.Add()
+        return $item
+    }
+}
 class OTOutlookDAO {
     static [object] $outlook
     static [object] $namespace
@@ -285,7 +333,15 @@ class OTOutlookDAO {
         $this.initialize()
     }
     [void] initialize() {
-        if ($null -eq [OTOutlookDAO]::outlook) {
+        try {
+            if ($null -ne [OTOutlookDAO]::outlook) {
+                [OTOutlookDAO]::namespace = [OTOutlookDAO]::outlook.GetNamespace("MAPI")
+            }
+            else {
+                throw "New Object"
+            }
+        }
+        catch {
             [OTOutlookDAO]::outlook = New-Object -ComObject Outlook.Application
             [OTOutlookDAO]::namespace = [OTOutlookDAO]::outlook.GetNamespace("MAPI")
         }
@@ -304,6 +360,9 @@ class OTOutlookDAO {
     }
     [object] GetTable() {        
         return $this.GetTable($null)
+    }
+    [OlMailTable] GetMailTable() {
+        return New-Object OLMailTable([OTOutlookDAO]::namespace.GetDefaultFolder(6))
     }
     static [string] formatDT ([Object]$dt) {
         if ($dt -is [datetime]) { $dt = $dt.toString("yyyy/M/d HH:mm") } 
