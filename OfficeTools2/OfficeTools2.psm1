@@ -195,18 +195,25 @@ class OTExcelDAO {
         $this.initialize($path, $readOnly)
     }
     [void] initialize([string]$path, [boolean]$readOnly) {
-        Get-Process | where-object name -eq "Excel" | Stop-Process
-        if ($null -eq [OTExcelDAO]::excel) {
-            [OTExcelDAO]::excel = New-Object -ComObject Excel.Application
-        }
-        if ($path -match "[^\\]+\.xls[m]*") {
-            $bookname = $Matches[0]
-            $this.book = [OTExcelDAO]::excel.Workbooks | Where-Object Name -eq $bookname
-            if ($null -eq $this.book ) {
-                $this.book = [OTExcelDAO]::excel.Workbooks.Open($path, 0, $readOnly)
+
+        try {
+            if ($null -ne [OTExcelDAO]::excel) {
+                if ($path -match "[^\\]+\.xls[m]*") {
+                    $bookname = $Matches[0]
+                    $this.book = [OTExcelDAO]::excel.Workbooks | Where-Object Name -eq $bookname
+                    if ($null -eq $this.book ) {
+                        $this.book = [OTExcelDAO]::excel.Workbooks.Open($path, 0, $readOnly)
+                    }
+                    return
+                } 
             }
-        }
+        } catch {}
+
+        Get-Process | where-object name -eq "Excel" | Stop-Process
+        [OTExcelDAO]::excel = New-Object -ComObject Excel.Application
+        $this.book = [OTExcelDAO]::excel.Workbooks.Open($path, 0, $readOnly)
     }
+
     [Extable] GetTable([string]$sheetname, [string]$address) {
         $sheet = $this.book.Worksheets($sheetname)
         $range = $sheet.Range($address)
