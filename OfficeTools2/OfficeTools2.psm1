@@ -240,7 +240,7 @@ class OlTable:AbstractTable {
         $this.items.Sort("[Start]")
     }
     [pscustomobject] toObject() {
-        return [OlTable]::toObject($this.folder.items)
+        return [OlTable]::toObject($this.items)
     }
     static [pscustomobject] toObject([object]$items) {
         return [pscustomobject]@{
@@ -259,7 +259,7 @@ class OlTable:AbstractTable {
     }
     [object] GetApos([string] $startDT, [string] $endDT) {
         $filter = "[Start] < '$endDT' AND [End] > '$startDT'"   
-        return $this.folder.Items.Restrict($filter)
+        return $this.Items.Restrict($filter)
     }
     [object] GetApos() {
         return $this.GetApos(1)
