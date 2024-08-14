@@ -223,7 +223,7 @@ class OTExcelDAO {
         return $table
     }
 }
-class OlTable:AbstractTable {
+class OlApoTable:AbstractTable {
     [object]$folder
     [object]$items
 
@@ -233,23 +233,23 @@ class OlTable:AbstractTable {
         "Subject", "Location", "Body", "EntryID"
     )
 
-    OlTable([object]$folder) {
+    OlApoTable([object]$folder) {
         $this.folder = $folder
         $this.items = $this.folder.items       
         $this.items.IncludeRecurrences = $true       
         $this.items.Sort("[Start]")
     }
     [pscustomobject] toObject() {
-        return [OlTable]::toObject($this.items)
+        return [OlApoTable]::toObject($this.items)
     }
     static [pscustomobject] toObject([object]$items) {
         return [pscustomobject]@{
             header = @("日付", "時間", "Subject", "Location", "Body", "EntryID")
-            data   = $items | Select-Object ([OlTable]::selectheader) 
+            data   = $items | Select-Object ([OlApoTable]::selectheader) 
         }
     }
     [object] Search([pscustomobject]$data, [ScriptBlock] $compfunc) {
-        return $null
+        return $this.items | Where-Object { &$compfunc $_ $data }
     }
     [object] SearchApos([object] $startDT, [object] $endDT) {
         $startDT = [OTOutlookDAO]::formatDT($startDT)
@@ -259,7 +259,8 @@ class OlTable:AbstractTable {
     }
     [object] GetApos([string] $startDT, [string] $endDT) {
         $filter = "[Start] < '$endDT' AND [End] > '$startDT'"   
-        return $this.Items.Restrict($filter)
+        $this.items  = $this.folder.items.Restrict($filter)
+        return $this.Items
     }
     [object] GetApos() {
         return $this.GetApos(1)
@@ -271,11 +272,15 @@ class OlTable:AbstractTable {
     [void] Sort([ScriptBlock] $orderfunc) {
         $this.items.Sort("[Start]")
     }
-    [object]AddRow([pscustomobject] $data) { 
+    [object]CreateApo([pscustomobject] $data) { 
         $item = $this.items.Add()
         $item.Start = [OTOutlookDAO]::FormatDT($data."Start")
         $item.End = [OTOutlookDAO]::formatDT($data."End")
         return $item
+    }
+    [object]Restrict([Object]$keywords) { 
+        $this.items = [OTOutlookDAO]::filterItems($this.items,$keywords)
+        return $this.items
     }
 }
 class OlMailTable:AbstractTable {
@@ -304,25 +309,30 @@ class OlMailTable:AbstractTable {
         }
     }
     [object] Search([pscustomobject]$data, [ScriptBlock] $compfunc) {
-        return $null
+        return $this.items | Where-Object { &$compfunc $_ $data }
     }
-    [object] GetMessages([string] $startDT, [string] $endDT) {
+    [object] GetMails([string] $startDT, [string] $endDT) {
         $filter = "[ReceivedTime] < '$endDT' AND [ReceivedTime] > '$startDT'"
-        return $this.Items.Restrict($filter)
+        $this.items = $this.folder.items.Restrict($filter)
+        return $this.items
     }
-    [object] GetMessages() {
-        return $this.GetMessages(1)
+    [object] GetMails() {
+        return $this.GetMails(1)
     }
-    [object] GetMessages([int]$term) {
+    [object] GetMails([int]$term) {
         $date = Get-Date
-        return $this.GetMessages($date.addDays(-$term).toString("yyyy/M/d 23:59"), $date.toString("yyyy/M/d 23:59"))
+        return $this.GetMails($date.addDays(-$term).toString("yyyy/M/d 23:59"), $date.toString("yyyy/M/d 23:59"))
     }
     [void] Sort([ScriptBlock] $orderfunc) {
         $this.items.Sort("[ReceivedTime]")
     }
-    [object]AddRow([pscustomobject] $data) {
-        $item = $this.items.Add()
-        return $item
+#    [object]CreateMail([pscustomobject] $data) {
+#        $item = $this.items.Add()
+#        return $item
+#    }
+    [object]Restrict([Object]$keywords) { 
+        $this.items = [OTOutlookDAO]::filterItems($this.items,$keywords)
+        return $this.items
     }
 }
 class OTOutlookDAO {
@@ -346,7 +356,7 @@ class OTOutlookDAO {
             [OTOutlookDAO]::namespace = [OTOutlookDAO]::outlook.GetNamespace("MAPI")
         }
     }
-    [object] GetTable([string]$receiver) {        
+    [OlApoTable] GetApoTable([string]$receiver) {        
         $folder = switch ($receiver) {
             "" {
                 [OTOutlookDAO]::namespace.GetDefaultFolder(9)
@@ -356,10 +366,10 @@ class OTOutlookDAO {
                 [OTOutlookDAO]::namespace.GetSharedDefaultFolder($rec, 9)           
             }
         } 
-        return New-Object OlTable($folder)
+        return New-Object OlApoTable($folder)
     }
-    [object] GetTable() {        
-        return $this.GetTable($null)
+    [object] GetApoTable() {        
+        return $this.GetApoTable($null)
     }
     [OlMailTable] GetMailTable() {
         return New-Object OLMailTable([OTOutlookDAO]::namespace.GetDefaultFolder(6))
@@ -372,7 +382,7 @@ class OTOutlookDAO {
         $filter = "@SQL=urn:schemas:httpmail:subject LIKE '" + [string]::Join("' OR urn:schemas:httpmail:subject LIKE '", $keywords) + "'" 
         return $items.Restrict($filter)
     }
-    [object] SearchApo([object] $id) {
+    [object] SearchItem([object] $id) {
         return [OTOutlookDAO]::namespace.GetItemFromID($id)
     }
     [object] createMail() {
