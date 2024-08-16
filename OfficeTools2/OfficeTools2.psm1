@@ -262,7 +262,7 @@ class OlApoTable:AbstractTable {
         $this.items = $this.folder.items       
         $this.items.IncludeRecurrences = $true       
         $this.items.Sort("[Start]")
-        $this.items  = $this.folder.items.Restrict($filter)
+        $this.items  = $this.items.Restrict($filter)
         return $this.Items
     }
     [object] GetApos() {
