@@ -259,6 +259,9 @@ class OlApoTable:AbstractTable {
     }
     [object] GetApos([string] $startDT, [string] $endDT) {
         $filter = "[Start] < '$endDT' AND [End] > '$startDT'"   
+        $this.items = $this.folder.items       
+        $this.items.IncludeRecurrences = $true       
+        $this.items.Sort("[Start]")
         $this.items  = $this.folder.items.Restrict($filter)
         return $this.Items
     }
@@ -276,6 +279,13 @@ class OlApoTable:AbstractTable {
         $item = $this.items.Add()
         $item.Start = [OTOutlookDAO]::FormatDT($data."Start")
         $item.End = [OTOutlookDAO]::formatDT($data."End")
+        return $item
+    }
+    [object]CreateEvent([datetime] $date) { 
+        $item = $this.items.Add()
+        $item.Start = $date.toString("yyy/M/d 00:00")
+        $item.End = $date.addDays(1).toString("yyy/M/d 00:00")
+        $item.AllDayEvent = $true
         return $item
     }
     [object]Restrict([Object]$keywords) { 
@@ -313,6 +323,9 @@ class OlMailTable:AbstractTable {
     }
     [object] GetMails([string] $startDT, [string] $endDT) {
         $filter = "[ReceivedTime] < '$endDT' AND [ReceivedTime] > '$startDT'"
+        $this.items = $this.folder.items       
+        $this.items.IncludeRecurrences = $true       
+        $this.items.Sort("[Start]")
         $this.items = $this.folder.items.Restrict($filter)
         return $this.items
     }
