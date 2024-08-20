@@ -339,6 +339,9 @@ class OlMailTable:AbstractTable {
     [void] Sort([ScriptBlock] $orderfunc) {
         $this.items.Sort("[ReceivedTime]")
     }
+    [void] AddMail([object]$item) {
+        $item | ForEach-Object { $_.Move($this.folder) }
+    }
     [OlMailTable] GetMailTable([string]$path) {
         $subfolder = $this.folder
         $path -split "\\" | select-object -skip 2 | ForEach-Object { $subfolder = $subfolder.folders($_) }
