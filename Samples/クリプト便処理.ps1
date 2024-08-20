@@ -33,5 +33,6 @@ foreach ($mail in $mails) {
         $dir = $DownLoadPath + ($_.name -replace '\..+', '')
         Expand-Archive -Path $path -DestinationPath $dir
     }
+
     $to.AddMail($mail)
 }
