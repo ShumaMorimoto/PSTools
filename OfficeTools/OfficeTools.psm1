@@ -126,7 +126,7 @@ class ExTable :AbstractTable {
         }
         return $this.range
     }
-    [PSCustomObject] GetRow($range) {
+    [PSCustomObject] GetRow([object]$range) {
         $data = [ordered]@{}
         $this.eheader.keys | ForEach-Object {
             $value = ""
@@ -149,6 +149,10 @@ class ExTable :AbstractTable {
             $data.Add($_, $value)
         }
         return [pscustomobject]$data
+    }
+    [object] SearchRow([pscustomobject]$data, [ScriptBlock] $compfunc) {
+        $rrange = $this.GetRange()
+        return ($rrange.rows | Where-Object { &$compfunc $_ $data } )
     }
     [pscustomobject] toObject() {
         $rrange = $this.GetRange()
