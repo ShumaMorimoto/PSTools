@@ -9,7 +9,7 @@
     [string] $page_id
     $headers = @{
         "Authorization" = "Bearer $token"
-        "Content-Type"  = "application/json; charset=Shift_JIS" 
+        "Content-Type"  = "application/json; charset=UTF-8"
     }
     ConfluDAO([string]$base_url, [string] $page_id) {
         $this.Load($base_url, $page_id)
@@ -21,13 +21,16 @@
         $this.page_id = $page_id
         $url = $this.base_url + $this.page_id + "?expand=body.storage,version"
 
-        $response = Invoke-RestMethod -Uri $url -Method "GET" -Headers $this.headers
-        $this.page=$response.body.storage.value
-        $this.vernum=$response.version.number
-        $this.title=$response.title
-        
+        $response = Invoke-WebRequest -Uri $url -Method "GET" -Headers $this.headers
+
+        $content = [System.Text.Encoding]::UTF8.GetString([System.Text.Encoding]::GetEncoding("ISO-8859-1").GetBytes($response.Content))
+        $json = ConvertFrom-JSON $content
+        $this.page = $json.body.storage.value
+        $this.vernum = $json.version.number
+        $this.title = $json.title
+                
         $this.doc = New-Object System.Xml.XmlDocument       
-        $this.doc.LoadXml('<page xmlns:ci="ci" xmlns:li="li">' + $this.page + '</page>')           
+        $this.doc.LoadXml('<page xmlns:ci="ci" xmlns:li="li" xmlns:ac="ac" xmlns:ri="ri">' + $this.page + '</page>')           
 
         return $true
     }
