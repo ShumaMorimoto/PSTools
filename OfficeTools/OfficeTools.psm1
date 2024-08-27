@@ -329,7 +329,6 @@ class OlMailTable:AbstractTable {
         $filter = "[ReceivedTime] < '$endDT' AND [ReceivedTime] > '$startDT'"
         $this.items = $this.folder.items       
         $this.items.IncludeRecurrences = $true       
-        $this.items.Sort("[Start]")
         $this.items = $this.folder.items.Restrict($filter)
         return $this.items
     }
