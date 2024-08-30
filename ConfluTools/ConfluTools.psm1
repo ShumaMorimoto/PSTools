@@ -30,7 +30,7 @@
         $this.title = $json.title
                 
         $this.doc = New-Object System.Xml.XmlDocument       
-        $this.doc.LoadXml('<page xmlns:ci="ci" xmlns:li="li" xmlns:ac="ac" xmlns:ri="ri">' + $this.page + '</page>')           
+        $this.doc.LoadXml([ConfluDAO]::toXML($this.page))           
 
         return $true
     }
@@ -55,5 +55,9 @@
         $this.vernum ++
         
         return $payload
+    }
+    static [string] toXML($value) {
+        $header = '<!DOCTYPE page[<!ENTITY nbsp "&#160;">]>'
+        return($header+'<page xmlns:ci="ci" xmlns:li="li" xmlns:ac="ac" xmlns:ri="ri">'+$value+'</page>')           
     }
 } 
