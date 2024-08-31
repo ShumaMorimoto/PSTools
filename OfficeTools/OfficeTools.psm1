@@ -23,9 +23,14 @@
 class DomTable : AbstractTable {
     [System.Xml.XmlElement] $element
 
-    DomTable([System.Xml.XmlElement]$table, [object]$header) {
+    DomTable([System.Xml.XmlElement]$table, [pscustomobject[]]$tdata) {
         $this.element = $table
-        $this.SetHeader($header) | Out-Null
+        $this.SetHeader($tdata.header) | Out-Null
+        $this.AddRow($tdata.data) | Out-Null
+    }
+    DomTable([System.Xml.XmlElement]$table) {
+        $this.element = $table
+        $this.header = $table.GetElementsByTagName("th") | ForEach-Object { $_.innerText }
     }
     [pscustomobject] toObject() {
         $this.data = @() 
@@ -63,26 +68,43 @@ class DomTable : AbstractTable {
     }
 }
 Class OTDomDAO :System.Xml.XmlDocument {
-    [object]$tables
+    [DomTable[]] $tables = @()
     
+    OTDomDAO() {
+    }
     OTDomDAO([string]$xml) {
         $this.LoadXML($xml)  
     }
     [void]LoadXML($xml) {
         [System.Xml.XmlDocument]$this.LoadXML($xml)
-        $this.tables = $this.GetElementsByTagName("table")
+        $this.GetTables() | Out-Null
     }
     [DomTable]CreateTable([pscustomobject] $tdata) {
+        return $this.CreateTable($tdata, $this.DocumentElement)
+    }
+    [DomTable]CreateTable([pscustomobject] $tdata, [System.Xml.XmlElement] $parent) {
         $element = $this.CreateElement("table")
-        $table = New-Object DomTable($element, $tdata.header)
+        $parent.AppendChild($element)
+        $table = $this.AppendTable($element)
+        $table.SetHeader($tdata.header) | Out-Null
         $table.AddRow($tdata.data) | Out-Null
+        return $table
+    }
+    [DomTable]AppendTable([System.Xml.XmlElement] $element) {
+        $table = New-Object DomTable($element)
         $this.tables += $table
         return $table
     }
-    [object] GetTables() {       
-        return ($this.getElementsByTagName("table") | ForEach-Object { New-Object DomTTable($_) })
+    [DomTable]AppendTable([System.Xml.XmlElement] $element, [System.Xml.XmlElement] $parent) {
+        $parent.AppendChild($element)
+        return $this.AppendTable($element)
+    }
+    [object] GetTables() {
+        $this.getElementsByTagName("table") | ForEach-Object { $this.AppendTable($_) | Out-Null}
+        return $this.tables
     }
 }
+
 class ExTable :AbstractTable {
     [object] $range
     [hashtable] $eheader = [ordered]@{}
@@ -463,7 +485,91 @@ class OTPowerpointDAO {
         return New-Object PpTable($this.presen)
     }
 }
+class ConfluDAO : OTDomDAO {
+    static [string] $token = "MTAwNjk4NTA1MTcwOltz9manllOlRKkh3oAyY/xyX/z/"
+    static [string] $headers = @{
+        "Authorization" = "Bearer $token"
+        "Content-Type"  = "application/json; charset=UTF-8"
+    }
+    static [string] $dtd = @"
+<!DOCTYPE page[
+<!ENTITY nbsp "&#160;">
+<!ATTLIST page xmlns:ci CDATA #FIXED "ci">
+<!ATTLIST page xmlns:li CDATA #FIXED "li">
+<!ATTLIST page xmlns:ac CDATA #FIXED "ac">
+<!ATTLIST page xmlns:ri CDATA #FIXED "ri">
+]>
+"@
+    [string] $page
+    [int] $vernum
+    [string] $title
+    [xml] $doc
+    [string] $base_url
+    [string] $page_id
 
+    ConfluDAO([string]$base_url, [string] $page_id) {
+        $this.Load($base_url, $page_id)
+    }
+    ConfluDAO() {
+    }
+    [boolean]Load([string]$base_url, [string]$page_id) {
+        $this.base_url = $base_url
+        $this.page_id = $page_id
+        $url = $this.base_url + $this.page_id + "?expand=body.storage,version"
+
+        $response = Invoke-WebRequest -Uri $url -Method "GET" -Headers [ConfluTools]::headers
+        $content = [System.Text.Encoding]::UTF8.GetString([System.Text.Encoding]::GetEncoding("ISO-8859-1").GetBytes($response.Content))
+        $json = ConvertFrom-JSON $content
+        $this.page = $json.body.storage.value
+        $this.vernum = $json.version.number
+        $this.title = $json.title
+                
+        $this.LoadXml([ConfluDAO]::toXML($this.page))           
+        return $true
+    }
+    [Object] Save() {
+        $url = $this.base_url + $this.page_id
+
+        $payload = @{
+            title   = $this.title
+            type    = "page"
+            version = @{
+                number = $this.vernum + 1
+            }
+            body    = @{
+                storage = @{
+                    representation = "storage"
+                    value          = $this.page.innerXML
+                }
+            }
+        }
+        $json = ConvertTo-JSON -Compress $payload
+        $response = Invoke-RestMethod -Uri $url -Body $json -Method "PUT" -Headers [ConfluTools]::headers -ErrorVariable RespErr
+        $this.vernum ++
+        
+        return $payload
+    }
+    static [string] toXML($value) {
+        return([ConfluDAO]::dtd+"<page>$value</page>")
+    }
+} 
+function getCred() {
+    $file = "$PSScriptRoot\OfficeTools.settings.json"
+    $settings = @{}
+    if (!(Test-Path $file -NewerThan (Get-Date).addMonths(-6))) {
+        $cred = Get-Credential
+        $settings.add("id", $cred.UserName)
+        $settings.add("password", (ConvertFrom-SecureString -SecureString $cred.Password))
+        ConvertTo-JSON $settings | Set-Content $file
+    }
+    else {
+        $settings = Get-Content $file | ConvertFrom-JSON 
+    }
+    $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $settings.password))
+    $password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+    $settings.password = $password
+    return $settings
+}
 function datenormalizer {
     param([string]$val1, [string]$val2)
     
