@@ -100,7 +100,7 @@ Class OTDomDAO :System.Xml.XmlDocument {
         return $this.AppendTable($element)
     }
     [object] GetTables() {
-        $this.getElementsByTagName("table") | ForEach-Object { $this.AppendTable($_) | Out-Null}
+        $this.getElementsByTagName("table") | ForEach-Object { $this.AppendTable($_) | Out-Null }
         return $this.tables
     }
 }
@@ -508,9 +508,11 @@ class ConfluDAO : OTDomDAO {
     [string] $page_id
 
     ConfluDAO([string]$base_url, [string] $page_id) {
+        [ConfluDAO]::getPAT() | Out-Null
         $this.Load($base_url, $page_id)
     }
     ConfluDAO() {
+        [ConfluDAO]::getPAT()| Out-Null
     }
     [boolean]Load([string]$base_url, [string]$page_id) {
         $this.base_url = $base_url
@@ -550,7 +552,29 @@ class ConfluDAO : OTDomDAO {
         return $payload
     }
     static [string] toXML($value) {
-        return([ConfluDAO]::dtd+"<page>$value</page>")
+        return([ConfluDAO]::dtd + "<page>$value</page>")
+    }
+    static [string] getPAT() {
+        $file = "$PSScriptRoot\Conflu.settings.json"
+        $settings = @{}
+        if (!(Test-Path $file -NewerThan (Get-Date).addMonths(-6))) {
+            $settings.add("PAT", "hogehoge")
+            ConvertTo-JSON $settings | Set-Content $file
+        }
+        else {
+            $settings = Get-Content $file | ConvertFrom-JSON 
+        }
+        [ConfluDAO]::token = $settings.PAT
+        [ConfluDAO]::headers = @{
+            "Authorization" = "Bearer " + [ConfluDAO]::token
+            "Content-Type"  = "application/json; charset=UTF-8"
+        }
+        return [ConfluDAO]::token
+    }
+    static [void] setPAT([string]$PAT) {
+        $file = "$PSScriptRoot\Conflu.settings.json"
+        $settings = @{"PAT" = $PAT }
+        ConvertTo-JSON $settings | Set-Content $file
     }
 } 
 function getCred() {
