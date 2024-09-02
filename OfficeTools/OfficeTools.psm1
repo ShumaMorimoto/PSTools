@@ -582,6 +582,7 @@ class ConfluDAO : OTDomDAO {
             }
         else {
         }
+        }
         return [ConfluDAO]::token
     }
     static [void] setPAT([string]$PAT) {
