@@ -558,36 +558,43 @@ class ConfluDAO : OTDomDAO {
         $file = "$PSScriptRoot\Conflu.settings.json"
         $settings = @{}
         if (Test-Path $file) {
-            $settings = Get-Content $file | ConvertFrom-JSON 
+            $settings = Get-Content $file | ConvertFrom-JSON
             [ConfluDAO]::token = $settings.rawToken
             [ConfluDAO]::headers = @{
-                "Authorization" = "Bearer " + [ConfluDAO]::token
+                "Authorization" = "Bearer " + $settings.rawToken
                 "Content-Type"  = "application/json; charset=UTF-8"
             }
-   
-            if ($settings.expiringAt -lt (Get-Date).AddDays(20)) {
-                $baseUrl = "https://sd10.aslead.cloud/wiki/rest/pat/latest/tokens"
-                $body = @{
-                    name               = "myToken"
-                    expirationDuration = 90
-                }
-                $json = ConvertTo-JSON -Compress $body
-                $settings = Invoke-RestMethod -Uri $baseurl -Body $json -Method "POST" -Headers ([ConfluDAO]::headers)
-                ConvertTo-JSON $settings | Set-Content $file
-                [ConfluDAO]::token = $settings.rawToken
-                [ConfluDAO]::headers = @{
-                    "Authorization" = "Bearer " + [ConfluDAO]::token
-                    "Content-Type"  = "application/json; charset=UTF-8"
-                }
+        }
+        else {
+            $cred = Get-Credential
+            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($cred.Password)
+            $password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) 
+            $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $cred.UserName, $password)))
+
+            [ConfluDAO]::headers = @{
+                Authorization  = ("Basic {0}" -f $base64AuthInfo)
+                "Content-Type" = "application/json; charset=UTF-8"
+            }   
+        }
+        if ($settings.expiringAt -eq $null -or [DateTime]$settings.expiringAt -lt (Get-Date).AddDays(20)) {
+            $baseUrl = "https://sd10.aslead.cloud/wiki/rest/pat/latest/tokens"   
+            $body = @{
+                name               = "myToken"
+                expirationDuration = 90
             }
-            else {
-            }
+            $json = ConvertTo-JSON -Compress $body
+            $settings = Invoke-RestMethod -Uri $baseurl -Body $json -Method "POST" -Headers ([ConfluDAO]::headers)
+            [ConfluDAO]::setPAT($settings)
         }
         return [ConfluDAO]::token
     }
-    static [void] setPAT([string]$PAT) {
+    static [void] setPAT([object]$settings) {
         $file = "$PSScriptRoot\Conflu.settings.json"
-        $settings = @{"rawToken" = $PAT }
+        [ConfluDAO]::token = $settings.rawToken
+        [ConfluDAO]::headers = @{
+            "Authorization" = "Bearer " + [ConfluDAO]::token
+            "Content-Type"  = "application/json; charset=UTF-8"
+        }
         ConvertTo-JSON $settings | Set-Content $file
     }
 } 
