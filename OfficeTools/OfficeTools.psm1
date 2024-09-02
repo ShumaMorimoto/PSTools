@@ -512,7 +512,7 @@ class ConfluDAO : OTDomDAO {
         $this.Load($base_url, $page_id)
     }
     ConfluDAO() {
-        [ConfluDAO]::getPAT()| Out-Null
+        [ConfluDAO]::getPAT() | Out-Null
     }
     [boolean]Load([string]$base_url, [string]$page_id) {
         $this.base_url = $base_url
@@ -557,7 +557,7 @@ class ConfluDAO : OTDomDAO {
     static [string] getPAT() {
         $file = "$PSScriptRoot\Conflu.settings.json"
         $settings = @{}
-         if (Test-Path $file) {
+        if (Test-Path $file) {
             $settings = Get-Content $file | ConvertFrom-JSON 
             [ConfluDAO]::token = $settings.rawToken
             [ConfluDAO]::headers = @{
@@ -580,8 +580,8 @@ class ConfluDAO : OTDomDAO {
                     "Content-Type"  = "application/json; charset=UTF-8"
                 }
             }
-        else {
-        }
+            else {
+            }
         }
         return [ConfluDAO]::token
     }
@@ -607,6 +607,26 @@ function getCred() {
     $password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
     $settings.password = $password
     return $settings
+}
+class OTCalDAO {
+    static [object] $syukujitsu = $null
+    static [void] loadSyukujitsu() {
+        if (!(Test-Path "$PSScriptRoot\syukujitsu.csv" -NewerThan (Get-Date).addMonths(-6))) {
+            $url = 'https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv'
+            Invoke-WebRequest -URI $url -OutFile "$PSScriptRoot\syukujitsu.csv"
+        } 
+        if ((Get-Host).Version.Major -eq 7) {
+            [OTCalDAO]::syukujitsu = Import-Csv "$PSScriptRoot\syukujitsu.csv" -Encoding ANSI
+        }
+        else {
+            [OTCalDAO]::syukujitsu = Import-Csv "$PSScriptRoot\syukujitsu.csv" -Encoding Default 
+        }
+    }
+}
+function isHoliday([datetime]$date) {
+    if ([OTCalDAO]::syukujitsu -eq $null) { [OTCalDAO]::loadSyukujitsu() }
+    $holiday = ([OTCalDAO]::syukujitsu | Where-Object "国民の祝日・休日月日" -Match $date.ToString("yyyy/M/d"))."国民の祝日・休日名称"
+    return $holiday
 }
 function datenormalizer {
     param([string]$val1, [string]$val2)
