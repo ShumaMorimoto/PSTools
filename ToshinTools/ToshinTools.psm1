@@ -210,11 +210,6 @@
             [ToshinDAO]::syukujitsu = Import-Csv "$PSScriptRoot\syukujitsu.csv" -Encoding Default 
         }
     }
-    static [string]isHoliday([datetime]$date) {
-        if($null -eq [ToshinDAO]::syukujitsu){[ToshinDAO]::loadSyukujitsu()}
-        $holiday = ([ToshinDAO]::syukujitsu | Where-Object "国民の祝日・休日月日" -Match $date.ToString("yyyy/M/d"))."国民の祝日・休日名称"
-        return $holiday
-    }
     static [datetime]mDay([datetime]$date) {
         $date = preWorkday($date.AddHours(6))
         return [DateTime]::New($date.Year, $date.Month, $date.Day, 0, 0, 0)
