@@ -487,7 +487,7 @@ class OTPowerpointDAO {
 }
 class ConfluDAO : OTDomDAO {
     static [string] $token = "MTAwNjk4NTA1MTcwOltz9manllOlRKkh3oAyY/xyX/z/"
-    static [string] $headers = @{
+    static [object] $headers = @{
         "Authorization" = "Bearer $token"
         "Content-Type"  = "application/json; charset=UTF-8"
     }
@@ -519,7 +519,7 @@ class ConfluDAO : OTDomDAO {
         $this.page_id = $page_id
         $url = $this.base_url + $this.page_id + "?expand=body.storage,version"
 
-        $response = Invoke-WebRequest -Uri $url -Method "GET" -Headers [ConfluTools]::headers
+        $response = Invoke-WebRequest -Uri $url -Method "GET" -Headers [ConfluDAO]::headers
         $content = [System.Text.Encoding]::UTF8.GetString([System.Text.Encoding]::GetEncoding("ISO-8859-1").GetBytes($response.Content))
         $json = ConvertFrom-JSON $content
         $this.page = $json.body.storage.value
@@ -546,7 +546,7 @@ class ConfluDAO : OTDomDAO {
             }
         }
         $json = ConvertTo-JSON -Compress $payload
-        $response = Invoke-RestMethod -Uri $url -Body $json -Method "PUT" -Headers [ConfluTools]::headers -ErrorVariable RespErr
+        $response = Invoke-RestMethod -Uri $url -Body $json -Method "PUT" -Headers [ConfluDAO]::headers -ErrorVariable RespErr
         $this.vernum ++
         
         return $payload
@@ -557,23 +557,36 @@ class ConfluDAO : OTDomDAO {
     static [string] getPAT() {
         $file = "$PSScriptRoot\Conflu.settings.json"
         $settings = @{}
-        if (!(Test-Path $file -NewerThan (Get-Date).addMonths(-6))) {
-            $settings.add("PAT", "hogehoge")
-            ConvertTo-JSON $settings | Set-Content $file
-        }
-        else {
+         if (Test-Path $file) {
             $settings = Get-Content $file | ConvertFrom-JSON 
-        }
-        [ConfluDAO]::token = $settings.PAT
-        [ConfluDAO]::headers = @{
-            "Authorization" = "Bearer " + [ConfluDAO]::token
-            "Content-Type"  = "application/json; charset=UTF-8"
+            [ConfluDAO]::token = $settings.rawToken
+            [ConfluDAO]::headers = @{
+                "Authorization" = "Bearer " + [ConfluDAO]::token
+                "Content-Type"  = "application/json; charset=UTF-8"
+            }
+   
+            if ($settings.expiringAt -lt (Get-Date).AddDays(20)) {
+                $baseUrl = "https://sd10.aslead.cloud/wiki/rest/pat/latest/tokens"
+                $body = @{
+                    name               = "myToken"
+                    expirationDuration = 90
+                }
+                $json = ConvertTo-JSON -Compress $body
+                $settings = Invoke-RestMethod -Uri $baseurl -Body $json -Method "POST" -Headers ([ConfluDAO]::headers)
+                ConvertTo-JSON $settings | Set-Content $file
+                [ConfluDAO]::token = $settings.rawToken
+                [ConfluDAO]::headers = @{
+                    "Authorization" = "Bearer " + [ConfluDAO]::token
+                    "Content-Type"  = "application/json; charset=UTF-8"
+                }
+            }
+        else {
         }
         return [ConfluDAO]::token
     }
     static [void] setPAT([string]$PAT) {
         $file = "$PSScriptRoot\Conflu.settings.json"
-        $settings = @{"PAT" = $PAT }
+        $settings = @{"rawToken" = $PAT }
         ConvertTo-JSON $settings | Set-Content $file
     }
 } 
