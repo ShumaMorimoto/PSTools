@@ -506,6 +506,7 @@ class ConfluDAO : OTDomDAO {
     [xml] $doc
     [string] $base_url
     [string] $page_id
+    [object] $attachments = @{}
 
     ConfluDAO([string]$base_url, [string] $page_id) {
         [ConfluDAO]::getPAT() | Out-Null
@@ -514,13 +515,13 @@ class ConfluDAO : OTDomDAO {
     ConfluDAO() {
         [ConfluDAO]::getPAT() | Out-Null
     }
-    [boolean]Load([string]$base_url, [string]$page_id) {
+    [boolean]Load2([string]$base_url, [string]$page_id) {
         $this.base_url = $base_url
         $this.page_id = $page_id
-        $url = $this.base_url + $this.page_id + "?expand=body.storage,version"
+        $url = $this.base_url + "/" + $this.page_id + "?expand=body.storage,version"
 
-        $response = Invoke-WebRequest -Uri $url -Method "GET" -Headers [ConfluDAO]::headers
-        $content = [System.Text.Encoding]::UTF8.GetString([System.Text.Encoding]::GetEncoding("ISO-8859-1").GetBytes($response.Content))
+        $response = Invoke-WebRequest -Uri $url -Method "GET" -Headers ([ConfluDAO]::headers)
+        $content = [System.Text.Encoding]::UTF8.GetString([System.Text.Encoding]::GetEncoding("UTF-8").GetBytes($response.Content))
         $json = ConvertFrom-JSON $content
         $this.page = $json.body.storage.value
         $this.vernum = $json.version.number
@@ -529,8 +530,30 @@ class ConfluDAO : OTDomDAO {
         $this.LoadXml([ConfluDAO]::toXML($this.page))           
         return $true
     }
+    [boolean]Load([string]$base_url, [string]$page_id) {
+        $this.base_url = $base_url
+        $this.page_id = $page_id
+        $url = $this.base_url + "/" + $this.page_id + "?expand=body.storage,version"
+
+        $response = Invoke-RestMethod -Uri $url -Method "GET" -Headers ([ConfluDAO]::headers)
+        $this.page = $response.body.storage.value
+        $this.vernum = $response.version.number
+        $this.title = $response.title
+                
+        $this.LoadXml([ConfluDAO]::toXML($this.page))           
+
+        $url = $this.base_url + "/" + $this.page_id + "/child/attachment"
+        $_headers = @{
+            "Authorization"     = "Bearer " + [ConfluDAO]::getPAT()
+            "X-Atlassian-Token" = "no-check"
+        }
+        $response = Invoke-RestMethod -Uri $url -Method "GET" -Headers $_headers
+        $response.results | %{$this.attachments.Add($_.title,$_.id)}
+
+        return $true
+    }
     [Object] Save() {
-        $url = $this.base_url + $this.page_id
+        $url = $this.base_url + "/" + $this.page_id
 
         $payload = @{
             title   = $this.title
@@ -546,10 +569,28 @@ class ConfluDAO : OTDomDAO {
             }
         }
         $json = ConvertTo-JSON -Compress $payload
-        $response = Invoke-RestMethod -Uri $url -Body $json -Method "PUT" -Headers [ConfluDAO]::headers -ErrorVariable RespErr
+        $response = Invoke-RestMethod -Uri $url -Body $json -Method "PUT" -Headers ([ConfluDAO]::headers) -ErrorVariable RespErr
         $this.vernum ++
         
         return $payload
+    }
+    [Object] upload([String]$filePath) {
+        $url = $this.base_url + "/" + $this.page_id + "/child/attachment"
+        $name = $filePath -replace '^.+\\([^\\]+)$', '$1' 
+
+        $_headers = @{
+            "Authorization"     = "Bearer " + [ConfluDAO]::getPAT()
+            "X-Atlassian-Token" = "no-check"
+        }
+
+        if ($this.attachments.ContainsKey($name)) {
+            $url = "$url/"+$this.attachments[$name]+"/data"       
+        }
+
+        $Form = @{ file = Get-ChildItem $filePath; comment = "UPDATE" }
+        $response = Invoke-RestMethod -Uri $url -Method "POST" -Headers $_headers -Form $Form
+  
+        return $response
     }
     static [string] toXML($value) {
         return([ConfluDAO]::dtd + "<page>$value</page>")
