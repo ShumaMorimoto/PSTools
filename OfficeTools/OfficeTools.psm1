@@ -1,4 +1,4 @@
-﻿class AbstractTable {
+class AbstractTable {
     [string[]] $header = @()
     [pscustomobject[]] $data = @()
 
@@ -493,8 +493,26 @@ class ConfluDAO : OTDomDAO {
     static [string] $dtd = @"
 <!DOCTYPE page[
 <!ENTITY nbsp "&#160;">
+<!ENTITY lArr "&#8656;">
+<!ENTITY uArr "&#8657;">
 <!ENTITY rArr "&#8658;">
+<!ENTITY dArr "&#8659;">
+<!ENTITY hArr "&#8660;">
+<!ENTITY vArr "&#8661;">
+<!ENTITY nwArr "&#8662;">
+<!ENTITY neArr "&#8663;">
+<!ENTITY seArr "&#8664;">
+<!ENTITY swArr "&#8665;">
+<!ENTITY larr "&#8592;">
+<!ENTITY uarr "&#8593;">
 <!ENTITY rarr "&#8594;">
+<!ENTITY darr "&#8595;">
+<!ENTITY harr "&#8596;">
+<!ENTITY varr "&#8597;">
+<!ENTITY nwarr "&#8598;">
+<!ENTITY nearr "&#8599;">
+<!ENTITY searr "&#8600;">
+<!ENTITY swarr "&#8601;">
 <!ENTITY times "&#215;">
 <!ATTLIST page xmlns:ci CDATA #FIXED "ci">
 <!ATTLIST page xmlns:li CDATA #FIXED "li">
@@ -516,6 +534,42 @@ class ConfluDAO : OTDomDAO {
     }
     ConfluDAO() {
         [ConfluDAO]::getPAT() | Out-Null
+    }
+    ConfluDAO([string]$base_url, [string] $space_key, [string] $parent_id, [string]$title, [string]$page) {
+        $this.page_id = [ConfluDAO]::Search($base_url, $title)
+        
+        if ($this.page_id -eq "") {
+            $this.page_id = [ConfluDAO]::Create($base_url, $space_key, $parent_id, $title, $page)
+        }
+        $this.Load($base_url, $this.page_id)
+    }
+    static [string]Create([string]$base_url, [string] $space_key, [string] $parent_id, [string]$title, [string]$page) {
+        [ConfluDAO]::getPAT() | Out-Null      
+        $payload = @{
+            title     = $title
+            space     = @{key = $space_key }
+            type      = "page"
+            ancestors = @(@{id = $parent_id })
+            body      = @{
+                storage = @{
+                    representation = "storage"
+                    value          = $page
+                }
+            }
+        }
+        $json = ConvertTo-JSON -Compress $payload
+        $response = Invoke-RestMethod -Uri $base_url -Body $json -Method "POST" -Headers ([ConfluDAO]::headers) -ErrorVariable RespErr   
+        return $response.id
+    }
+    static [string]Search([string]$base_url, [string]$title) {
+        [ConfluDAO]::getPAT() | Out-Null      
+        $url = $base_url + "?title=" + $title
+        $response = Invoke-RestMethod -Uri $url -Method "GET" -Headers ([ConfluDAO]::headers)      
+        $id = ""
+        if ($response.results.Count -gt 0 ) {
+            $id = $response.results.id
+        }
+        return $id
     }
     [boolean]Load2([string]$base_url, [string]$page_id) {
         $this.base_url = $base_url
@@ -542,7 +596,7 @@ class ConfluDAO : OTDomDAO {
         $this.vernum = $response.version.number
         $this.title = $response.title
                 
-        [ConfluDAO]::toXML($this.page) | Set-Content -Path "h:\tmp\page.xml"
+        #        [ConfluDAO]::toXML($this.page) | Set-Content -Path "h:\tmp\page.xml"
         $this.LoadXml([ConfluDAO]::toXML($this.page))           
 
         $url = $this.base_url + "/" + $this.page_id + "/child/attachment"
@@ -551,7 +605,7 @@ class ConfluDAO : OTDomDAO {
             "X-Atlassian-Token" = "no-check"
         }
         $response = Invoke-RestMethod -Uri $url -Method "GET" -Headers $_headers
-        $response.results | %{$this.attachments.Add($_.title,$_.id)}
+        $response.results | % { $this.attachments.Add($_.title, $_.id) }
 
         return $true
     }
@@ -587,7 +641,7 @@ class ConfluDAO : OTDomDAO {
         }
 
         if ($this.attachments.ContainsKey($name)) {
-            $url = "$url/"+$this.attachments[$name]+"/data"       
+            $url = "$url/" + $this.attachments[$name] + "/data"       
         }
 
         $Form = @{ file = Get-ChildItem $filePath; comment = "UPDATE" }
@@ -658,6 +712,14 @@ function getCred() {
     $password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
     $settings.password = $password
     return $settings
+}
+function setCred() {
+    $file = "$PSScriptRoot\OfficeTools.settings.json"
+    $settings = @{}
+    $cred = Get-Credential
+    $settings.add("id", $cred.UserName)
+    $settings.add("password", (ConvertFrom-SecureString -SecureString $cred.Password))
+    ConvertTo-JSON $settings | Set-Content $file
 }
 class OTCalDAO {
     static [object] $syukujitsu = $null
