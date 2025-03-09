@@ -107,6 +107,8 @@ Class OTDomDAO :System.Xml.XmlDocument {
 class ExTable :AbstractTable {
     [object] $sheet
     [object] $range
+    [object] $scell
+    [object] $ecell
     [PSCustomObject] $oHeader = [ordered]@{}
     [PSCustomObject] $oRows = @()
         
@@ -116,9 +118,10 @@ class ExTable :AbstractTable {
         $this.oHeader = $this.GetHeader()
     }
     [object] GetHeader() {
+        $this.scell = $this.sheet.Cells($this.range.Row + $this.range.Rows.Count, $this.range.Column)
         return $this.getItems($this.range.Row, $this.range.Column, $this.range.Columns.Count)
     }   
-    [object] getItems($row, $col, $count) {
+    [PSCustomObject] getItems($row, $col, $count) {
         $obj = [ordered]@{}
         while ($count -gt 0) {
             $cell = $this.sheet.Cells($row, $col)
@@ -141,9 +144,10 @@ class ExTable :AbstractTable {
         $this.oRows = @()
         foreach ($row in $rows) {
             $obj = $this.getData($row, $this.oHeader)
-            $obj.Add("_row",$row)
+            $obj.Add("_row", $row)
             $this.oRows += $obj
         }
+        $this.ecell = $this.sheet.Cells($this.lastRow(), $this.sheet.Columns.Count)
         return $this.oRows
     }
     [PSCustomObject] GetRows() {
@@ -154,7 +158,7 @@ class ExTable :AbstractTable {
         }
         return $this.GetRows(($start..$end))
     }
-    [PSCustomObject]getData([int]$row, [object]$item) {
+    [PSCustomObject]getData([int]$row, [PSCustomObject]$item) {
         $obj = [ordered]@{}
         foreach ($key in $item.Keys) {
             if ($item.$key -is [int]) {
@@ -166,7 +170,7 @@ class ExTable :AbstractTable {
         }
         return $obj
     }
-    [PSCustomObject] AddRows([pscustomobject[]]$data) {
+    [PSCustomObject] AddRows([PSCustomObject[]]$data) {
         $lastrow = $this.lastRow() + 1
         foreach ($record in $data) {
             $this.setData($lastrow, $this.oHeader, $record)
@@ -174,7 +178,7 @@ class ExTable :AbstractTable {
         $this.oROws = $this.GetRows()
         return $this.oRows
     }
-    [void]setData([int]$row, [object]$item, [object]$data) {
+    [void]setData([int]$row, [PSCustomObject]$item, [PSCustomObject]$data) {
         if ($null -ne $data) {
             foreach ($key in $item.Keys) {
                 if ($item.$key -is [int]) {
@@ -186,14 +190,14 @@ class ExTable :AbstractTable {
             }
         }
     }
-    [PSCustomObject] SearchRows([pscustomobject]$data, [ScriptBlock] $compfunc) {
-        return ($this.oRows | Where-Object { &$compfunc $_ $data } )
+    [PSCustomObject] SearchRows([ScriptBlock] $compfunc) {
+        return ($this.oRows | Where-Object { &$compfunc $_ } )
     }
-    [pscustomobject] toObject() {
-        return [pscustomobject]@{header = $this.oHeader; data = $this.oRows }
+    [PSCustomObject] toObject() {
+        return [PSCustomObject]@{header = $this.oHeader; data = $this.oRows }
     }
     [int] startRow() {
-        return $this.range.Row + $this.range.Rows.Count
+        return $this.scell.Row
     }  
     [int] lastRow() {
         return $this.range.End( - 4121).row
@@ -203,18 +207,11 @@ class ExTable :AbstractTable {
         
         foreach ($data in $this.oRows) { $this.sheet.Cells($data._row, $keycol) = &$orderfunc $data }
 
-        $cell1 = $this.sheet.Cells($this.startRow(), $this.range.Column)
-        $cell2 = $this.sheet.Cells($this.lastRow(), $keycol)
-        $drange = $this.sheet.Range($cell1, $cell2)
+        $drange = $this.sheet.Range($this.scell, $this.ecell)
         $key = $drange.columns[$keycol]
         # $key.ClearContents()
         return $drange.Sort($key, 1)
     } 
-    [object] GetRange() {
-        $cell1 = $this.sheet.Cells($this.startRow(), $this.range.Column)
-        $cell2 = $this.sheet.Cells($this.lastRow(), $this.range.Column + $this.range.Columns.Count - 1)
-        return $this.sheet.Range($cell1, $cell2)
-    }
 }
 class OTExcelDAO {
     static [object] $excel
