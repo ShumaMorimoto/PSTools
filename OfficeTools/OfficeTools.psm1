@@ -1,4 +1,4 @@
-class AbstractTable {
+﻿class AbstractTable {
     [string[]] $header = @()
     [pscustomobject[]] $data = @()
 
@@ -105,102 +105,108 @@ Class OTDomDAO :System.Xml.XmlDocument {
     }
 }
 class ExTable :AbstractTable {
+    [object] $sheet
     [object] $range
-    [hashtable] $eheader = [ordered]@{}
-
+    [PSCustomObject] $oHeader = [ordered]@{}
+    [PSCustomObject] $oRows = @()
+        
     ExTable([object]$range) {
+        $this.sheet = $range.WorkSheet
         $this.range = $range
-        $this.eheader = $this.GetHeader()
+        $this.oHeader = $this.GetHeader()
     }
     [object] GetHeader() {
-        $this.eheader = [ordered]@{}
-        if ($this.range.rows.count -eq 1) {
-            $this.range | where-object Text -ne "" | ForEach-Object { $this.eheader.Add($_.Text, $_) }
-        }  
-        else {
-            $this.range.rows(1).Columns | Where-Object Text -ne "" | ForEach-Object {
-                if ($_.MergeArea.Columns.Count -gt 1) {
-                    $this.eheader.Add($_.Text, $_.Offset(1, 0).Resize(1, $_.MergeArea.Count))
+        return $this.getItems($this.range.Row, $this.range.Column, $this.range.Columns.Count)
+    }   
+    [object] getItems($row, $col, $count) {
+        $obj = [ordered]@{}
+        while ($count -gt 0) {
+            $cell = $this.sheet.Cells.Item($row, $col)
+            $text = $cell.Text
+            if ($text -ne "") {
+                $cols = $cell.MergeArea.Columns.Count
+                if ($cols -eq 1) {
+                    $obj.Add($cell.Text, $col)
                 }
-                else {    
-                    $this.eheader.Add($_.Text, $_) 
+                else {
+                    $obj2 = $this.getItems($row + 1, $col, $cols)
+                    $obj.Add($cell.Text, $obj2)
                 }
             }
+            $count --; $col ++
         }
-        return $this.eheader  
+        return $obj
     }
-    [object] AddRow([pscustomobject[]]$data) {
-        $rrange = $this.range.End(-4121).Offset(1, 0)
-        foreach ($record in $data) {
-            $this.eheader.keys | ForEach-Object {
-                $cell = $this.eheader[$_]
-                if ($cell.MergeArea.Columns.Count -eq 1) {
-                    $rrange.Resize(1, 1).Offset(0, $cell.Column - $rrange.Column) = $record.$_
-                }
-                elseif ($cell.MergeCells) {
-                    if ($record.$_.Count -gt 0) {
-                        $rrange.Offset(0, $cell.Column - $rrange.Column).Resize(1, $record.$_.Count) = $record.$_
-                    }
-                }
-            }
-            $rrange = $rrange.Offset(1, 0)
+    [PSCustomObject] GetRows([int[]]$rows) {
+        $this.oRows = @()
+        foreach ($row in $rows) {
+            $this.oRows += $this.getData($row, $this.oHeader)
         }
-        return $this.range
+        return $this.oRows
     }
-    [PSCustomObject] GetRow([object]$range) {
-        $data = [ordered]@{}
-        $this.eheader.keys | ForEach-Object {
-            $value = ""
-            $cell = $this.eheader[$_]
-
-            if ($cell.MergeArea.Columns.Count -eq 1) {
-                $value = $range.Resize(1, 1).Offset(0, $cell.Column - $range.Column).Text
-            }
-            elseif ($cell.MergeCells) {
-                $value = @()
-                $range.Offset(0, $cell.Column - $range.Column).Resize(1, $cell.MergeArea.Count).Columns | ForEach-Object { if ($_.Text -ne "") { $value += $_.Text } }
+    [PSCustomObject] GetRows() {
+        [int]$start = $this.startRow()
+        [int]$end = $this.lastRow()
+        if ($start -gt $end) {
+            return $null
+        }
+        return $this.GetRows(($start..$end))
+    }
+    [PSCustomObject]getData([int]$row, [object]$item) {
+        $obj = [ordered]@{}
+        foreach ($key in $item.Keys) {
+            if ($item.$key -is [int]) {
+                $obj.Add($key, $this.sheet.Cells.Item($row, $item.$key).Text)
             }
             else {
-                $value = @{}
-                $cell | ForEach-Object { 
-                    $vcell = $range.Resize(1, 1).Offset(0, $_.Column - $range.Column)
-                    if ($vcell.Text -ne "") { $value.Add($_.Text, $vcell.Text) } 
+                $obj.Add($key, $this.getData($row, $item.$key))
+            }
+        }
+        return $obj
+    }
+    [PSCustomObject] AddRows([pscustomobject[]]$data) {
+        $lastrow = $this.lastRow() + 1
+        foreach ($record in $data) {
+            $this.setData($lastrow, $this.oHeader, $record)
+        }
+        $this.oROws = $this.GetRows()
+        return $this.oRows
+    }
+    [void]setData([int]$row, [object]$item, [object]$data) {
+        if ($null -ne $data) {
+            foreach ($key in $item.Keys) {
+                if ($item.$key -is [int]) {
+                    $this.sheet.Cells.Item($row, $item.$key) = $data.$key
+                }
+                else {
+                    $this.setData($row, $item.$key, $data.$key)
                 }
             }
-            $data.Add($_, $value)
         }
-        return [pscustomobject]$data
     }
-    [object] SearchRow([pscustomobject]$data, [ScriptBlock] $compfunc) {
-        $rrange = $this.GetRange()
-        return ($rrange.rows | Where-Object { &$compfunc $_ $data } )
+    [PSCustomObject] SearchRows([pscustomobject]$data, [ScriptBlock] $compfunc) {
+        return ($this.oRows | Where-Object { &$compfunc $_ $data } )
     }
     [pscustomobject] toObject() {
-        $rrange = $this.GetRange()
-        $data = @()
-        $rrange.rows | ForEach-Object { $data += $this.GetRow($_) }  
-        $this.header = $this.eheader.keys | Sort-Object -Property @{Exp = { $this.header[$_].Column } } 
-        $this.data = $data
-        return [pscustomobject]@{header = $this.header; data = $this.data }
+        return [pscustomobject]@{header = $this.oHeader; data = $this.oRows }
     }
-    [object] GetRange() {
-        $r = $this.range.Offset($this.range.Rows.Count, 0)
-        if ($r.Cells(1, 1) -eq "") { $r = $null }
-        else {
-            $r = $r.Resize($r.End(-4121).row - $r.row + 1)
-        }
-        return $r
-    }
+    [int] startRow() {
+        return $this.range.Row + $this.range.Rows.Count
+    }  
+    [int] lastRow() {
+        return $this.range.End( - 4121).row
+    }  
     [boolean] Sort([ScriptBlock] $orderfunc) {
-        $rrange = $this.GetRange()
+        #        $rrange = $this.GetRange()
         $keycol = $this.range.WorkSheet.Columns.Count
-        $rrange = $rrange.Resize($rrange.Rows.Count, $keycol)
-        $key = $rrange.columns[$keycol]
-    
-        $rrange.rows | ForEach-Object { $_.Columns[$keycol] = &$orderfunc $_ }
+        #        $rrange = $rrange.Resize($rrange.Rows.Count, $keycol)
+        #       $key = $rrange.columns[$keycol]
+        
+        foreach ($data in $this.oRows) { $this.sheet.Cells.Item($data.row, $keycol) = &$orderfunc $data }
         # $key.ClearContents()
-        return $rrange.Sort($key, 1)
-    }   
+        #        return $rrange.Sort($key, 1)
+        return $null
+    } 
 }
 class OTExcelDAO {
     static [object] $excel
@@ -239,12 +245,11 @@ class OTExcelDAO {
             $this.book = [OTExcelDAO]::excel.Workbooks.Open($path, 0, $readOnly)  
         }
     }
-
-    [Extable] GetTable([string]$sheetname, [string]$address) {
-        $sheet = $this.book.Worksheets($sheetname)
-        $range = $sheet.Range($address)
+    [Extable] GetTable([object]$parm, [string]$header) {
+        $sheet = $this.book.Worksheets($parm)
+        $range = $sheet.Range($header)
         $table = New-Object ExTable($range)
-        $this.tables.Add($sheetname, $table)
+        $this.tables.Add($sheet.Name, $table)
         return $table
     }
 }
@@ -493,26 +498,8 @@ class ConfluDAO : OTDomDAO {
     static [string] $dtd = @"
 <!DOCTYPE page[
 <!ENTITY nbsp "&#160;">
-<!ENTITY lArr "&#8656;">
-<!ENTITY uArr "&#8657;">
 <!ENTITY rArr "&#8658;">
-<!ENTITY dArr "&#8659;">
-<!ENTITY hArr "&#8660;">
-<!ENTITY vArr "&#8661;">
-<!ENTITY nwArr "&#8662;">
-<!ENTITY neArr "&#8663;">
-<!ENTITY seArr "&#8664;">
-<!ENTITY swArr "&#8665;">
-<!ENTITY larr "&#8592;">
-<!ENTITY uarr "&#8593;">
 <!ENTITY rarr "&#8594;">
-<!ENTITY darr "&#8595;">
-<!ENTITY harr "&#8596;">
-<!ENTITY varr "&#8597;">
-<!ENTITY nwarr "&#8598;">
-<!ENTITY nearr "&#8599;">
-<!ENTITY searr "&#8600;">
-<!ENTITY swarr "&#8601;">
 <!ENTITY times "&#215;">
 <!ATTLIST page xmlns:ci CDATA #FIXED "ci">
 <!ATTLIST page xmlns:li CDATA #FIXED "li">
@@ -534,42 +521,6 @@ class ConfluDAO : OTDomDAO {
     }
     ConfluDAO() {
         [ConfluDAO]::getPAT() | Out-Null
-    }
-    ConfluDAO([string]$base_url, [string] $space_key, [string] $parent_id, [string]$title, [string]$page) {
-        $this.page_id = [ConfluDAO]::Search($base_url, $title)
-        
-        if ($this.page_id -eq "") {
-            $this.page_id = [ConfluDAO]::Create($base_url, $space_key, $parent_id, $title, $page)
-        }
-        $this.Load($base_url, $this.page_id)
-    }
-    static [string]Create([string]$base_url, [string] $space_key, [string] $parent_id, [string]$title, [string]$page) {
-        [ConfluDAO]::getPAT() | Out-Null      
-        $payload = @{
-            title     = $title
-            space     = @{key = $space_key }
-            type      = "page"
-            ancestors = @(@{id = $parent_id })
-            body      = @{
-                storage = @{
-                    representation = "storage"
-                    value          = $page
-                }
-            }
-        }
-        $json = ConvertTo-JSON -Compress $payload
-        $response = Invoke-RestMethod -Uri $base_url -Body $json -Method "POST" -Headers ([ConfluDAO]::headers) -ErrorVariable RespErr   
-        return $response.id
-    }
-    static [string]Search([string]$base_url, [string]$title) {
-        [ConfluDAO]::getPAT() | Out-Null      
-        $url = $base_url + "?title=" + $title
-        $response = Invoke-RestMethod -Uri $url -Method "GET" -Headers ([ConfluDAO]::headers)      
-        $id = ""
-        if ($response.results.Count -gt 0 ) {
-            $id = $response.results.id
-        }
-        return $id
     }
     [boolean]Load2([string]$base_url, [string]$page_id) {
         $this.base_url = $base_url
@@ -596,7 +547,7 @@ class ConfluDAO : OTDomDAO {
         $this.vernum = $response.version.number
         $this.title = $response.title
                 
-        #        [ConfluDAO]::toXML($this.page) | Set-Content -Path "h:\tmp\page.xml"
+        [ConfluDAO]::toXML($this.page) | Set-Content -Path "h:\tmp\page.xml"
         $this.LoadXml([ConfluDAO]::toXML($this.page))           
 
         $url = $this.base_url + "/" + $this.page_id + "/child/attachment"
@@ -605,7 +556,7 @@ class ConfluDAO : OTDomDAO {
             "X-Atlassian-Token" = "no-check"
         }
         $response = Invoke-RestMethod -Uri $url -Method "GET" -Headers $_headers
-        $response.results | % { $this.attachments.Add($_.title, $_.id) }
+        $response.results | %{$this.attachments.Add($_.title,$_.id)}
 
         return $true
     }
@@ -641,7 +592,7 @@ class ConfluDAO : OTDomDAO {
         }
 
         if ($this.attachments.ContainsKey($name)) {
-            $url = "$url/" + $this.attachments[$name] + "/data"       
+            $url = "$url/"+$this.attachments[$name]+"/data"       
         }
 
         $Form = @{ file = Get-ChildItem $filePath; comment = "UPDATE" }
@@ -712,14 +663,6 @@ function getCred() {
     $password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
     $settings.password = $password
     return $settings
-}
-function setCred() {
-    $file = "$PSScriptRoot\OfficeTools.settings.json"
-    $settings = @{}
-    $cred = Get-Credential
-    $settings.add("id", $cred.UserName)
-    $settings.add("password", (ConvertFrom-SecureString -SecureString $cred.Password))
-    ConvertTo-JSON $settings | Set-Content $file
 }
 class OTCalDAO {
     static [object] $syukujitsu = $null
