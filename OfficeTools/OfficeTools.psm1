@@ -121,7 +121,7 @@ class ExTable :AbstractTable {
     [object] getItems($row, $col, $count) {
         $obj = [ordered]@{}
         while ($count -gt 0) {
-            $cell = $this.sheet.Cells.Item($row, $col)
+            $cell = $this.sheet.Cells($row, $col)
             $text = $cell.Text
             if ($text -ne "") {
                 $cols = $cell.MergeArea.Columns.Count
@@ -140,7 +140,9 @@ class ExTable :AbstractTable {
     [PSCustomObject] GetRows([int[]]$rows) {
         $this.oRows = @()
         foreach ($row in $rows) {
-            $this.oRows += $this.getData($row, $this.oHeader)
+            $obj = $this.getData($row, $this.oHeader)
+            $obj.Add("_row",$row)
+            $this.oRows += $obj
         }
         return $this.oRows
     }
@@ -156,7 +158,7 @@ class ExTable :AbstractTable {
         $obj = [ordered]@{}
         foreach ($key in $item.Keys) {
             if ($item.$key -is [int]) {
-                $obj.Add($key, $this.sheet.Cells.Item($row, $item.$key).Text)
+                $obj.Add($key, $this.sheet.Cells($row, $item.$key).Text)
             }
             else {
                 $obj.Add($key, $this.getData($row, $item.$key))
@@ -176,7 +178,7 @@ class ExTable :AbstractTable {
         if ($null -ne $data) {
             foreach ($key in $item.Keys) {
                 if ($item.$key -is [int]) {
-                    $this.sheet.Cells.Item($row, $item.$key) = $data.$key
+                    $this.sheet.Cells($row, $item.$key) = $data.$key
                 }
                 else {
                     $this.setData($row, $item.$key, $data.$key)
@@ -197,16 +199,22 @@ class ExTable :AbstractTable {
         return $this.range.End( - 4121).row
     }  
     [boolean] Sort([ScriptBlock] $orderfunc) {
-        #        $rrange = $this.GetRange()
-        $keycol = $this.range.WorkSheet.Columns.Count
-        #        $rrange = $rrange.Resize($rrange.Rows.Count, $keycol)
-        #       $key = $rrange.columns[$keycol]
+        $keycol = $this.sheet.Columns.Count
         
-        foreach ($data in $this.oRows) { $this.sheet.Cells.Item($data.row, $keycol) = &$orderfunc $data }
+        foreach ($data in $this.oRows) { $this.sheet.Cells($data._row, $keycol) = &$orderfunc $data }
+
+        $cell1 = $this.sheet.Cells($this.startRow(), $this.range.Column)
+        $cell2 = $this.sheet.Cells($this.lastRow(), $keycol)
+        $drange = $this.sheet.Range($cell1, $cell2)
+        $key = $drange.columns[$keycol]
         # $key.ClearContents()
-        #        return $rrange.Sort($key, 1)
-        return $null
+        return $drange.Sort($key, 1)
     } 
+    [object] GetRange() {
+        $cell1 = $this.sheet.Cells($this.startRow(), $this.range.Column)
+        $cell2 = $this.sheet.Cells($this.lastRow(), $this.range.Column + $this.range.Columns.Count - 1)
+        return $this.sheet.Range($cell1, $cell2)
+    }
 }
 class OTExcelDAO {
     static [object] $excel
