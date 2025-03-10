@@ -214,7 +214,6 @@ class ExTable :AbstractTable {
     [object] $sheet
     [object] $range
     [object] $scell
-    [object] $ecell
     [PSCustomObject] $oHeader = [ordered]@{}
     [PSCustomObject] $oRows = @()
         
@@ -249,16 +248,13 @@ class ExTable :AbstractTable {
     [PSCustomObject] GetRows([int[]]$rows) {
         $this.oRows = @()
         foreach ($row in $rows) {
-            $obj = $this.getData($row, $this.oHeader)
-            $obj.Add("_row", $row)
-            $this.oRows += $obj
+            $this.oRows += ($this.getData($row, $this.oHeader) + @{"_row" = $row })
         }
-        $this.ecell = $this.sheet.Cells($this.lastRow(), $this.sheet.Columns.Count)
         return $this.oRows
     }
     [PSCustomObject] GetRows() {
-        [int]$start = $this.startRow()
-        [int]$end = $this.lastRow()
+        [int]$start = $this.scell.Row
+        [int]$end = $this.ecell().Row
         if ($start -gt $end) {
             return $null
         }
@@ -277,7 +273,7 @@ class ExTable :AbstractTable {
         return $obj
     }
     [PSCustomObject] AddRows([PSCustomObject[]]$data) {
-        $lastrow = $this.lastRow() + 1
+        $lastrow = $this.ecell().Row + 1
         foreach ($record in $data) {
             $this.setData($lastrow, $this.oHeader, $record)
         }
@@ -305,16 +301,22 @@ class ExTable :AbstractTable {
     [int] startRow() {
         return $this.scell.Row
     }  
-    [int] lastRow() {
-        return $this.range.End( - 4121).row
+    [object] ecell() {
+        $lastrow = switch ($this.scell.Text) {
+            "" { $this.scell.Row - 1 }
+            default { $this.scell.End( - 4121).row }
+        }
+        return $this.sheet.Cells($lastrow, $this.sheet.Columns.Count)
     }  
     [boolean] Sort([ScriptBlock] $orderfunc) {
         $keycol = $this.sheet.Columns.Count
         
         foreach ($data in $this.oRows) { $this.sheet.Cells($data._row, $keycol) = &$orderfunc $data }
 
-        $drange = $this.sheet.Range($this.scell, $this.ecell)
-        $key = $drange.columns[$keycol]
+        $cell1 = $this.sheet.Cells(($this.oRows._row | Select-Object -First 1), $this.range.Column)
+        $cell2 = $this.sheet.Cells(($this.oRows._row | Select-Object -Last 1), $keycol)
+        $drange = $this.sheet.Range($cell1, $cell2)
+        $key = $drange.Columns[$keycol]
         # $key.ClearContents()
         return $drange.Sort($key, 1)
     } 
@@ -721,7 +723,7 @@ class ConfluDAO : OTDomDAO {
             "X-Atlassian-Token" = "no-check"
         }
         $response = Invoke-RestMethod -Uri $url -Method "GET" -Headers $_headers
-        $response.results | % { $this.attachments.Add($_.title, $_.id) }
+        $response.results | ForEach-Object { $this.attachments.Add($_.title, $_.id) }
 
         return $true
     }
@@ -973,7 +975,7 @@ class Term {
     [Term[]] HalfMonths() {
         $diff = switch ($this.base.Month) { { (4 -le $_) -and ($_ -le 9) } { 4 }; default { 10 } } 
         $diff -= $this.base.Month
-        return $diff..0 | % { New-Object Term($this.base.addmonths($_), 1) }
+        return $diff..0 | ForEach-Object { New-Object Term($this.base.addmonths($_), 1) }
     }
 }
 function isHoliday([datetime]$date) {
