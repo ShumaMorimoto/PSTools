@@ -1,4 +1,4 @@
-﻿class AbstractTable {
+class AbstractTable {
     [string[]] $header = @()
     [pscustomobject[]] $data = @()
 
@@ -104,6 +104,112 @@ Class OTDomDAO :System.Xml.XmlDocument {
         return $this.tables
     }
 }
+class ExTable2 :AbstractTable {
+    [object] $range
+    [hashtable] $eheader = [ordered]@{}
+
+    ExTable2([object]$range) {
+        $this.range = $range
+        $this.eheader = $this.GetHeader()
+    }
+    [object] GetHeader() {
+        $this.eheader = [ordered]@{}
+        if ($this.range.rows.count -eq 1) {
+            $this.range | where-object Text -ne "" | ForEach-Object { $this.eheader.Add($_.Text, $_) }
+        }  
+        else {
+            $this.range.rows(1).Columns | Where-Object Text -ne "" | ForEach-Object {
+                if ($_.MergeArea.Columns.Count -gt 1) {
+                    $this.eheader.Add($_.Text, $_.Offset(1, 0).Resize(1, $_.MergeArea.Count))
+                }
+                else {    
+                    $this.eheader.Add($_.Text, $_) 
+                }
+            }
+        }
+        return $this.eheader  
+    }
+    [object] AddRow([pscustomobject[]]$data) {
+        $rrange = $this.range.End(-4121).Offset(1, 0)
+        foreach ($record in $data) {
+            $this.eheader.keys | ForEach-Object {
+                $cell = $this.eheader[$_]
+                if ($cell.MergeArea.Columns.Count -eq 1) {
+                    $rrange.Resize(1, 1).Offset(0, $cell.Column - $rrange.Column) = $record.$_
+                }
+                elseif ($cell.MergeCells) {
+                    if ($record.$_.Count -gt 0) {
+                        $rrange.Offset(0, $cell.Column - $rrange.Column).Resize(1, $record.$_.Count) = $record.$_
+                    }
+                }
+            }
+            $rrange = $rrange.Offset(1, 0)
+        }
+        return $this.range
+    }
+    [PSCustomObject] GetRow([object]$range) {
+        $data = [ordered]@{}
+        $this.eheader.keys | ForEach-Object {
+            $value = ""
+            $cell = $this.eheader[$_]
+
+            if ($cell.MergeArea.Columns.Count -eq 1) {
+
+                $vcell = $range.Resize(1, 1).Offset(0, $cell.Column - $range.Column)
+                if ($vcell.Hyperlinks.Count -gt 0) {
+                    $value = $vcell.Hyperlinks[1].Address
+                }
+                else {
+                    $value = $vcell.Text
+                }
+            }
+            elseif ($cell.MergeCells) {
+                $value = @()
+                $range.Offset(0, $cell.Column - $range.Column).Resize(1, $cell.MergeArea.Count).Columns | ForEach-Object { if ($_.Text -ne "") { $value += $_.Text } }
+            }
+            else {
+                $value = @{}
+                $cell | ForEach-Object { 
+                    $vcell = $range.Resize(1, 1).Offset(0, $_.Column - $range.Column)
+                    if ($vcell.Text -ne "") { $value.Add($_.Text, $vcell.Text) } 
+                }
+            }
+            $data.Add($_, $value)
+        }
+        return [pscustomobject]$data
+    }
+    [object] SearchRow([pscustomobject]$data, [ScriptBlock] $compfunc) {
+        $rrange = $this.GetRange()
+        return ($rrange.rows | Where-Object { &$compfunc $_ $data } )
+    }
+    [pscustomobject] toObject() {
+        $rrange = $this.GetRange()
+        $data = @()
+        $rrange.rows | ForEach-Object { $data += $this.GetRow($_) }  
+        $this.header = $this.eheader.keys | Sort-Object -Property @{Exp = { $this.header[$_].Column } } 
+        $this.data = $data
+        return [pscustomobject]@{header = $this.header; data = $this.data }
+    }
+    [object] GetRange() {
+        $r = $this.range.Offset($this.range.Rows.Count, 0)
+        if ($r.Cells(1, 1) -eq "") { $r = $null }
+        else {
+            $r = $r.Resize($r.End(-4121).row - $r.row + 1)
+        }
+        return $r
+    }
+    [boolean] Sort([ScriptBlock] $orderfunc) {
+        $rrange = $this.GetRange()
+        $keycol = $this.range.WorkSheet.Columns.Count
+        $rrange = $rrange.Resize($rrange.Rows.Count, $keycol)
+        $key = $rrange.columns[$keycol]
+    
+        $rrange.rows | ForEach-Object { $_.Columns[$keycol] = &$orderfunc $_ }
+        # $key.ClearContents()
+        return $rrange.Sort($key, 1)
+    }   
+}
+
 class ExTable :AbstractTable {
     [object] $sheet
     [object] $range
@@ -503,8 +609,26 @@ class ConfluDAO : OTDomDAO {
     static [string] $dtd = @"
 <!DOCTYPE page[
 <!ENTITY nbsp "&#160;">
+<!ENTITY lArr "&#8656;">
+<!ENTITY uArr "&#8657;">
 <!ENTITY rArr "&#8658;">
+<!ENTITY dArr "&#8659;">
+<!ENTITY hArr "&#8660;">
+<!ENTITY vArr "&#8661;">
+<!ENTITY nwArr "&#8662;">
+<!ENTITY neArr "&#8663;">
+<!ENTITY seArr "&#8664;">
+<!ENTITY swArr "&#8665;">
+<!ENTITY larr "&#8592;">
+<!ENTITY uarr "&#8593;">
 <!ENTITY rarr "&#8594;">
+<!ENTITY darr "&#8595;">
+<!ENTITY harr "&#8596;">
+<!ENTITY varr "&#8597;">
+<!ENTITY nwarr "&#8598;">
+<!ENTITY nearr "&#8599;">
+<!ENTITY searr "&#8600;">
+<!ENTITY swarr "&#8601;">
 <!ENTITY times "&#215;">
 <!ATTLIST page xmlns:ci CDATA #FIXED "ci">
 <!ATTLIST page xmlns:li CDATA #FIXED "li">
@@ -526,6 +650,42 @@ class ConfluDAO : OTDomDAO {
     }
     ConfluDAO() {
         [ConfluDAO]::getPAT() | Out-Null
+    }
+    ConfluDAO([string]$base_url, [string] $space_key, [string] $parent_id, [string]$title, [string]$page) {
+        $this.page_id = [ConfluDAO]::Search($base_url, $title)
+        
+        if ($this.page_id -eq "") {
+            $this.page_id = [ConfluDAO]::Create($base_url, $space_key, $parent_id, $title, $page)
+        }
+        $this.Load($base_url, $this.page_id)
+    }
+    static [string]Create([string]$base_url, [string] $space_key, [string] $parent_id, [string]$title, [string]$page) {
+        [ConfluDAO]::getPAT() | Out-Null      
+        $payload = @{
+            title     = $title
+            space     = @{key = $space_key }
+            type      = "page"
+            ancestors = @(@{id = $parent_id })
+            body      = @{
+                storage = @{
+                    representation = "storage"
+                    value          = $page
+                }
+            }
+        }
+        $json = ConvertTo-JSON -Compress $payload
+        $response = Invoke-RestMethod -Uri $base_url -Body $json -Method "POST" -Headers ([ConfluDAO]::headers) -ErrorVariable RespErr   
+        return $response.id
+    }
+    static [string]Search([string]$base_url, [string]$title) {
+        [ConfluDAO]::getPAT() | Out-Null      
+        $url = $base_url + "?title=" + $title
+        $response = Invoke-RestMethod -Uri $url -Method "GET" -Headers ([ConfluDAO]::headers)      
+        $id = ""
+        if ($response.results.Count -gt 0 ) {
+            $id = $response.results.id
+        }
+        return $id
     }
     [boolean]Load2([string]$base_url, [string]$page_id) {
         $this.base_url = $base_url
@@ -552,7 +712,7 @@ class ConfluDAO : OTDomDAO {
         $this.vernum = $response.version.number
         $this.title = $response.title
                 
-        [ConfluDAO]::toXML($this.page) | Set-Content -Path "h:\tmp\page.xml"
+        #        [ConfluDAO]::toXML($this.page) | Set-Content -Path "h:\tmp\page.xml"
         $this.LoadXml([ConfluDAO]::toXML($this.page))           
 
         $url = $this.base_url + "/" + $this.page_id + "/child/attachment"
@@ -561,7 +721,7 @@ class ConfluDAO : OTDomDAO {
             "X-Atlassian-Token" = "no-check"
         }
         $response = Invoke-RestMethod -Uri $url -Method "GET" -Headers $_headers
-        $response.results | %{$this.attachments.Add($_.title,$_.id)}
+        $response.results | % { $this.attachments.Add($_.title, $_.id) }
 
         return $true
     }
@@ -597,7 +757,7 @@ class ConfluDAO : OTDomDAO {
         }
 
         if ($this.attachments.ContainsKey($name)) {
-            $url = "$url/"+$this.attachments[$name]+"/data"       
+            $url = "$url/" + $this.attachments[$name] + "/data"       
         }
 
         $Form = @{ file = Get-ChildItem $filePath; comment = "UPDATE" }
@@ -669,6 +829,72 @@ function getCred() {
     $settings.password = $password
     return $settings
 }
+function setCred() {
+    $file = "$PSScriptRoot\OfficeTools.settings.json"
+    $settings = @{}
+    $cred = Get-Credential
+    $settings.add("id", $cred.UserName)
+    $settings.add("password", (ConvertFrom-SecureString -SecureString $cred.Password))
+    ConvertTo-JSON $settings | Set-Content $file
+}
+class MattermostDAO {
+    static [string] $pat = "hogehoge"
+    static [object] $headers = @{
+        "Authorization" = "Bearer $pat"
+        "Content-Type"  = "application/json; charset=UTF-8"
+    }
+    [string] $base_url
+    MattermostDAO([string]$base_url) {
+        [MattermostDAO]::getPAT() | Out-Null
+        $this.base_url = $base_url
+    }
+    MattermostDAO() {
+        [MattermostDAO]::getPAT() | Out-Null
+    }
+    [Object] Post($channel_id, $message) {
+        $url = $this.base_url + "/posts"
+
+        $payload = @{
+            "channel_id" = $channel_id
+            "message"    = $message
+        }
+        $json = ConvertTo-JSON -Compress $payload
+        $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "POST" -Body $json
+        return $payload
+    }
+    static [string] getPAT() {
+        $file = "$PSScriptRoot\Mattermost.settings.json"
+        $settings = @{}
+        Write-Host $file
+        if (Test-Path $file) {
+            $settings = Get-Content $file | ConvertFrom-JSON
+            [MattermostDAO]::pat = $settings.pat
+            [MattermostDAO]::headers = @{
+                "Authorization" = "Bearer " + $settings.pat
+                "Content-Type"  = "application/json; charset=UTF-8"
+            }
+        }
+        else {
+            [MattermostDAO]::pat = Read-Host "MattermostのPATは？"
+            $settings.add("pat", [MattermostDAO]::pat)
+            [MattermostDAO]::headers = @{
+                Authorization  = "Bearer " + $settings.pat
+                "Content-Type" = "application/json; charset=UTF-8"
+            } 
+            ConvertTo-JSON $settings | Set-Content $file
+        }
+        return [MattermostDAO]::pat
+    }
+    static [void] setPAT([object]$settings) {
+        $file = "$PSScriptRoot\Mattermost.settings.json"
+        [MattermostDAO]::pat = $settings.pat
+        [MattermostDAO]::headers = @{
+            "Authorization" = "Bearer " + [MattermostDAO]::pat
+            "Content-Type"  = "application/json; charset=UTF-8"
+        }
+        ConvertTo-JSON $settings | Set-Content $file
+    }
+} 
 class OTCalDAO {
     static [object] $syukujitsu = $null
     static [void] loadSyukujitsu() {
@@ -683,6 +909,18 @@ class OTCalDAO {
             [OTCalDAO]::syukujitsu = Import-Csv "$PSScriptRoot\syukujitsu.csv" -Encoding Default 
         }
     }
+    static [object] getSyukujitsu([datetime]$st, [datetime]$ed) {
+        return [OTCalDAO]::syukujitsu | Where-Object { ($st -lt (Get-Date($_."国民の祝日・休日月日"))) -and ((Get-Date($_."国民の祝日・休日月日")) -lt $ed) }
+    }
+    static [object] getSyukujitsu([Term]$term) {
+        return [OTCalDAO]::getSyukujitsu($term.start, $term.end) 
+    }
+    static [object] getSyukujitsu([string]$st, [string]$ed) {
+        return [OTCalDAO]::getSyukujitsu((Get-Date($st)), (Get-Date($ed)))
+    }
+    static [object] getSyukujitsu([datetime]$st) {
+        return [OTCalDAO]::getSyukujitsu($st, $st.AddYears(1))
+    }
 }
 class Term {
     [datetime] $base
@@ -694,8 +932,13 @@ class Term {
         $this.start = Get-Date($_base.toString("yyyy/MM/dd"))
         $this.end = $this.start.addDays(1)
     }
+    Term([datetime]$st, [datetime]$ed) {
+        $this.base = $st
+        $this.start = $st
+        $this.end = $ed
+    }
     Term([datetime]$_base, [string]$span) {
-        # span 1:month, 2:half
+        # span 1:month, 2:half, 3:year
         $this.base = $_base
         switch ($span) {
             "1" {
@@ -706,6 +949,11 @@ class Term {
                 $diff = switch ($_base.Month) { { (4 -le $_) -and ($_ -le 9) } { 4 }; default { 10 } } 
                 $this.start = Get-Date($_base.AddMonths($diff - $_base.Month).toString("yyyy/MM/1"))
                 $this.end = $this.start.AddMonths(6)
+            }
+            "3" {
+                $diff = switch ($_base.Month) { { 4 -le $_ } { 4 }; default { -8 } } 
+                $this.start = Get-Date($_base.AddMonths($diff - $_base.Month).toString("yyyy/MM/1"))
+                $this.end = $this.start.AddMonths(12)
             }
             default {}
         } 
