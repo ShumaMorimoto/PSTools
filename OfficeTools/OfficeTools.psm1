@@ -213,7 +213,6 @@ class ExTable2 :AbstractTable {
 class ExTable :AbstractTable {
     [object] $sheet
     [object] $range
-    [object] $scell
     [PSCustomObject] $oHeader = [ordered]@{}
     [PSCustomObject] $oRows = @()
         
@@ -223,7 +222,6 @@ class ExTable :AbstractTable {
         $this.oHeader = $this.GetHeader()
     }
     [object] GetHeader() {
-        $this.scell = $this.sheet.Cells($this.range.Row + $this.range.Rows.Count, $this.range.Column)
         return $this.getItems($this.range.Row, $this.range.Column, $this.range.Columns.Count)
     }   
     [PSCustomObject] getItems($row, $col, $count) {
@@ -253,8 +251,8 @@ class ExTable :AbstractTable {
         return $this.oRows
     }
     [PSCustomObject] GetRows() {
-        [int]$start = $this.scell.Row
-        [int]$end = $this.ecell().Row
+        [int]$start = $this.startRow()
+        [int]$end = $this.lastRow()
         if ($start -gt $end) {
             return $null
         }
@@ -273,7 +271,7 @@ class ExTable :AbstractTable {
         return $obj
     }
     [PSCustomObject] AddRows([PSCustomObject[]]$data) {
-        $lastrow = $this.ecell().Row + 1
+        $lastrow = $this.lastRow() + 1
         foreach ($record in $data) {
             $this.setData($lastrow, $this.oHeader, $record)
         }
@@ -299,14 +297,15 @@ class ExTable :AbstractTable {
         return [PSCustomObject]@{header = $this.oHeader; data = $this.oRows }
     }
     [int] startRow() {
-        return $this.scell.Row
+        return $this.range.Row + $this.range.Rows.Count
     }  
-    [object] ecell() {
-        $lastrow = switch ($this.scell.Text) {
-            "" { $this.scell.Row - 1 }
-            default { $this.scell.End( - 4121).row }
+    [int] lastRow() {
+        $cell = $this.sheet.Cells($this.startRow(),$this.range.Column)
+        $lastrow = switch ($cell.Text) {
+            "" { $this.startRow() - 1 }
+            default { $cell.End( - 4121).row }
         }
-        return $this.sheet.Cells($lastrow, $this.sheet.Columns.Count)
+        return $lastrow
     }  
     [boolean] Sort([ScriptBlock] $orderfunc) {
         $keycol = $this.sheet.Columns.Count
