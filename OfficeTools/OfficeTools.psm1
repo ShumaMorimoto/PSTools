@@ -1,4 +1,4 @@
-class AbstractTable {
+﻿class AbstractTable {
     [string[]] $header = @()
     [pscustomobject[]] $data = @()
 
