@@ -263,10 +263,11 @@ class ExTable :AbstractTable {
         foreach ($key in $item.Keys) {
             if ($item.$key -is [int]) {
                 $cell = $this.sheet.Cells($row, $item.$key)
-                if($cell.Hyperlinks.Count -eq 0){
+                if ($cell.Hyperlinks.Count -eq 0) {
                     $obj.Add($key, $cell.Text)
-                } else {
-                    $obj.Add($key, @{Text= $cell.Text; Address = $cell.HyperLinks[1].Address})
+                }
+                else {
+                    $obj.Add($key, @{Text = $cell.Text; Address = $cell.HyperLinks[1].Address })
                 }
             }
             else {
@@ -305,7 +306,7 @@ class ExTable :AbstractTable {
         return $this.range.Row + $this.range.Rows.Count
     }  
     [int] lastRow() {
-        $cell = $this.sheet.Cells($this.startRow(),$this.range.Column)
+        $cell = $this.sheet.Cells($this.startRow(), $this.range.Column)
         $lastrow = switch ($cell.Text) {
             "" { $this.startRow() - 1 }
             default { $cell.End( - 4121).row }
@@ -826,7 +827,27 @@ class TsTaskDao {
     TsTaskDao($taskName, $taskPath) {
         $this.taskName = $taskName
         $this.taskPath = $taskPath
+ 
+        $existFlg = (Get-ScheduledTask -TaskPath $taskPath | Where-Object TaskName -eq $taskName) -ne $null
+
+        if (-not $existFlg) {
+            $action = New-ScheduledTaskAction -Execute "%ProgramFiles%\PowerShell\7\pwsh.exe" -Argument "-ExecutionPolicy Bypass <Scripts>"
+            Register-ScheduledTask -TaskPath $taskPath -TaskName $taskName -Action $action
+        }        
         $this.xml = [xml](Export-ScheduledTask -TaskName $this.taskName -TaskPath $this.taskPath)       
+
+        if (-not $existFlg) {
+            Unregister-ScheduledTask -TaskPath $taskPath -TaskName $taskName -Confirm:$false
+        }
+    }
+    TsTaskDao($taskName, $taskPath, $scripts) {
+        $this.taskName = $taskName
+        $this.taskPath = $taskPath
+
+        $action = New-ScheduledTaskAction -Execute "%ProgramFiles%\PowerShell\7\pwsh.exe" -Argument "-ExecutionPolicy Bypass $scripts"
+        Register-ScheduledTask -TaskPath $taskPath -TaskName $taskName -Action $action -Force
+        $this.xml = [xml](Export-ScheduledTask -TaskName $this.taskName -TaskPath $this.taskPath)       
+        Unregister-ScheduledTask -TaskPath $taskPath -TaskName $taskName -Confirm:$false
     }
     RemoveAllTrigger() {
         $this.xml.SelectSingleNode("//*[local-name()='Triggers']").RemoveAll()
@@ -891,30 +912,30 @@ class TsTaskDao {
     }
 }
 class OTTaskSchedulerDAO {
-    [string]$taskPath ="\マイタスク\"
+    [string]$taskPath = "\マイタスク\"
     [TsTaskDAO[]]$table
 
-    OtTaskSchedulerDAO($taskPath){
+    OtTaskSchedulerDAO($taskPath) {
         $this.taskPath = $taskPath
         $this.GetTasks()
     }
-    OtTaskSchedulerDAO(){
+    OtTaskSchedulerDAO() {
         $this.GetTasks()
     }
-    Register ([TsTaskDAO]$task){
+    Register ([TsTaskDAO]$task) {
         $settings = getCred
         Register-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Xml $task.xml.OuterXml -User $settings.id -Password $settings.password -Force  
     }
-    SetTrigger([TsTaskDAO]$task,[ciminstance]$trigger){
+    SetTrigger([TsTaskDAO]$task, [ciminstance]$trigger) {
         $settings = getCred
         Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Trigger $trigger -User $settings.id -Password $settings.password  
     }
-    GetTasks(){
-        $this.table = Get-ScheduledTask -TaskPath $this.taskPath | %{New-Object TsTaskDAO($_.TaskName, $this.taskPath)}
+    GetTasks() {
+        $this.table = Get-ScheduledTask -TaskPath $this.taskPath | % { New-Object TsTaskDAO($_.TaskName, $this.taskPath) }
     }
-    ReRegisterAll(){
+    ReRegisterAll() {
         $settings = getCred
-        foreach($task in $this.table){
+        foreach ($task in $this.table) {
             Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -User $settings.id -Password $settings.password  
         }
     }
@@ -924,7 +945,9 @@ function getCred() {
     $file = "$PSScriptRoot\OfficeTools.settings.json"
     $settings = @{}
     if (!(Test-Path $file -NewerThan (Get-Date).addMonths(-6))) {
+        $empNo = Read-Host "社員コードは？(ex.x1234)"
         $cred = Get-Credential
+        $settings.add("empNo",$empNo)
         $settings.add("id", $cred.UserName)
         $settings.add("password", (ConvertFrom-SecureString -SecureString $cred.Password))
         ConvertTo-JSON $settings | Set-Content $file
@@ -940,99 +963,101 @@ function getCred() {
 function setCred() {
     $file = "$PSScriptRoot\OfficeTools.settings.json"
     $settings = @{}
+    $empNo = Read-Host "社員コードは？(ex.x1234)"
     $cred = Get-Credential
+    $settings.add("empNo",$empNo)
     $settings.add("id", $cred.UserName)
     $settings.add("password", (ConvertFrom-SecureString -SecureString $cred.Password))
     ConvertTo-JSON $settings | Set-Content $file
 }
 class MattermostDAO {
-        static [string] $pat = "hogehoge"
-        static [object] $headers = @{
-                "Authorization" = "Bearer $pat"
+    static [string] $pat = "hogehoge"
+    static [object] $headers = @{
+        "Authorization" = "Bearer $pat"
+        "Content-Type"  = "application/json; charset=UTF-8"
+    }
+    [string] $base_url
+    [object] $me
+    [object] $users
+    [object] $posts
+    $selectheader = @(
+        @{label = "ID"; expression = { $_.id } } ,
+        @{label = "日付"; expression = { (Get-Date("1970/1/1")).AddMilliseconds($_.create_at ) } },
+        @{label = "投稿者"; expression = { $uid = $_.user_id; ($users | Where-Object { $_.id -eq $uid }).first_name } }
+        @{label = "投稿内容"; expression = { $_.message } }
+    )
+    MattermostDAO([string]$base_url) {
+        [MattermostDAO]::getPAT() | Out-Null
+        $this.base_url = $base_url
+        $this.me = $this.GetMe()
+    }
+    MattermostDAO() {
+        [MattermostDAO]::getPAT() | Out-Null
+    }
+    [Object] Post($channel_id, $message) {
+        $url = $this.base_url + "/posts"
+        $payload = @{
+            "channel_id" = $channel_id
+            "message"    = $message
+        }
+        $json = ConvertTo-JSON -Compress $payload
+        $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "POST" -Body $json
+        return $payload
+    }
+    [Object] GetPosts($channel_id) {
+        $url = $this.base_url + "/channels/" + $channel_id + "/posts"   
+        $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "GET"
+        $this.posts = $response.order | % { $response.posts.$_ } 
+        $this.users = $this.GetUsers(($this.posts.user_id | Select-Object -Unique))
+        return $this.posts
+    }
+    [Object] DeletePost($post_id) {
+        $url = $this.base_url + "/posts/" + $post_id 
+        $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "DEL"
+        return $response
+    }
+    [Object] GetUsers($ids) {
+        $url = $this.base_url + "/users/ids" 
+        $json = ConvertTo-JSON -Compress $ids
+        $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "POST" -Body $json
+        return $response
+    }
+    [Object] GetMe() {
+        $url = $this.base_url + "/users/me" 
+        $this.me = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "GET" 
+        return $this.me
+    }
+    static [string] getPAT() {
+        $file = "$PSScriptRoot\Mattermost.settings.json"
+        $settings = @{}
+        if (Test-Path $file) {
+            $settings = Get-Content $file | ConvertFrom-JSON
+            [MattermostDAO]::pat = $settings.pat
+            [MattermostDAO]::headers = @{
+                "Authorization" = "Bearer " + $settings.pat
                 "Content-Type"  = "application/json; charset=UTF-8"
+            }
         }
-        [string] $base_url
-        [object] $me
-        [object] $users
-        [object] $posts
-        $selectheader = @(
-                @{label = "ID"; expression = { $_.id } } ,
-                @{label = "日付"; expression = { (Get-Date("1970/1/1")).AddMilliseconds($_.create_at )} },
-                @{label = "投稿者"; expression = { $uid = $_.user_id; ($users | Where-Object { $_.id -eq $uid }).first_name } }
-                @{label = "投稿内容"; expression = { $_.message } }
-        )
-                MattermostDAO([string]$base_url) {
-                [MattermostDAO]::getPAT() | Out-Null
-                $this.base_url = $base_url
-                $this.me = $this.GetMe()
+        else {
+            [MattermostDAO]::pat = Read-Host "MattermostのPATは？"
+            $settings.add("pat", [MattermostDAO]::pat)
+            [MattermostDAO]::headers = @{
+                Authorization  = "Bearer " + $settings.pat
+                "Content-Type" = "application/json; charset=UTF-8"
+            } 
+            ConvertTo-JSON $settings | Set-Content $file
         }
-        MattermostDAO() {
-                [MattermostDAO]::getPAT() | Out-Null
+        return [MattermostDAO]::pat
+    }
+    static [void] setPAT([object]$settings) {
+        $file = "$PSScriptRoot\Mattermost.settings.json"
+        [MattermostDAO]::pat = $settings.pat
+        [MattermostDAO]::headers = @{
+            "Authorization" = "Bearer " + [MattermostDAO]::pat
+            "Content-Type"  = "application/json; charset=UTF-8"
         }
-        [Object] Post($channel_id, $message) {
-                $url = $this.base_url + "/posts"
-                $payload = @{
-                        "channel_id" = $channel_id
-                        "message"    = $message
-                }
-                $json = ConvertTo-JSON -Compress $payload
-                $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "POST" -Body $json
-                return $payload
-        }
-        [Object] GetPosts($channel_id) {
-                $url = $this.base_url + "/channels/" + $channel_id + "/posts"   
-                $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "GET"
-                $this.posts = $response.order | % { $response.posts.$_ } 
-                $this.users = $this.GetUsers(($this.posts.user_id | Select-Object -Unique))
-                return $this.posts
-        }
-        [Object] DeletePost($post_id) {
-                $url = $this.base_url + "/posts/" + $post_id 
-                $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "DEL"
-                return $response
-        }
-        [Object] GetUsers($ids) {
-                $url = $this.base_url + "/users/ids" 
-                $json = ConvertTo-JSON -Compress $ids
-                $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "POST" -Body $json
-                return $response
-        }
-        [Object] GetMe() {
-                $url = $this.base_url + "/users/me" 
-                $this.me = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "GET" 
-                return $this.me
-        }
-        static [string] getPAT() {
-                $file = "$PSScriptRoot\Mattermost.settings.json"
-                $settings = @{}
-                if (Test-Path $file) {
-                        $settings = Get-Content $file | ConvertFrom-JSON
-                        [MattermostDAO]::pat = $settings.pat
-                        [MattermostDAO]::headers = @{
-                                "Authorization" = "Bearer " + $settings.pat
-                                "Content-Type"  = "application/json; charset=UTF-8"
-                        }
-                }
-                else {
-                        [MattermostDAO]::pat = Read-Host "MattermostのPATは？"
-                        $settings.add("pat", [MattermostDAO]::pat)
-                        [MattermostDAO]::headers = @{
-                                Authorization  = "Bearer " + $settings.pat
-                                "Content-Type" = "application/json; charset=UTF-8"
-                        } 
-                        ConvertTo-JSON $settings | Set-Content $file
-                }
-                return [MattermostDAO]::pat
-        }
-        static [void] setPAT([object]$settings) {
-                $file = "$PSScriptRoot\Mattermost.settings.json"
-                [MattermostDAO]::pat = $settings.pat
-                [MattermostDAO]::headers = @{
-                        "Authorization" = "Bearer " + [MattermostDAO]::pat
-                        "Content-Type"  = "application/json; charset=UTF-8"
-                }
-                ConvertTo-JSON $settings | Set-Content $file
-        }
+        ConvertTo-JSON $settings | Set-Content $file
+    }
 
 
 }
