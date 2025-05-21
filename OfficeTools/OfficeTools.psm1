@@ -1,4 +1,4 @@
-﻿class AbstractTable {
+class AbstractTable {
     [string[]] $header = @()
     [pscustomobject[]] $data = @()
 
@@ -337,8 +337,11 @@ class OTExcelDAO {
             if ($this.book.ReadOnly) { $this.book.ChangeFileAccess(2) }
         } 
     }
+    [void]Save() {
+        $this.book.Save()
+    }
     [void]Close() {
-        $this.book.close()
+        $this.book.Close()
     }
     OTExcelDAO([string]$path, [boolean]$readOnly = $true) {
         $this.initialize($path, $readOnly)
@@ -947,7 +950,7 @@ function getCred() {
     if (!(Test-Path $file -NewerThan (Get-Date).addMonths(-6))) {
         $empNo = Read-Host "社員コードは？(ex.x1234)"
         $cred = Get-Credential
-        $settings.add("empNo",$empNo)
+        $settings.add("empNo", $empNo)
         $settings.add("id", $cred.UserName)
         $settings.add("password", (ConvertFrom-SecureString -SecureString $cred.Password))
         ConvertTo-JSON $settings | Set-Content $file
@@ -965,9 +968,29 @@ function setCred() {
     $settings = @{}
     $empNo = Read-Host "社員コードは？(ex.x1234)"
     $cred = Get-Credential
-    $settings.add("empNo",$empNo)
+    $settings.add("empNo", $empNo)
     $settings.add("id", $cred.UserName)
     $settings.add("password", (ConvertFrom-SecureString -SecureString $cred.Password))
+    ConvertTo-JSON $settings | Set-Content $file
+}
+function changeCred() {
+    $file = "$PSScriptRoot\OfficeTools.settings.json"
+    $settings = getCred
+    $cred = Get-Credential -Username $settings.id
+
+    $driver = Start-SeDriver -Browser Edge
+    $driver.url = "http://comainu.cu.nri.co.jp/passwd_change/"
+
+    sleep 2
+
+    $driver.FindElementByName('AuthenticationID').sendKeys($settings.empNo)
+    $driver.FindElementByName('OldPassword').sendKeys($settings.password)
+    $driver.FindElementByName('NewPassword').sendKeys($cred.Password)
+    $driver.FindElementByName('NewPasswordConfirm').sendKeys($cred.Password)
+    $driver.FindElementByName('ChangePasswordButton').click()
+    $driver.SwitchTo().Alert().Accept()
+
+    $settings.password = ConvertFrom-SecureString -SecureString $cred.Password 
     ConvertTo-JSON $settings | Set-Content $file
 }
 class MattermostDAO {
