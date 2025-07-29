@@ -232,11 +232,13 @@ class ExTable :AbstractTable {
             if ($text -ne "") {
                 $cols = $cell.MergeArea.Columns.Count
                 if ($cols -eq 1) {
-                    $obj.Add($cell.Text, $col)
+                    # $obj.Add($cell.Text, $col)
+                    $obj[$cell.Text] = $col
                 }
                 else {
                     $obj2 = $this.getItems($row + 1, $col, $cols)
-                    $obj.Add($cell.Text, $obj2)
+                    #$obj.Add($cell.Text, $obj2)
+                    $obj[$cell.Text] = $obj2
                 }
             }
             $count --; $col ++
@@ -472,6 +474,20 @@ class OlMailTable:AbstractTable {
     [object] Search([pscustomobject]$data, [ScriptBlock] $compfunc) {
         return $this.items | Where-Object { &$compfunc $_ $data }
     }
+    [object] GetUnreadMails([string] $startDT, [string] $endDT) {
+        $filter = "[UnRead] =True AND [ReceivedTime] < '$endDT' AND [ReceivedTime] > '$startDT'"
+        $this.items = $this.folder.items       
+        $this.items.IncludeRecurrences = $true       
+        $this.items = $this.folder.items.Restrict($filter)
+        return $this.items
+    }
+    [object] GetUnreadMails() {
+        return $this.GetUnreadMails(1)
+    }
+    [object] GetUnreadMails([int]$term) {
+        $date = Get-Date
+        return $this.GetUnreadMails($date.addDays(-$term).toString("yyyy/M/d 23:59"), $date.toString("yyyy/M/d 23:59"))
+    }
     [object] GetMails([string] $startDT, [string] $endDT) {
         $filter = "[ReceivedTime] < '$endDT' AND [ReceivedTime] > '$startDT'"
         $this.items = $this.folder.items       
@@ -546,6 +562,9 @@ class OTOutlookDAO {
         $path -split "\\" | select-object -skip 2 | ForEach-Object { $folder = $folder.folders($_) }
         return New-Object OLMailTable($folder)
     }
+    [OlMailTable] GetUnsentMailTable() {
+        return New-Object OLMailTable([OTOutlookDAO]::namespace.GetDefaultFolder(4))
+    }
     static [string] formatDT ([Object]$dt) {
         if ($dt -is [datetime]) { $dt = $dt.toString("yyyy/M/d HH:mm") } 
         return $dt
@@ -559,6 +578,28 @@ class OTOutlookDAO {
     }
     [object] createMail() {
         return [OTOutlookDAO]::outlook.CreateItem(0)
+    }
+    static [object] ResolveAddress([string]$name) {
+        if(($name -eq "") -or $null -eq $name){
+            return $null
+        }
+        if ($name -match "(.{3})　(.{3})") {   
+            $name = ($Matches[1] -replace "　", "") + " " + ($Matches[2] -replace "　", "")
+        }
+        $recip = [OTOutlookDAO]::namespace.CreateRecipient($name)
+        $user = @{氏名 = $name}
+
+        if ($recip.Resolve()) {     
+            $user.氏名 = $recip.Name
+            $user.メール = $recip.AddressEntry.GetExchangeUser().PrimarySmtpAddress
+
+            if ($recip.Name -match "(.+　.+)\((\d+)\)(.+)$") {
+                $user.氏名 = $Matches[1]
+                $user.内線番号 = $Matches[2]
+                $user.所属 = $Matches[3]
+            }
+        }       
+        return $user
     }
 }
 class PpTable:AbstractTable {
