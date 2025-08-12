@@ -1,3 +1,12 @@
+#HtmlAgilityPackの設定
+if(-not ("HtmlAgilityPack.HtmlDocument" -as [type])){
+    Add-Type -Path "$PSScriptRoot\HtmlAgilityPack.dll"
+}
+
+#plyaWrightの準備
+$env:NODE_PATH = (npm root -g)
+$env:PLAYWRIGHT_BROWSERS_PATH="$PSScriptRoot\browsers"
+
 class AbstractTable {
     [string[]] $header = @()
     [pscustomobject[]] $data = @()
@@ -1301,3 +1310,4 @@ function datenormalizer {
     }
     return [string]$order
 }
+
