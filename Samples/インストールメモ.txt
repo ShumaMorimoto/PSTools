@@ -1,0 +1,18 @@
+npm -> 任意（D:\）
+playwright -> global (= npm config get prefix)   npm config set prefix D:\nodejs
+browser ->  "${env:NODE_PATH}/../browsers"
+
+
+npm config set prefix D:\nodejs
+
+#$env:NODE_PATH = (npm root -g)
+#$env:PLAYWRIGHT_BROWSERS_PATH="${env:NODE_PATH}/../browsers"
+
+[System.Environment]::SetEnvironmentVariable("NODE_PATH", (npm root -g),"User")
+[System.Environment]::SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", (Join-Path (npm root -g) "../browsers"), "User")
+
+
+npm install -g playwright
+npx playwright install
+
+
