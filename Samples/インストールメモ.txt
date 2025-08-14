@@ -1,18 +1,14 @@
-npm -> 任意（D:\）
-playwright -> global (= npm config get prefix)   npm config set prefix D:\nodejs
-browser ->  "${env:NODE_PATH}/../browsers"
+１．nodejpsのインストール
+　　C:\Program Files\にインストール
 
+２．環境設定
+　npm config set prefix "C:\npm_global"
+  [System.Environment]::SetEnvironmentVariable("NODE_PATH", (npm root -g), "User")
+  [System.Environment]::SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH",(Join-Path (npm root -g) "playwright\browsers"), "User")
 
-npm config set prefix D:\nodejs
-
-#$env:NODE_PATH = (npm root -g)
-#$env:PLAYWRIGHT_BROWSERS_PATH="${env:NODE_PATH}/../browsers"
-
-[System.Environment]::SetEnvironmentVariable("NODE_PATH", (npm root -g),"User")
-[System.Environment]::SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", (Join-Path (npm root -g) "../browsers"), "User")
-
-
-npm install -g playwright
-npx playwright install
+３．PlayWrightのインストール
+　npm install -g playwright
+　npx playwright install
+  npm install -g yargs
 
 
