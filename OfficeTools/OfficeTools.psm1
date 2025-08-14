@@ -1,11 +1,7 @@
 #HtmlAgilityPackの設定
-if(-not ("HtmlAgilityPack.HtmlDocument" -as [type])){
+if (-not ("HtmlAgilityPack.HtmlDocument" -as [type])) {
     Add-Type -Path "$PSScriptRoot\HtmlAgilityPack.dll"
 }
-
-#plyaWrightの準備
-$env:NODE_PATH = (npm root -g)
-$env:PLAYWRIGHT_BROWSERS_PATH="$PSScriptRoot\browsers"
 
 class AbstractTable {
     [string[]] $header = @()
@@ -589,14 +585,14 @@ class OTOutlookDAO {
         return [OTOutlookDAO]::outlook.CreateItem(0)
     }
     static [object] ResolveAddress([string]$name) {
-        if(($name -eq "") -or $null -eq $name){
+        if (($name -eq "") -or $null -eq $name) {
             return $null
         }
         if ($name -match "(.{3})　(.{3})") {   
             $name = ($Matches[1] -replace "　", "") + " " + ($Matches[2] -replace "　", "")
         }
         $recip = [OTOutlookDAO]::namespace.CreateRecipient($name)
-        $user = @{氏名 = $name}
+        $user = @{氏名 = $name }
 
         if ($recip.Resolve()) {     
             $user.氏名 = $recip.Name
@@ -1310,4 +1306,34 @@ function datenormalizer {
     }
     return [string]$order
 }
+function downloadCript([string]$url, [string]$key, [string]$downloadPath) {
+    $settings = getCred
+    node "$PSScriptRoot\downloadCript.js" -u $url -k $key --id $settings.id --pw $settings.pw -d $downloadPath
+}
+function Invoke-WebRequest2() {
+    [OutputType([HtmlAgilityPack.HtmlDocument])]
+    param(
+        [string]$url
+    )
 
+    # 現在のコンソールのエンコーディングを一時的に保存
+    $originalEncoding = [System.Console]::OutputEncoding
+
+    try {
+        # コンソールの出力エンコーディングをUTF-8に設定
+        [System.Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+        # Node.jsスクリプトを実行し、UTF-8として出力された結果を
+        # 単一の文字列として受け取る
+        $html = node "$PSScriptRoot\render.js" $url | Out-String
+    }
+    finally {
+        # 処理が終わったら、成功・失敗にかかわらず元のエンコーディングに戻す
+        [System.Console]::OutputEncoding = $originalEncoding
+    }
+
+    $doc = New-Object HtmlAgilityPack.HtmlDocument
+    $doc.LoadHtml($html)
+   
+    return $doc   
+}
