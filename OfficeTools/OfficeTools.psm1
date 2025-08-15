@@ -1,7 +1,19 @@
 #HtmlAgilityPackの設定
 if (-not ("HtmlAgilityPack.HtmlDocument" -as [type])) {
-    Add-Type -Path "$PSScriptRoot\HtmlAgilityPack.dll"
+    Add-Type -Path "$PSScriptRoot\lib\HtmlAgilityPack.dll"
 }
+
+
+class OTConst {
+    static $confPath = "$env:APPDATA\OfficeTools"
+    static initialize(){
+        try {
+            New-Item -Path $([OTConst]::confPath) -ItemType Directory -Force -ErrorAction Stop | Out-Null
+        } catch {
+        }
+    }
+}
+[OTConst]::initialize()
 
 class AbstractTable {
     [string[]] $header = @()
@@ -825,7 +837,7 @@ class ConfluDAO : OTDomDAO {
         return([ConfluDAO]::dtd + "<page>$value</page>")
     }
     static [string] getPAT() {
-        $file = "$PSScriptRoot\Conflu.settings.json"
+        $file = "$([OTConst]::confPath)\Conflu.settings.json"
         $settings = @{}
         if (Test-Path $file) {
             $settings = Get-Content $file | ConvertFrom-JSON
@@ -859,7 +871,7 @@ class ConfluDAO : OTDomDAO {
         return [ConfluDAO]::token
     }
     static [void] setPAT([object]$settings) {
-        $file = "$PSScriptRoot\Conflu.settings.json"
+        $file = "$([OTConst]::confPath)\Conflu.settings.json"
         [ConfluDAO]::token = $settings.rawToken
         [ConfluDAO]::headers = @{
             "Authorization" = "Bearer " + [ConfluDAO]::token
@@ -991,7 +1003,7 @@ class OTTaskSchedulerDAO {
 }
 
 function getCred() {
-    $file = "$PSScriptRoot\OfficeTools.settings.json"
+    $file = "$([OTConst]::confPath)\OfficeTools.settings.json"
     $settings = @{}
     if (!(Test-Path $file -NewerThan (Get-Date).addMonths(-6))) {
         $empNo = Read-Host "社員コードは？(ex.x1234)"
@@ -1010,7 +1022,7 @@ function getCred() {
     return $settings
 }
 function setCred() {
-    $file = "$PSScriptRoot\OfficeTools.settings.json"
+    $file = "$([OTConst]::confPath)\OfficeTools.settings.json"
     $settings = @{}
     $empNo = Read-Host "社員コードは？(ex.x1234)"
     $cred = Get-Credential
@@ -1020,7 +1032,7 @@ function setCred() {
     ConvertTo-JSON $settings | Set-Content $file
 }
 function changeCred() {
-    $file = "$PSScriptRoot\OfficeTools.settings.json"
+    $file = "$([OTConst]::confPath)\OfficeTools.settings.json"
     $settings = getCred
     $cred = Get-Credential -Username $settings.id
 
@@ -1097,7 +1109,7 @@ class MattermostDAO {
         return $this.me
     }
     static [string] getPAT() {
-        $file = "$PSScriptRoot\Mattermost.settings.json"
+        $file = "$([OTConst]::confPath)\Mattermost.settings.json"
         $settings = @{}
         if (Test-Path $file) {
             $settings = Get-Content $file | ConvertFrom-JSON
@@ -1119,7 +1131,7 @@ class MattermostDAO {
         return [MattermostDAO]::pat
     }
     static [void] setPAT([object]$settings) {
-        $file = "$PSScriptRoot\Mattermost.settings.json"
+        $file = "$([OTConst]::confPath)\Mattermost.settings.json"
         [MattermostDAO]::pat = $settings.pat
         [MattermostDAO]::headers = @{
             "Authorization" = "Bearer " + [MattermostDAO]::pat
@@ -1133,15 +1145,15 @@ class MattermostDAO {
 class OTCalDAO {
     static [object] $syukujitsu = $null
     static [void] loadSyukujitsu() {
-        if (!(Test-Path "$PSScriptRoot\syukujitsu.csv" -NewerThan (Get-Date).addMonths(-6))) {
+        if (!(Test-Path "$PSScriptRoot\data\syukujitsu.csv" -NewerThan (Get-Date).addMonths(-6))) {
             $url = 'https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv'
-            Invoke-WebRequest -URI $url -OutFile "$PSScriptRoot\syukujitsu.csv"
+            Invoke-WebRequest -URI $url -OutFile "$PSScriptRoot\data\syukujitsu.csv"
         } 
         if ((Get-Host).Version.Major -eq 7) {
-            [OTCalDAO]::syukujitsu = Import-Csv "$PSScriptRoot\syukujitsu.csv" -Encoding ANSI
+            [OTCalDAO]::syukujitsu = Import-Csv "$PSScriptRoot\data\syukujitsu.csv" -Encoding ANSI
         }
         else {
-            [OTCalDAO]::syukujitsu = Import-Csv "$PSScriptRoot\syukujitsu.csv" -Encoding Default 
+            [OTCalDAO]::syukujitsu = Import-Csv "$PSScriptRoot\data\syukujitsu.csv" -Encoding Default 
         }
     }
     static [object] getSyukujitsu([datetime]$st, [datetime]$ed) {
@@ -1308,7 +1320,7 @@ function datenormalizer {
 }
 function downloadCript([string]$url, [string]$key, [string]$downloadPath) {
     $settings = getCred
-    node "$PSScriptRoot\downloadCript.js" -u $url -k $key --id $settings.id --pw $settings.pw -d $downloadPath
+    node "$PSScriptRoot\scripts\downloadCript.js" -u $url -k $key --id $settings.id --pw $settings.pw -d $downloadPath
 }
 function Invoke-WebRequest2() {
     [OutputType([HtmlAgilityPack.HtmlDocument])]
@@ -1325,7 +1337,7 @@ function Invoke-WebRequest2() {
 
         # Node.jsスクリプトを実行し、UTF-8として出力された結果を
         # 単一の文字列として受け取る
-        $html = node "$PSScriptRoot\render.js" $url | Out-String
+        $html = node "$PSScriptRoot\scripts\render.js" $url | Out-String
     }
     finally {
         # 処理が終わったら、成功・失敗にかかわらず元のエンコーディングに戻す
