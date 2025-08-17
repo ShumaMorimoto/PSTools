@@ -1,0 +1,1 @@
+[0816/210224.903:ERROR:gpu\command_buffer\service\gles2_cmd_decoder_passthrough.cc:1096] [GroupMarkerNotSet(crbug.com/242999)!:A0002600BC590000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader (about:flags#enable-unsafe-swiftshader) flag to opt in to lower security guarantees for trusted content.

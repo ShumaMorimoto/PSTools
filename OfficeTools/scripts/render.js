@@ -17,7 +17,8 @@ async function fetchHtml(targetUrl) {
     console.error(`ページにアクセスしています: ${targetUrl}`);
 
     // 指定されたURLに移動し、ページの読み込みが完了するのを待つ
-    await page.goto(targetUrl, { waitUntil: "load" });
+    await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(3000);
 
     // ページの完全なHTMLコンテンツを取得
     const html = await page.content();
