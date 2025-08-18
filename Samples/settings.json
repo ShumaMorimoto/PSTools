@@ -1,0 +1,60 @@
+{
+  "workbench.colorTheme": "Kanagawa Black",
+  "security.workspace.trust.untrustedFiles": "open",
+  "security.allowedUNCHosts": ["pa.cu.nri.co.jp", "fs.cu.nri.co.jp"],
+  "[html]": {
+    "editor.defaultFormatter": "vscode.html-language-features"
+  },
+  "[cpp]": {
+    "files.encoding": "utf8bom"
+  },
+  "[csharp]": {
+    "files.encoding": "utf8bom"
+  },
+  "[plaintext]": {
+    "files.encoding": "shiftjis"
+  },
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell"
+    },
+    "Command Prompt": {
+      "path": [
+        "${env:windir}\\Sysnative\\cmd.exe",
+        "${env:windir}\\System32\\cmd.exe"
+      ],
+      "args": [],
+      "icon": "terminal-cmd"
+    },
+    "Git Bash": {
+      "source": "Git Bash"
+    },
+    "PowerShell 7": {
+      "path": "H:\\PowerShell\\7\\pwsh.exe"
+    },
+    "Windows PowerShell": {
+      "path": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+    }
+  },
+  "simpleBrowser.focusLockIndicator.enabled": false,
+  "files.encoding": "utf8bom",
+  "terminal.integrated.defaultProfile.windows": "PowerShell 7",
+  "http.proxyAuthorization": null,
+
+  // ------------------ Prettierの設定 ------------------
+  // ファイル保存時に自動でフォーマットをかける
+  "editor.formatOnSave": true,
+
+  // デフォルトのフォーマッタとしてPrettierを指定する
+  // (他のフォーマッタ拡張機能との競合を防ぐため)
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[powershell]": {
+    "editor.defaultFormatter": "ms-vscode.powershell"
+  }
+
+  // ----------------------------------------------------
+}
