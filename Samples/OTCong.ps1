@@ -6,6 +6,14 @@ class OTConfig {
     static [string]$confPath = "$env:APPDATA\OfficeTools"
     static [string]$confFile = $null
     static [object]$Settings = [ordered]@{}
+    static [string]$confluUrl = "https://sd10.aslead.cloud/wiki/rest/pat/latest/tokens"
+    static [void] Load() {
+        [OTConfig]::Settings = Get-Content -Path ([OTConfig]::confFile) -Raw | ConvertFrom-Json -AsHashtable
+    }
+    static [void] Save() {
+        [OTConfig]::Settings.LastUpdated = (Get-Date)
+        [OTConfig]::Settings | ConvertTo-Json -Depth 5 | Set-Content -Path ([OTConfig]::confFile)
+    }
     static [object] GetCred() {
         $cred = [OTConfig]::Settings.Credential
         if (($null -eq $cred) -or ([OTConfig]::Settings.LastUpdated -lt (Get-Date).addMonths(-6))) {
@@ -27,12 +35,48 @@ class OTConfig {
         [OTConfig]::Save()
         return $cred
     }  
-    static [void] Load() {
-        [OTConfig]::Settings = Get-Content -Path ([OTConfig]::confFile) -Raw | ConvertFrom-Json -AsHashtable
+    static [string] GetMtmPAT() {
+        $pat = [OTConfig]::Settings.Mattermost.pat
+        if ($null -eq $pat) {
+            $pat = [OTConfig]::SetCred()
+        }
+        return $pat
+    } 
+    static [string] SetMtmPAT() {
+        $pat = Read-Host "MattermostのPATは？"
+        [OTConfig]::Settings.Mattermost = @{pat = $pat }
+        [OTConfig]::Save()
+        return $pat
     }
-    static [void] Save() {
-        [OTConfig]::Settings.LastUpdated = (Get-Date)
-        [OTConfig]::Settings | ConvertTo-Json -Depth 5 | Set-Content -Path ([OTConfig]::confFile)
+    static [string] GetCnflToken() {
+        $tokens = [OTConfig]::Settings.Confluence
+        if ($null -eq $tokens) {
+            $token = Read-Host "ConfluenceのTokenは？"
+            $tokens = @{rawToken = $token }
+        }
+        if (
+            ($null -eq $tokens.expiringAt) -or `
+            ([Datetime]($tokens.expiringAt) -lt (Get-Date).AddDays(20))
+        ) {
+            $tokens = [OTConfig]::SetCnflToken($tokens.rawToken)
+        }
+        return $tokens
+    } 
+    static [object] SetCnflToken([string]$token) {
+        $headers = @{
+            "Authorization" = "Bearer $token"
+            "Content-Type"  = "application/json; charset=UTF-8"
+        }
+        $body = @{
+            name               = "myToken"
+            expirationDuration = 90
+        }
+        $json = ConvertTo-JSON -Compress $body
+        $response = Invoke-RestMethod -Uri [OTConfig]::baseurl -Body $json -Method "POST" -Headers ($headers)
+        $tokens = (ConvertFrom-JSON  -AsHashtable $response)
+        [OTConfig]::Settings.Mattermost = $tokens
+        [OTConfig]::Save()
+        return $tokens
     }
 }
 #endregion
