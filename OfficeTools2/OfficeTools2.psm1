@@ -8,7 +8,7 @@ class OTConfig {
     static [string]$confPath = "$env:APPDATA\OfficeTools"
     static [string]$confFile = $null
     static [object]$Settings = [ordered]@{}
-    static [string]$confluUrl = "https://sd10.aslead.cloud/wiki/rest/pat/latest/tokens"
+    static [string]$password = $null
     static [void] initialize() {
         New-Item -Path $([OTConfig]::confPath) -ItemType Directory -Force -ErrorAction Stop | Out-Null
         [OTConfig]::confFile = Join-Path ([OTConfig]::confPath) "settings.json"
@@ -41,8 +41,7 @@ class OTConfig {
             $cred = [OTConfig]::SetCred()
         }
         $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $cred.password))
-        $password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
-        $cred.password = $password
+        [OTConfig]::password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
         return $cred
     } 
     static [object] SetCred() {
@@ -99,10 +98,9 @@ class OTConfig {
         return $tokens
     }
     static [object] SetCnflToken() {
-        $cred = Get-Credential
-        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($cred.Password)
-        $password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) 
-        $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $cred.UserName, $password)))
+        $base64AuthInfo = [Convert]::ToBase64String( `
+                [Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f [OTConfig]::Settings.Credential.id, [OTConfig]::password))`
+        )
 
         $headers = @{
             Authorization  = ("Basic {0}" -f $base64AuthInfo)
@@ -121,6 +119,13 @@ class OTConfig {
     }
 }
 
+## 初期化
+
+[OTCOnfig]::initialize()
+
+
+
+## クラス定義
 class AbstractTable {
     [string[]] $header = @()
     [pscustomobject[]] $data = @()
@@ -934,11 +939,11 @@ class OTTaskSchedulerDAO {
     }
     Register ([TsTaskDAO]$task) {
         Register-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Xml $task.xml.OuterXml `
-            -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::Settings.Credential.password) -Force  
+            -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password) -Force  
     }
     SetTrigger([TsTaskDAO]$task, [ciminstance]$trigger) {
         Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Trigger $trigger  `
-            -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::Settings.Credential.password)  
+            -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password)  
     }
     GetTasks() {
         $this.table = Get-ScheduledTask -TaskPath $this.taskPath | ForEach-Object { New-Object TsTaskDAO($_.TaskName, $this.taskPath) }
@@ -946,7 +951,7 @@ class OTTaskSchedulerDAO {
     ReRegisterAll() {
         foreach ($task in $this.table) {
             Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath `
-                -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::Settings.Credential.password)
+                -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password)
         }
     }
 }
