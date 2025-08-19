@@ -17,13 +17,18 @@
 　　D:\nodejs\にインストール
 
 ２．環境設定
-  [System.Environment]::SetEnvironmentVariable("NODE_PATH", "D:\OfficeTools\node_modules", "User")
-  [System.Environment]::SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH","D:\OfficeTools\browsers", "User")
-  [System.Environment]::SetEnvironmentVariable("NODE_PATH", "D:\OfficeTools\node_modules", "Machine")
-  [System.Environment]::SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH","D:\OfficeTools\browsers", "Machine")
+  $npm_root = "C:\Program Files\npm"
+　npm config set prefix $npm_root
+  $node_path =  npm root -g
+  $browsers_path = Join-Path $npm_root "browsers"
+  [System.Environment]::SetEnvironmentVariable("NODE_PATH", $node_path, "User")
+  [System.Environment]::SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH",$browsers_path, "User")
+  [System.Environment]::SetEnvironmentVariable("NODE_PATH", "$node_path", "Machine")
+  [System.Environment]::SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH",$browsers_path, "Machine")
 
 ３．PlayWrightのインストール
-  cd D:\OfficeTools
+  $npm_root = "C:\Program Files\npm"
+  cd $npm_root
   npm init -y
 　npm install -D playwright
 　npx playwright install
@@ -31,3 +36,4 @@
   npm install -D yargs
 
 
+  [System.Environment]::GetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", "User")
