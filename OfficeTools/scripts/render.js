@@ -1,53 +1,50 @@
-// get_html.js
-
 const { chromium } = require("playwright");
+const yargs = require("yargs/yargs");
+const { hideBin } = require("yargs/helpers");
+
+// --- 引数のパース ---
+const argv = yargs(hideBin(process.argv))
+  .usage("使用法: node get_html.js <URL> [--wait <ms>]")
+  .option("wait", {
+    alias: "w",
+    type: "number",
+    description: "ページ読み込み後の待機時間（ミリ秒）",
+    default: 1000,
+  })
+  .demandCommand(1, "URLを指定してください")
+  .help().argv;
+
+const targetUrl = argv._[0];
+const waitMs = argv.wait;
 
 /**
- * メインの処理を実行する非同期関数
- * @param {string} targetUrl 取得対象のURL
+ * HTMLを取得するメイン関数
+ * @param {string} url 対象URL
+ * @param {number} waitMs 待機時間（ミリ秒）
  */
-async function fetchHtml(targetUrl) {
+async function fetchHtml(url, waitMs) {
   let browser;
   try {
-    // ヘッドレスモードでブラウザを起動
     browser = await chromium.launch();
     const page = await browser.newPage();
 
-    // 処理ログは標準エラー出力へ
-    console.error(`ページにアクセスしています: ${targetUrl}`);
+    console.error(`アクセス中: ${url}`);
+    await page.goto(url, { waitUntil: "domcontentloaded" });
 
-    // 指定されたURLに移動し、ページの読み込みが完了するのを待つ
-    await page.goto(targetUrl, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(3000);
+    console.error(`待機中: ${waitMs}ms`);
+    await page.waitForTimeout(waitMs);
 
-    // ページの完全なHTMLコンテンツを取得
     const html = await page.content();
-
-    // 取得したHTMLを標準出力へ出力
     console.log(html);
   } catch (error) {
-    // エラーメッセージは標準エラー出力へ
-    console.error(`エラーが発生しました: ${error.message}`);
-    process.exit(1); // エラーで終了
+    console.error(`エラー: ${error.message}`);
+    process.exit(1);
   } finally {
-    // 処理が成功しても失敗しても、必ずブラウザを閉じる
     if (browser) {
       await browser.close();
     }
   }
 }
 
-// --- スクリプトのエントリーポイント ---
-
-// コマンドラインからURL引数を取得
-const url = process.argv[2];
-
-// URLが指定されていない場合は、使い方を表示して終了
-if (!url) {
-  console.error("エラー: URLを引数として指定してください。");
-  console.error("使用法: node get_html.js <URL>");
-  process.exit(1);
-}
-
-// メイン関数を実行
-fetchHtml(url);
+// 実行
+fetchHtml(targetUrl, waitMs);
