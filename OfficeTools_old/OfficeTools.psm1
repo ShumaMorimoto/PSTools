@@ -4,131 +4,17 @@ if (-not ("HtmlAgilityPack.HtmlDocument" -as [type])) {
 }
 
 
-class OTConfig {
-    static [string]$confPath = "$env:APPDATA\OfficeTools"
-    static [string]$confFile = $null
-    static [object]$Settings = [ordered]@{}
-    static [string]$password = $null
-    static [void] initialize() {
-        New-Item -Path $([OTConfig]::confPath) -ItemType Directory -Force -ErrorAction Stop | Out-Null
-        [OTConfig]::confFile = Join-Path ([OTConfig]::confPath) "settings.json"
-
-        if (Test-Path ([OTConfig]::confFile)) {
-            # JSONから読み込んだPSCustomObjectを、そのまま静的プロパティに代入
-            [OTConfig]::Load()
+class OTConst {
+    static $confPath = "$env:APPDATA\OfficeTools"
+    static initialize(){
+        try {
+            New-Item -Path $([OTConst]::confPath) -ItemType Directory -Force -ErrorAction Stop | Out-Null
+        } catch {
         }
-        else {
-            # デフォルト設定をPSCustomObjectとして作成し、静的プロパティに代入
-            [OTConfig]::Settings = [ordered]@{
-                Mattermost  = [ordered]@{url = "https://mattermost.aslead.cloud/api/v4" }
-                Confluence  = [ordered]@{url = "https://sd10.aslead.cloud/wiki/rest/pat/latest/tokens" }
-                LastUpdated = (Get-Date)
-            }
-            # ファイルに保存
-            [OTConfig]::Save()
-        }
-    }
-    static [void] Load() {
-        [OTConfig]::Settings = Get-Content -Path ([OTConfig]::confFile) -Raw | ConvertFrom-Json -AsHashtable
-        $cred = [OTConfig]::Settings.Credential
-        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $cred.password))
-        [OTConfig]::password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
-    }
-    static [void] Save() {
-        [OTConfig]::Settings.LastUpdated = (Get-Date)
-        [OTConfig]::Settings | ConvertTo-Json -Depth 5 | Set-Content -Path ([OTConfig]::confFile)
-    }
-    static [object] GetCred() {
-        $cred = [OTConfig]::Settings.Credential
-        if (($null -eq $cred) -or ([OTConfig]::Settings.LastUpdated -lt (Get-Date).addMonths(-6))) {
-            $cred = [OTConfig]::SetCred()
-        }
-        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $cred.password))
-        [OTConfig]::password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
-        return $cred
-    } 
-    static [object] SetCred() {
-        $cred = @{}
-        $empNo = Read-Host "社員コードは？(ex.x1234)"
-        $_cred = Get-Credential
-        $cred.add("empNo", $empNo)
-        $cred.add("id", $_cred.UserName)
-        $cred.add("password", (ConvertFrom-SecureString -SecureString $_cred.Password))
-        [OTConfig]::Settings.Credential = $cred
-        [OTConfig]::Save()
-        return $cred
-    }  
-    static [string] GetMtmPAT() {
-        $pat = [OTConfig]::Settings.Mattermost.pat
-        if ($null -eq $pat) {
-            $pat = [OTConfig]::SetMtmPAT()
-        }
-        return $pat
-    } 
-    static [string] SetMtmPAT() {
-        $pat = Read-Host "MattermostのPATは？"
-        [OTConfig]::Settings.Mattermost = @{pat = $pat }
-        [OTConfig]::Save()
-        return $pat
-    }
-    static [string] GetCnflToken() {
-        $tokens = [OTConfig]::Settings.Confluence.tokens
-        if ($null -eq $tokens) {
-            $tokens = [OTConfig]::SetCnflToken()
-        }
-        if (
-            ($null -eq $tokens.expiringAt) -or `
-            ([Datetime]($tokens.expiringAt) -lt (Get-Date).AddDays(20))
-        ) {
-            $tokens = [OTConfig]::UpdateCnflToken($tokens.rawToken)
-        }
-        return $tokens
-    } 
-    static [object] UpdateCnflToken([string]$token) {
-        $headers = @{
-            "Authorization" = "Bearer $token"
-            "Content-Type"  = "application/json; charset=UTF-8"
-        }
-        $body = @{
-            name               = "myToken"
-            expirationDuration = 90
-        }
-        $json = ConvertTo-JSON -Compress $body
-        $tokens = Invoke-RestMethod -Uri ([OTConfig]::Settings.Confluence.url) -Body $json -Method "POST" -Headers ($headers)
-        [OTConfig]::Settings.Confluence.tokens = $tokens
-        [OTConfig]::Save()
-        return $tokens
-    }
-    static [object] SetCnflToken() {
-        $base64AuthInfo = [Convert]::ToBase64String( `
-                [Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f `
-                    ([OTConfig]::Settings.Credential.id -replace "cu.nri.co.jp", "nri.co.jp"), `
-                        [OTConfig]::password))`
-        )
-
-        $headers = @{
-            Authorization  = ("Basic {0}" -f $base64AuthInfo)
-            "Content-Type" = "application/json; charset=UTF-8"
-        }   
-        $body = @{
-            name               = "myToken"
-            expirationDuration = 90
-        }
-        $json = ConvertTo-JSON -Compress $body
-        $tokens = Invoke-RestMethod -Uri ([OTConfig]::Settings.Confluence.url) -Body $json -Method "POST" -Headers ($headers)
-        [OTConfig]::Settings.Confluence.tokens = $tokens
-        [OTConfig]::Save()
-        return $tokens
     }
 }
+[OTConst]::initialize()
 
-## 初期化
-
-[OTCOnfig]::initialize()
-
-
-
-## クラス定義
 class AbstractTable {
     [string[]] $header = @()
     [pscustomobject[]] $data = @()
@@ -234,6 +120,111 @@ Class OTDomDAO :System.Xml.XmlDocument {
         $this.getElementsByTagName("table") | ForEach-Object { $this.AppendTable($_) | Out-Null }
         return $this.tables
     }
+}
+class ExTable2 :AbstractTable {
+    [object] $range
+    [hashtable] $eheader = [ordered]@{}
+
+    ExTable2([object]$range) {
+        $this.range = $range
+        $this.eheader = $this.GetHeader()
+    }
+    [object] GetHeader() {
+        $this.eheader = [ordered]@{}
+        if ($this.range.rows.count -eq 1) {
+            $this.range | where-object Text -ne "" | ForEach-Object { $this.eheader.Add($_.Text, $_) }
+        }  
+        else {
+            $this.range.rows(1).Columns | Where-Object Text -ne "" | ForEach-Object {
+                if ($_.MergeArea.Columns.Count -gt 1) {
+                    $this.eheader.Add($_.Text, $_.Offset(1, 0).Resize(1, $_.MergeArea.Count))
+                }
+                else {    
+                    $this.eheader.Add($_.Text, $_) 
+                }
+            }
+        }
+        return $this.eheader  
+    }
+    [object] AddRow([pscustomobject[]]$data) {
+        $rrange = $this.range.End(-4121).Offset(1, 0)
+        foreach ($record in $data) {
+            $this.eheader.keys | ForEach-Object {
+                $cell = $this.eheader[$_]
+                if ($cell.MergeArea.Columns.Count -eq 1) {
+                    $rrange.Resize(1, 1).Offset(0, $cell.Column - $rrange.Column) = $record.$_
+                }
+                elseif ($cell.MergeCells) {
+                    if ($record.$_.Count -gt 0) {
+                        $rrange.Offset(0, $cell.Column - $rrange.Column).Resize(1, $record.$_.Count) = $record.$_
+                    }
+                }
+            }
+            $rrange = $rrange.Offset(1, 0)
+        }
+        return $this.range
+    }
+    [PSCustomObject] GetRow([object]$range) {
+        $data = [ordered]@{}
+        $this.eheader.keys | ForEach-Object {
+            $value = ""
+            $cell = $this.eheader[$_]
+
+            if ($cell.MergeArea.Columns.Count -eq 1) {
+
+                $vcell = $range.Resize(1, 1).Offset(0, $cell.Column - $range.Column)
+                if ($vcell.Hyperlinks.Count -gt 0) {
+                    $value = $vcell.Hyperlinks[1].Address
+                }
+                else {
+                    $value = $vcell.Text
+                }
+            }
+            elseif ($cell.MergeCells) {
+                $value = @()
+                $range.Offset(0, $cell.Column - $range.Column).Resize(1, $cell.MergeArea.Count).Columns | ForEach-Object { if ($_.Text -ne "") { $value += $_.Text } }
+            }
+            else {
+                $value = @{}
+                $cell | ForEach-Object { 
+                    $vcell = $range.Resize(1, 1).Offset(0, $_.Column - $range.Column)
+                    if ($vcell.Text -ne "") { $value.Add($_.Text, $vcell.Text) } 
+                }
+            }
+            $data.Add($_, $value)
+        }
+        return [pscustomobject]$data
+    }
+    [object] SearchRow([pscustomobject]$data, [ScriptBlock] $compfunc) {
+        $rrange = $this.GetRange()
+        return ($rrange.rows | Where-Object { &$compfunc $_ $data } )
+    }
+    [pscustomobject] toObject() {
+        $rrange = $this.GetRange()
+        $data = @()
+        $rrange.rows | ForEach-Object { $data += $this.GetRow($_) }  
+        $this.header = $this.eheader.keys | Sort-Object -Property @{Exp = { $this.header[$_].Column } } 
+        $this.data = $data
+        return [pscustomobject]@{header = $this.header; data = $this.data }
+    }
+    [object] GetRange() {
+        $r = $this.range.Offset($this.range.Rows.Count, 0)
+        if ($r.Cells(1, 1) -eq "") { $r = $null }
+        else {
+            $r = $r.Resize($r.End(-4121).row - $r.row + 1)
+        }
+        return $r
+    }
+    [boolean] Sort([ScriptBlock] $orderfunc) {
+        $rrange = $this.GetRange()
+        $keycol = $this.range.WorkSheet.Columns.Count
+        $rrange = $rrange.Resize($rrange.Rows.Count, $keycol)
+        $key = $rrange.columns[$keycol]
+    
+        $rrange.rows | ForEach-Object { $_.Columns[$keycol] = &$orderfunc $_ }
+        # $key.ClearContents()
+        return $rrange.Sort($key, 1)
+    }   
 }
 
 class ExTable :AbstractTable {
@@ -678,8 +669,9 @@ class OTPowerpointDAO {
     }
 }
 class ConfluDAO : OTDomDAO {
+    static [string] $token = "MTAwNjk4NTA1MTcwOltz9manllOlRKkh3oAyY/xyX/z/"
     static [object] $headers = @{
-        "Authorization" = "Bear $([OTConfig]::Settings.Confluence.tokens.rawToken)"
+        "Authorization" = "Bearer $token"
         "Content-Type"  = "application/json; charset=UTF-8"
     }
     static [string] $dtd = @"
@@ -763,6 +755,21 @@ class ConfluDAO : OTDomDAO {
         }
         return $id
     }
+    [boolean]Load2([string]$base_url, [string]$page_id) {
+        $this.base_url = $base_url
+        $this.page_id = $page_id
+        $url = $this.base_url + "/" + $this.page_id + "?expand=body.storage,version"
+
+        $response = Invoke-WebRequest -Uri $url -Method "GET" -Headers ([ConfluDAO]::headers)
+        $content = [System.Text.Encoding]::UTF8.GetString([System.Text.Encoding]::GetEncoding("UTF-8").GetBytes($response.Content))
+        $json = ConvertFrom-JSON $content
+        $this.page = $json.body.storage.value
+        $this.vernum = $json.version.number
+        $this.title = $json.title
+                
+        $this.LoadXml([ConfluDAO]::toXML($this.page))           
+        return $true
+    }
     [boolean]Load([string]$base_url, [string]$page_id) {
         $this.base_url = $base_url
         $this.page_id = $page_id
@@ -773,6 +780,7 @@ class ConfluDAO : OTDomDAO {
         $this.vernum = $response.version.number
         $this.title = $response.title
                 
+        #        [ConfluDAO]::toXML($this.page) | Set-Content -Path "h:\tmp\page.xml"
         $this.LoadXml([ConfluDAO]::toXML($this.page))           
 
         $url = $this.base_url + "/" + $this.page_id + "/child/attachment"
@@ -829,12 +837,47 @@ class ConfluDAO : OTDomDAO {
         return([ConfluDAO]::dtd + "<page>$value</page>")
     }
     static [string] getPAT() {
-        $tokens = [OTConfig]::GetCnflToken()
+        $file = "$([OTConst]::confPath)\Conflu.settings.json"
+        $settings = @{}
+        if (Test-Path $file) {
+            $settings = Get-Content $file | ConvertFrom-JSON
+            [ConfluDAO]::token = $settings.rawToken
+            [ConfluDAO]::headers = @{
+                "Authorization" = "Bearer " + $settings.rawToken
+                "Content-Type"  = "application/json; charset=UTF-8"
+            }
+        }
+        else {
+            $cred = Get-Credential
+            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($cred.Password)
+            $password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) 
+            $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $cred.UserName, $password)))
+
+            [ConfluDAO]::headers = @{
+                Authorization  = ("Basic {0}" -f $base64AuthInfo)
+                "Content-Type" = "application/json; charset=UTF-8"
+            }   
+        }
+        if ($settings.expiringAt -eq $null -or [DateTime]$settings.expiringAt -lt (Get-Date).AddDays(20)) {
+            $baseUrl = "https://sd10.aslead.cloud/wiki/rest/pat/latest/tokens"   
+            $body = @{
+                name               = "myToken"
+                expirationDuration = 90
+            }
+            $json = ConvertTo-JSON -Compress $body
+            $settings = Invoke-RestMethod -Uri $baseurl -Body $json -Method "POST" -Headers ([ConfluDAO]::headers)
+            [ConfluDAO]::setPAT($settings)
+        }
+        return [ConfluDAO]::token
+    }
+    static [void] setPAT([object]$settings) {
+        $file = "$([OTConst]::confPath)\Conflu.settings.json"
+        [ConfluDAO]::token = $settings.rawToken
         [ConfluDAO]::headers = @{
-            "Authorization" = "Bearer " + $tokens.rawToken
+            "Authorization" = "Bearer " + [ConfluDAO]::token
             "Content-Type"  = "application/json; charset=UTF-8"
         }
-        return $tokens.rawToken
+        ConvertTo-JSON $settings | Set-Content $file
     }
 } 
 class TsTaskDao {
@@ -882,7 +925,7 @@ class TsTaskDao {
     
         $scheduleByMonth = $this.xml.CreateElement("ScheduleByMonth", $ns)
         $daysOfMonth = $this.xml.CreateElement("DaysOfMonth", $ns)
-        $days | ForEach-Object {
+        $days | % {
             $day = $this.xml.CreateElement("Day", $ns)
             $day.InnerText = $_
             $daysOfMonth.AppendChild($day)
@@ -890,7 +933,7 @@ class TsTaskDao {
         $scheduleByMonth.AppendChild($daysOfMonth)
         $months = $this.xml.CreateElement("Months", $ns)
         ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"
-    ) | ForEach-Object {
+    ) | % {
             $month = $this.xml.CreateElement($_, $ns)
             $months.AppendChild($month)
         }
@@ -917,7 +960,7 @@ class TsTaskDao {
         $scheduleByWeek.AppendChild($weeksInterval)
 
         $daysOfWeek = $this.xml.CreateElement("DaysOfWeek", $ns)
-        $days | ForEach-Object {
+        $days | % {
             $day = $this.xml.CreateElement($_, $ns)
             $daysOfWeek.AppendChild($day)
         }
@@ -941,31 +984,62 @@ class OTTaskSchedulerDAO {
         $this.GetTasks()
     }
     Register ([TsTaskDAO]$task) {
-        Register-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Xml $task.xml.OuterXml `
-            -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password) -Force  
+        $settings = getCred
+        Register-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Xml $task.xml.OuterXml -User $settings.id -Password $settings.password -Force  
     }
     SetTrigger([TsTaskDAO]$task, [ciminstance]$trigger) {
-        Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Trigger $trigger  `
-            -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password)  
+        $settings = getCred
+        Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Trigger $trigger -User $settings.id -Password $settings.password  
     }
     GetTasks() {
-        $this.table = Get-ScheduledTask -TaskPath $this.taskPath | ForEach-Object { New-Object TsTaskDAO($_.TaskName, $this.taskPath) }
+        $this.table = Get-ScheduledTask -TaskPath $this.taskPath | % { New-Object TsTaskDAO($_.TaskName, $this.taskPath) }
     }
     ReRegisterAll() {
+        $settings = getCred
         foreach ($task in $this.table) {
-            Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath `
-                -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password)
+            Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -User $settings.id -Password $settings.password  
         }
     }
 }
-## TODO
+
+function getCred() {
+    $file = "$([OTConst]::confPath)\OfficeTools.settings.json"
+    $settings = @{}
+    if (!(Test-Path $file -NewerThan (Get-Date).addMonths(-6))) {
+        $empNo = Read-Host "社員コードは？(ex.x1234)"
+        $cred = Get-Credential
+        $settings.add("empNo", $empNo)
+        $settings.add("id", $cred.UserName)
+        $settings.add("password", (ConvertFrom-SecureString -SecureString $cred.Password))
+        ConvertTo-JSON $settings | Set-Content $file
+    }
+    else {
+        $settings = Get-Content $file | ConvertFrom-JSON 
+    }
+    $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $settings.password))
+    $password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+    $settings.password = $password
+    return $settings
+}
+function setCred() {
+    $file = "$([OTConst]::confPath)\OfficeTools.settings.json"
+    $settings = @{}
+    $empNo = Read-Host "社員コードは？(ex.x1234)"
+    $cred = Get-Credential
+    $settings.add("empNo", $empNo)
+    $settings.add("id", $cred.UserName)
+    $settings.add("password", (ConvertFrom-SecureString -SecureString $cred.Password))
+    ConvertTo-JSON $settings | Set-Content $file
+}
 function changeCred() {
-    $cred = Get-Credential -Username [OTConfig]::Settings.Credential.id
+    $file = "$([OTConst]::confPath)\OfficeTools.settings.json"
+    $settings = getCred
+    $cred = Get-Credential -Username $settings.id
 
     $driver = Start-SeDriver -Browser Edge
     $driver.url = "http://comainu.cu.nri.co.jp/passwd_change/"
 
-    Start-Sleep 2
+    sleep 2
 
     $driver.FindElementByName('AuthenticationID').sendKeys($settings.empNo)
     $driver.FindElementByName('OldPassword').sendKeys($settings.password)
@@ -978,6 +1052,7 @@ function changeCred() {
     ConvertTo-JSON $settings | Set-Content $file
 }
 class MattermostDAO {
+    static [string] $pat = "hogehoge"
     static [object] $headers = @{
         "Authorization" = "Bearer $pat"
         "Content-Type"  = "application/json; charset=UTF-8"
@@ -1013,7 +1088,7 @@ class MattermostDAO {
     [Object] GetPosts($channel_id) {
         $url = $this.base_url + "/channels/" + $channel_id + "/posts"   
         $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "GET"
-        $this.posts = $response.order | ForEach-Object { $response.posts.$_ } 
+        $this.posts = $response.order | % { $response.posts.$_ } 
         $this.users = $this.GetUsers(($this.posts.user_id | Select-Object -Unique))
         return $this.posts
     }
@@ -1034,13 +1109,38 @@ class MattermostDAO {
         return $this.me
     }
     static [string] getPAT() {
-        $pat = [OTConfig]::Settings.Mattermost.pat
+        $file = "$([OTConst]::confPath)\Mattermost.settings.json"
+        $settings = @{}
+        if (Test-Path $file) {
+            $settings = Get-Content $file | ConvertFrom-JSON
+            [MattermostDAO]::pat = $settings.pat
+            [MattermostDAO]::headers = @{
+                "Authorization" = "Bearer " + $settings.pat
+                "Content-Type"  = "application/json; charset=UTF-8"
+            }
+        }
+        else {
+            [MattermostDAO]::pat = Read-Host "MattermostのPATは？"
+            $settings.add("pat", [MattermostDAO]::pat)
+            [MattermostDAO]::headers = @{
+                Authorization  = "Bearer " + $settings.pat
+                "Content-Type" = "application/json; charset=UTF-8"
+            } 
+            ConvertTo-JSON $settings | Set-Content $file
+        }
+        return [MattermostDAO]::pat
+    }
+    static [void] setPAT([object]$settings) {
+        $file = "$([OTConst]::confPath)\Mattermost.settings.json"
+        [MattermostDAO]::pat = $settings.pat
         [MattermostDAO]::headers = @{
-            "Authorization" = "Bearer " + $pat
+            "Authorization" = "Bearer " + [MattermostDAO]::pat
             "Content-Type"  = "application/json; charset=UTF-8"
         }
-        return $pat
+        ConvertTo-JSON $settings | Set-Content $file
     }
+
+
 }
 class OTCalDAO {
     static [object] $syukujitsu = $null

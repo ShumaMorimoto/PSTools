@@ -1,10 +1,20 @@
-１．nodejpsのインストール
-　　D:\nodejs\にインストール
+#$NODE_HOME = "D:\nodejs"
+$PROJECT_ROOT = "D:\OfficeTools"
 
-２．環境設定
-　npm config set prefix "D:\npm_global"
-  [System.Environment]::SetEnvironmentVariable("NODE_PATH", (npm root -g), "Machine")
-  [System.Environment]::SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH",(Join-Path (npm root -g) "playwright\browsers"), "Machine")
+
+#１．nodejpsのインストール
+#　　$NODE_HOMEにインストール
+
+#２．環境設定
+　npm config set prefix (Join-Path "$PROJECT_ROOT" "npm")
+
+ $nodePath =  npm root -g
+ [System.Environment]::SetEnvironmentVariable("NODE_PATH", $nodePath, "Machine")
+ [System.Environment]::SetEnvironmentVariable("NODE_PATH", $nodePath, "User")
+ 
+ $browserPath = Join-Path $PROJECT_ROOT "npm\browser"
+ [System.Environment]::SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH",$browserPath, "Machine")
+ [System.Environment]::SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH",$browserPath, "User")
 
 ３．PlayWrightのインストール
 　npm install -g playwright
@@ -12,6 +22,22 @@
   npm install -g yargs
 
 
+
+$PROJECT_ROOT = "D:\OfficeTools"
+npm config set prefix $PROJECT_ROOT
+
+$nodePath = Join-Path $PROJECT_ROOT "lib\node_modules"
+[System.Environment]::SetEnvironmentVariable("NODE_PATH", $nodePath, "Machine")
+[System.Environment]::SetEnvironmentVariable("NODE_PATH", $nodePath, "User")
+
+npm install -g playwright
+
+ls $PROJECT_ROOT
+
+
+
+
+------
 
 １．nodejpsのインストール
 　　D:\nodejs\にインストール
