@@ -30,6 +30,9 @@ class OTConfig {
     }
     static [void] Load() {
         [OTConfig]::Settings = Get-Content -Path ([OTConfig]::confFile) -Raw | ConvertFrom-Json -AsHashtable
+        $cred = [OTConfig]::Settings.Credential
+        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $cred.password))
+        [OTConfig]::password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
     }
     static [void] Save() {
         [OTConfig]::Settings.LastUpdated = (Get-Date)
@@ -58,7 +61,7 @@ class OTConfig {
     static [string] GetMtmPAT() {
         $pat = [OTConfig]::Settings.Mattermost.pat
         if ($null -eq $pat) {
-            $pat = [OTConfig]::SetCred()
+            $pat = [OTConfig]::SetMtmPAT()
         }
         return $pat
     } 
@@ -91,15 +94,16 @@ class OTConfig {
             expirationDuration = 90
         }
         $json = ConvertTo-JSON -Compress $body
-        $response = Invoke-RestMethod -Uri [OTConfig]::baseurl -Body $json -Method "POST" -Headers ($headers)
-        $tokens = (ConvertFrom-JSON  -AsHashtable $response)
-        [OTConfig]::Settings.Mattermost.tokens = $tokens
+        $tokens = Invoke-RestMethod -Uri ([OTConfig]::Settings.Confluence.url) -Body $json -Method "POST" -Headers ($headers)
+        [OTConfig]::Settings.Confluence.tokens = $tokens
         [OTConfig]::Save()
         return $tokens
     }
     static [object] SetCnflToken() {
         $base64AuthInfo = [Convert]::ToBase64String( `
-                [Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f [OTConfig]::Settings.Credential.id, [OTConfig]::password))`
+                [Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f `
+                    ([OTConfig]::Settings.Credential.id -replace "cu.nri.co.jp", "nri.co.jp"), `
+                        [OTConfig]::password))`
         )
 
         $headers = @{
@@ -111,9 +115,8 @@ class OTConfig {
             expirationDuration = 90
         }
         $json = ConvertTo-JSON -Compress $body
-        $response = Invoke-RestMethod -Uri [OTConfig]::baseurl -Body $json -Method "POST" -Headers ($headers)
-        $tokens = (ConvertFrom-JSON  -AsHashtable $response)
-        [OTConfig]::Settings.Mattermost.tokens = $tokens
+        $tokens = Invoke-RestMethod -Uri ([OTConfig]::Settings.Confluence.url) -Body $json -Method "POST" -Headers ($headers)
+        [OTConfig]::Settings.Confluence.tokens = $tokens
         [OTConfig]::Save()
         return $tokens
     }
