@@ -20,7 +20,7 @@ class OTConfig {
         else {
             # デフォルト設定をPSCustomObjectとして作成し、静的プロパティに代入
             [OTConfig]::Settings = [ordered]@{
-                Mattermost  = [ordered]@{url = "" }
+                Mattermost  = [ordered]@{url = "https://mattermost.aslead.cloud/api/v4" }
                 Confluence  = [ordered]@{url = "https://sd10.aslead.cloud/wiki/rest/pat/latest/tokens" }
                 LastUpdated = (Get-Date)
             }
