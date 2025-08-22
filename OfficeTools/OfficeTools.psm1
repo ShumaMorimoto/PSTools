@@ -11,7 +11,7 @@ class OTConfig {
     static [string]$password = $null
     static [void] initialize() {
         New-Item -Path $([OTConfig]::confPath) -ItemType Directory -Force -ErrorAction Stop | Out-Null
-        [OTConfig]::confFile = Join-Path ([OTConfig]::confPath) "settings.json"
+        [OTConfig]::confFile = Join-Path ([OTConfig]::confPath) OfficeTools..settings.json"
 
         if (Test-Path ([OTConfig]::confFile)) {
             # JSONから読み込んだPSCustomObjectを、そのまま静的プロパティに代入
