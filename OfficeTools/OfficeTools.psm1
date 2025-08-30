@@ -1222,28 +1222,14 @@ class GsTable :AbstractTable {
         Invoke-RestMethod -Method $method -Uri $uri -Body $json -ContentType $contenttype -Headers @{"Authorization" = "Bearer $([OTGSheetDAO]::accessToken)" }
     }
 }
-class OTGSheetDAO {
+
+class OTGoogleDAO {
     static $certPswd = "notasecret"
-    static $scope = "https://www.googleapis.com/auth/spreadsheets"
-    static $accessToken = $null
 
-    [object]$TBL = @{}
-    [string]$spreadsheetId = "1Ghl91D5pPAL3pmU1Ywh3tv6IC0b6D43QgoIq6cagHSU" #デフォルト
-
-    OTGSheetDAO([string]$sheetId) {
-        $this.spreadsheetId = $sheetId
-        $this.initialize()
+    OTGoogleDAO(){
     }
-    [void] initialize() {
-        $this.GetToken()
-    }
-    [void]GetToken() {
-        #        [OTGSheetDAO]::accessToken = Get-GOAuthTokenService `
-        #            -scope ([OTGSheetDAO]::scope)`
-        #            -certPath ([OTConfig]::Settings.Google.certPath)`
-        #            -certPswd ([OTGSheetDAO]::certPswd)`
-        #            -iss ([OTConfig]::Settings.Google.iss)
 
+    static [string]GetToken([string]$scope) {
         $headerJSON = [Ordered]@{
             alg = "RS256"
             typ = "JWT"
@@ -1265,7 +1251,7 @@ class OTGSheetDAO {
 		
         $googleCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(`
                 [OTConfig]::Settings.Google.certPath, `
-                [OTGSheetDAO]::certPswd, `
+                [OTGoogleDAO]::certPswd, `
                 [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable `
         )
         $rsaPrivate = $googleCert.PrivateKey
@@ -1282,7 +1268,26 @@ class OTGSheetDAO {
         # Fetch token
         $response = Invoke-RestMethod -Uri "https://www.googleapis.com/oauth2/v4/token" -Method Post -Body $fields -ContentType "application/x-www-form-urlencoded"
 
-        [OTGSheetDAO]::accessToken = $response.access_token
+        return $response.access_token
+    }
+
+}
+class OTGSheetDAO:OTGoogleDAO {
+    static $scope = "https://www.googleapis.com/auth/spreadsheets"
+    static $accessToken = $null
+
+    [object]$TBL = @{}
+    [string]$spreadsheetId = "1Ghl91D5pPAL3pmU1Ywh3tv6IC0b6D43QgoIq6cagHSU" #デフォルト
+
+    OTGSheetDAO([string]$sheetId) {
+        $this.spreadsheetId = $sheetId
+        $this.initialize()
+    }
+    [void] initialize() {
+        [OTGSheetDAO]::GetToken()
+    }
+    static [void] GetToken() {
+        [OTGSheetDAO]::accessToken = [OTGoogleDAO]::GetToken([OTGSheetDAO]::scope)
     }
     [object]GetTable([string]$dataname, [string]$range) {
         if (-not $this.TBL.Contains($dataname)) {
@@ -1322,6 +1327,20 @@ class OTGSheetDAO {
         }
         return [string]($colLetters + [string]($range.Row))
     } 
+}
+class OTGMailDAO:OTGoogleDAO {
+    static $scope = "https://www.googleapis.com/auth/gmail.modify"
+    static $accessToken = $null
+
+    OTGMailDAO() {
+        $this.initialize()
+    }
+    [void] initialize() {
+        [OTGMailDAO]::GetToken()
+    }
+    static [void] GetToken() {
+        [OTGMailDAO]::accessToken = [OTGoogleDAO]::GetToken([OTGMailDAO]::scope)
+    }
 }
 
 class Term {

@@ -1,23 +1,12 @@
 const meigaraCount = 15;
-const mList = "A2:E" + (meigaraCount + 1);
-const pList = "D2:G" + (meigaraCount + 1);
-const totalMount = "I" + (meigaraCount + 3) + ":M" + (meigaraCount + 3);
-const totalMountOld = "I" + (meigaraCount + 4) + ":M" + (meigaraCount + 4);
-const jikalist = "B2:L" + (meigaraCount + 1);
-const mdayCellCol = 9;
-const mdayCellRow = meigaraCount + 3;
 
-class WebDriver {
-  constructor(url) {
-    this.url = url
-    this.html = UrlFetchApp.fetch(url).getContentText("utf-8");
-  }
-  findElementByClassName(classname){
-    let key = 'class="'+classname+'"'
-    return Parser.data(this.html).from('class="'+classname+'"').to('<').build()    
-  }
-}
-
+const sheet = SpreadsheetApp.getActiveSheet();
+const mList = sheet.getRange("A2:E" + (meigaraCount + 1));
+const pList = sheet.getRange("D2:G" + (meigaraCount + 1));
+const totalMount = sheet.getRange("I" + (meigaraCount + 3) + ":M" + (meigaraCount + 3));
+const totalMountOld = sheet.getRange("I" + (meigaraCount + 4) + ":M" + (meigaraCount + 4));
+const jikalist = sheet.getRange("B2:L" + (meigaraCount + 1));
+const mDayCell = sheet.getRange(9, meigaraCount + 3)
 
 function DoOn() {
   if (!isHoliday(new Date())) {
@@ -34,12 +23,24 @@ function testDo() {
 
   //  getPriceSMD("");
   //  getPriceWTADV("2012052801")
+  //  getPriceASAHI()
+  //  getPriceFDLTY('217004')
+  //  getPriceSMD()
+  //  getPriceIFREE()
+  //  getPricePICTET()
+  //  getPriceNAM("dcngkif")
 
-    let driver = new WebDriver("https://www.daiwa-am.co.jp/funds/detail/3484/detail_top.html")
+  //  getPriceNOMURA("400029")
+  //  getPriceNIKKO()
+  //   getPrice123P()
 
-    let str = driver.findElementByClassName("text-[19px] md:text-[28px]")
 
-    console.log(str)
+  getPrice("2004022702")
+
+
+  //   let driver = new WebDriver("https://www.daiwa-am.co.jp/funds/detail/3484/detail_top.html")
+  //    let str = driver.findElementByClassName("text-[19px] md:text-[28px]")
+  //    console.log(str)
 
   //    updateJika();
   //    sendJika();
@@ -77,11 +78,9 @@ function doGet(e) {
 }
 
 function unupdatecodes() {
-  const _now = new Date();  // 現在
-  const mday = mDay(_now);  // 現在
+  const mday = mDay();  // 現在
 
-  const sheet = SpreadsheetApp.getActiveSheet();
-  let MEIGARA = sheet.getRange(mList).getValues();
+  let MEIGARA = mList.getValues();
 
   let array = []
   MEIGARA.forEach(function (meigara) {
@@ -96,64 +95,52 @@ function unupdatecodes() {
 
 
 function SetJika(code, _date, nav, cmp) {
-  const _now = new Date();  // 現在
-  const mday = mDay(_now);  // 現在
+  const mday = mDay();  // 現在
   const date = new Date(_date.slice(0, 4), _date.slice(4, 6) - 1, _date.slice(6, 8), 0, 0, 0);
 
-  const sheet = SpreadsheetApp.getActiveSheet();
   const searchRange = sheet.getRange("C2:C");
-
-  const searchString = code;
-  const textObject = searchRange.createTextFinder(searchString);
+  const textObject = searchRange.createTextFinder(code);
   const results = textObject.findAll();
 
   if (results.length == 0) {
     return "NOCODE";
   } else {
-    if (results[0].offset(0, 2).getValue() < date) {
-      results[0].offset(0, 1).setValue(_now);
-      results[0].offset(0, 2).setValue(date);
-      results[0].offset(0, 3).setValue(nav);
-      results[0].offset(0, 4).setValue(cmp);
-      return 'UPDATED';
-    } else {
-      return 'SKIPPED';
-    }
+    results.forEach(function (cell) {
+      var row = cell.getRow(); // 該当セルの行番号を取得
+      var eCell = sheet.getRange(row, 5).getValue(); // B列のセルの値を取得
+
+      if (eCell < date) { // B列が空白の場合のみ処理を実行
+        var targetRange = sheet.getRange(row, 4, 1, 4); // B列～D列の範囲を取得
+        targetRange.setValues([[_now, date, nav, cmp]]); // B列～D列に "0" を設定
+        targetRange.setFontColor("green"); // 文字の色を緑に変更
+        return 'UPDATED';
+      }
+    });
+    return 'SKIPPED';
   }
 }
 
-
 function updateJika() {
-
-  const _now = new Date();  // 現在
-  const mday = mDay(_now);  // 取得できる基準日
-
-  let sheet = SpreadsheetApp.getActiveSheet();
-  const pday = sheet.getRange(totalMountOld).getValues()[0][0];
+  const mday = mDay();  // 取得できる基準日
+  const pday = totalMountOld.getValues()[0][0];
   var zan = !(pday >= mday);   // true:残あり　false:残なし
 
-  sheet.getRange(mdayCellRow, mdayCellCol).setValue(mday);
+  lotateMount()
 
   if (zan) {
-
-    // let url = 'http://36.13.143.220/getjika.html';
-    // let html = phantomJSCloudScraping(url);
-
-    let MEIGARA = sheet.getRange(mList).getValues();
-    let PRICES = sheet.getRange(pList).getValues();
+    let MEIGARA = mList.getValues();
+    let PRICES = pList.getValues();
     zan = false;
 
     for (i = 0; i < MEIGARA.length; i++) {
-      let name = MEIGARA[i][0];
       let ryaku = MEIGARA[i][1];
       let code = MEIGARA[i][2];
-      let updatedate = MEIGARA[i][3];
       let kijyunbi = MEIGARA[i][4];
 
       try {
         if (kijyunbi < mday) {
-          let price = getPriceToshin(code);
-          PRICES[i][0] = _now;
+          let price = getPrice(code);
+          PRICES[i][0] = new Date();
           PRICES[i][1] = price[0];
           PRICES[i][2] = price[1];
           PRICES[i][3] = price[2];
@@ -176,25 +163,37 @@ function updateJika() {
         )
       }
     }
-    sheet.getRange(pList).setValues(PRICES);
+    pList.setValues(PRICES);
 
-    if (!zan) {
-      let TTM = sheet.getRange(totalMount).getValues();
-      TTM[0][0] = mday;
-      sheet.insertRowsAfter(meigaraCount + 3, 1);
-      sheet.getRange(totalMountOld).setValues(TTM);
+    for (var i = 0; i < PRICES.length; i++) {
+      var targetRange = sheet.getRange(pList.getRow() + i, pList.getColumn() + 1, 1, 7); // E列～L列（5列目～12列目）
+      if (PRICES[i][1] >= mday) {
+        targetRange.setFontColor("green"); // 正の値なら緑
+      } else {
+        targetRange.setFontColor("black"); // それ以外は黒
+      }
     }
   }
 }
 
-function GetJika() {
-  let sheet = SpreadsheetApp.getActiveSheet();
-  let JIKAS = sheet.getRange(jikalist).getValues();
-  let TTM = sheet.getRange(totalMount).getValues();
-  let MEIGARA = sheet.getRange(mList).getValues();
+function lotateMount() {
+  let TTM = totalMount.getValues();
+  let mday = mDay();
 
-  const _now = new Date();  // 現在
-  const mday = mDay(_now);  // 現在
+  if (TTM[0][0] < mday) {
+    sheet.insertRowsAfter(meigaraCount + 3, 1);
+    totalMountOld.setValues(TTM);
+    sheet.getRange(totalMount.getRow(), totalMount.getColumn()).setValue(mday)
+  }
+}
+
+
+function GetJika() {
+  let JIKAS = jikalist.getValues();
+  let TTM = totalMount.getValues();
+  let MEIGARA = mList.getValues();
+
+  const mday = mDay();  // 現在
 
   let array = []
   MEIGARA.forEach(function (meigara) {
@@ -225,16 +224,12 @@ function GetJika() {
     ])
   }
   console.log(JSON.stringify(obj));
-
   return obj
 }
 
-
 function sendJika() {
-
-  let sheet = SpreadsheetApp.getActiveSheet();
-  let JIKAS = sheet.getRange(jikalist).getValues();
-  let TTM = sheet.getRange(totalMount).getValues();
+  let JIKAS = jikalist.getValues();
+  let TTM = totalMount.getValues();
 
   let body =
     "時価：" + Math.round(TTM[0][1]).toLocaleString() + "円" +
@@ -250,51 +245,104 @@ function sendJika() {
       signedNum(Math.round(jika[10]), 10) + "\n"
   }
   console.log(body);
-
   GmailApp.sendEmail("shumamorimoto@gmail.com", "【投信:" + Math.round(TTM[0][3]).toLocaleString() + "円@" + Utilities.formatDate(new Date(), 'JST', 'HH:mm）】'), body);
 }
 
-function getPriceToshin(code) {
-  switch (code) {
 
-    case '2000032406':
-      return getPriceASAHI();
-      break;
-    case '1998040104':
-      return getPriceFDLTY('217004');
-      break;
-    case '2001112212':
-      return getPriceFDLTY('216201');
-      break;
-    case '2011083106':
-      return getPriceSMD();
-      break;
-    case '2023031301':
-      return getPriceIFREE();
-      break;
-    case '2005022803':
-      return getPricePICTET();
-      break;
-    case '2013121001':
-      return getPriceNAM("dcngkif");
-      break;
-    case '2011110102':
-      return getPriceNAM("ngkkp");
-      break;
-    case '2004073003':
-      return getPriceNOMURA("400029");
-      break;
-    case '201707310D':
-      return getPriceNIKKO("");
-      break;
-    case '2012052801':
-      return getPrice123P();
-      break;
-    default:
-      return getPriceWTADV(code);
+let pricesrc = {
+  2000032406: {
+    url: 'https://www.alamco.co.jp/fund/globalvalue/index.html',
+    bkey: ".date", bidx: 0,
+    nkey: ".def-price", nidx: 0,
+    ckey: ".comp-price", cidx: 0
+  },
+  1998040104: {
+    url: 'https://www.fidelity.co.jp/funds/detail/217004/F',
+    bkey: ".factsheet-asOfDate", bidx: 0,
+    nkey: ".medium-shrink", nidx: 0,
+    ckey: ".medium-auto", cidx: 0
+  },
+  2001112212: {
+    url: 'https://www.fidelity.co.jp/funds/detail/216201/F',
+    bkey: ".factsheet-asOfDate", bidx: 0,
+    nkey: ".medium-shrink", nidx: 0,
+    ckey: ".medium-auto", cidx: 0
+  },
+  2011083106: {
+    url: 'https://www.smd-am.co.jp/fund/153406/',
+    bkey: ".sw-Text-right", bidx: 0,
+    nkey: "td", nidx: 0,
+    ckey: "td", cidx: 1
+  },
+  2023031301: {
+    url: 'https://www.daiwa-am.co.jp/funds/detail/3484/detail_top.html',
+    bkey: ".date", bidx: 0,
+    nkey: "td", nidx: 0,
+    ckey: "td", cidx: 1
+  },
+  2005022803: {
+    url: 'https://www.pictet.co.jp/fund/gloin.html',
+    bkey: ".cmp-fund__fund-summary-value", bidx: 0,
+    nkey: ".cmp-fund__fund-summary-value", nidx: 1,
+    ckey: ".cmp-fund__fund-summary-value", cidx: 2
+  },
+  2013121001: {
+    url: 'https://www.nam.co.jp/fundinfo/dcngkif/main.html',
+    bkey: ".p-fundinfoFundValue__date", bidx: 0,
+    nkey: ".fundValue__item", nidx: 0,
+    ckey: ".fundValue__item", cidx: 1
+  },
+  2011110102: {
+    url: 'https://www.nam.co.jp/fundinfo/ngkkp/main.html',
+    bkey: ".p-fundinfoFundValue__date", bidx: 0,
+    nkey: ".fundValue__item", nidx: 0,
+    ckey: ".fundValue__item", cidx: 1
+  },
+  2004073003: {
+    url: 'https://www.nomura-am.co.jp/fund/funddetail.php?fundcd=400029',
+    bkey: "td", bidx: 0,
+    nkey: "td", nidx: 1,
+    ckey: "td", cidx: 2
+  },
+  '201707310D': {
+    url: 'https://www.nikkoam.com/fund/detail/643718',
+    bkey: ".p-products-price__label", bidx: 0,
+    nkey: ".p-products-price__number", nidx: 0,
+    ckey: ".p-products-price__number", cidx: 1
+  },
+  2012052801: {
+    url: 'https://hifumi.rheos.jp/fund/plus/',
+    bkey: ".hf-js-date", bidx: 0,
+    nkey: "td", nidx: 0,
+    ckey: "td", cidx: 1
+  },
+  default: {
+    url: 'https://www.wealthadvisor.co.jp/snapshot/',
+    bkey: ".common-normal-1", bidx: 1,
+    nkey: ".common-normal-l", nidx: 0,
+    ckey: ".head-table-clm-data", cidx: 3
   }
 }
 
+function getPrice(code) {
+  let price = [], url
+
+  if (code in pricesrc) {
+    url = pricesrc[code].url
+  } else {
+    url = pricesrc["default"].url + code
+    code = "default"
+  }
+
+  let content = phantomJSCloudScraping(url);
+  let $ = Cheerio.load(content); //コンテントの読み込み
+
+  price.push(new Date($(pricesrc[code].bkey).eq(pricesrc[code].bidx).text().replace(/[年月]/g, "/").match(/[\d/]+/)));
+  price.push($(pricesrc[code].nkey).eq(pricesrc[code].nidx).text().match(/[\d\,]+/)[0]);
+  price.push($(pricesrc[code].ckey).eq(pricesrc[code].cidx).text().match(/[\d\,-]+/)[0]);
+
+  return price
+}
 
 function getWTADVCode(code) {
   switch (code) {
@@ -316,251 +364,24 @@ function getWTADVCode(code) {
   }
 }
 
-
-function getPriceWTADV(code) {
-  //  let url = "https://www.wealthadvisor.co.jp/FundData/SnapShot.do?fnc=" + code;
-  let url = "https://www.wealthadvisor.co.jp/snapshot/" + code;
-  //  let html = UrlFetchApp.fetch(url).getContentText("Shift-JIS");
-  let html = UrlFetchApp.fetch(url).getContentText("utf-8");
-  let price = ["1/1", 0, 0];
-
-  //  let reg0 = /<span class="ptdate">[^<]*/;
-  //  price[0] = Utilities.parseDate(
-  //    reg0.exec(html)[0].split(/[<>]/)[2],
-  //    'JST',
-  //    'yyyy年MM月dd日'
-  //    );
-  //  let reg1 = /<span class="fprice">[^<]*/;
-  //  price[1] = reg1.exec(html)[0].split(/[<>]/)[2];
-  //  let reg2 = /<div class="plus fprice"><img src=[^>]*>[^<]*/;
-  //  if (reg2.exec(html) != null) {
-  //    price[2] = reg2.exec(html)[0].split(/[<>]/)[4];
-  //  } else {
-  //    reg2 = /<div class="minus fprice"><img src=[^>]*>[^<]*/;
-  //    if (reg2.exec(html) != null) {
-  //     price[2] = -reg2.exec(html)[0].split(/[<>]/)[4];
-  //    } else {
-  //    price[2]=0;
-  //  }
-  //  }
-
-  price[0] = Utilities.parseDate(
-    Parser.data(html).from('<p class="common-normal-1 mt-2 mb-0 p-0">').to('<').build(),
-    'JST',
-    'yyyy年MM月dd日');
-
-  price[1] = Parser.data(html).from('<p class="common-normal-l d-inline mb-0 p-0">').to('<').build();
-  price[2] = Parser.data(html).from('<p class="common-normal-15').to('<').build().split(/>/)[1];
-  return price;
-}
-
-// 朝日
-function getPriceASAHI() {
-  let url = "https://www.alamco.co.jp/fund/globalvalue/index.html";
-  let html = phantomJSCloudScraping(url);
-  let price = ["1/1", 0, 0]
-
-  let reg0 = /<span class="date">[^<]*</;
-  let q0 = reg0.exec(html);
-  price[0] = Utilities.parseDate(q0[0].split(/[<>]/)[2], 'JST', 'yyyy年MM月dd日');
-
-  let reg1 = /<span class="def-price">[^<]*</;
-  let q1 = reg1.exec(html);
-  price[1] = q1[0].split(/[<>]/)[2];
-
-  let reg2 = /<span class="comp-price[^<]*/;
-  let q2 = reg2.exec(html);
-  price[2] = reg2.exec(html)[0].split(/[<>]/)[2];
-
-  return price;
-}
-
-//フィデリティ
-function getPriceFDLTY(code) {
-  let url = "https://www.fidelity.co.jp/funds/detail/" + code + "/F";
-  let html = phantomJSCloudScraping(url);
-  let price = ["1/1", 0, 0]
-  price[0] = Utilities.parseDate(
-    Parser.data(html).from('<p class="factsheet-asOfDate text-right">').to('<').build(),
-    'JST',
-    'yyyy/MM/dd');
-
-  price[1] = Parser.data(html).from('<div class="medium-shrink cell">').to('円').build();
-
-  let reg = /<span data-datapath="fund.priceData.changeAbsolute">.+span>/;
-  price[2] = reg.exec(html)[0].split(/[<>円]/)[4];
-
-  return price;
-}
-
-//SMD
-function getPriceSMD(code) {
-  let url = "https://www.smd-am.co.jp/fund/153406/";
-  let html = UrlFetchApp.fetch(url).getContentText("utf-8");
-  let price = ["1/1", 0, 0]
-
-  let reg1 = /基準日.+/;
-  price[0] = Utilities.parseDate(
-    reg1.exec(html)[0].split(/[<>]/)[2],
-    'JST',
-    '：yyyy年MM月dd日'
-  );
-
-  let texts = Parser.data(html).from('<table ').to('</table>').from('<td>').to('</td>').iterate();
-  price[1] = texts[0].replace("円", "").replace(",", "");
-  //  price[2] = Parser.data(texts[1]).from('<span>').to('</span>').build().replace("円","")
-  price[2] = /-*[\d,]+/.exec(texts[1])[0].replace(",", "")
-
-  return price;
-
-}
-
-//iFreeNEXT
-//iFreeNEXT
-function getPriceIFREE() {
-  let url = "https://www.daiwa-am.co.jp/funds/detail/3484/detail_top.html";
-  let html = UrlFetchApp.fetch(url).getContentText("utf-8");
-  let price = ["1/1", 0, 0]
-
-  price[0] = Utilities.parseDate(
-    Parser.data(html).from('class="date"').to('<').build().split(/>/)[1],
-    'JST',
-    'yyyy/MM/dd'
-  );
-  price[1] = Parser.data(html).from('class="text-[19px] md:text-[28px]"').to('<').iterate()[0].split(/>/)[1];
-  price[2] = Parser.data(html).from('class="text-[19px] md:text-[28px]"').to('<').iterate()[1].split(/>/)[1];
-
-  return price;
-}
-
-//function getPriceIFREE() {
-//let url = "https://www.daiwa-am.co.jp/funds/detail/3484/detail_top.html";
-//let html = UrlFetchApp.fetch(url).getContentText("utf-8");
-//let price = ["1/1", 0, 0]
-//price[0] = Utilities.parseDate(
-//  Parser.data(html).from('基準日：').to('</time>').build().split(/>/)[1],
-//  'JST',
-//  'yyyy/MM/dd'
-//);
-//price[1] = Parser.data(html).from('基準価額</th>').to('円</p>').build().split(/[<>]/)[6];
-//price[2] = Parser.data(html).from('前日比</th>').to('円<').build().split(/[<>]/)[6];
-//return price;
-//}
-
-//PICTET
-function getPricePICTET() {
-  let url = "https://www.pictet.co.jp/fund/gloin.html";
-  let html = UrlFetchApp.fetch(url).getContentText("utf-8");
-  let price = ["1/1", 0, 0]
-
-  price[0] = Utilities.parseDate(
-    Parser.data(html).from('基準日:').to('</small').build(),
-    'JST',
-    'yyyy年MM月dd日'
-  );
-
-  price[1] = Parser.data(html).from('基準価額</td>').to('円</td>').build().split(/[<>]/)[2];
-  price[2] = Parser.data(html).from('前日比</td>').to('円</td>').build().split(/[<>]/)[2];
-
-  return price;
-}
-
-//NAM
-function getPriceNAM(code) {
-  let url = "https://www.nam.co.jp/fundinfo/" + code + "/main.html";
-  let html = phantomJSCloudScraping(url);
-  let price = ["1/1", 0, 0]
-
-  price[0] = Utilities.parseDate(
-    Parser.data(html).from('<p class="p-fundinfoFundValue__date">').to('現在').build(),
-    //  Parser.data(html).from('<p class="date" style="">').to('現在').build(),
-    'JST',
-    'yyyy年MM月dd日'
-  );
-
-  price[1] = Parser.data(html).from('基準価額</dt>').to('円</p>').build().split(/[<>]/)[4];
-  price[2] = Parser.data(html).from('前日比</dt>').to('円</p>').build().split(/[<>]/)[4];
-
-  return price;
-}
-
-//NOMURA
-function getPriceNOMURA(code) {
-  let url = "https://www.nomura-am.co.jp/fund/funddetail.php?fundcd=" + code;
-  let html = phantomJSCloudScraping(url);
-  let price = ["1/1", 0, 0]
-
-  price[0] = Utilities.parseDate(
-    Parser.data(html).from('基準日</th>').to('</td>').build().split(/[<>]/)[2],
-    'JST',
-    'yyyy年MM月dd日'
-  );
-
-  price[1] = Parser.data(html).from('基準価額</th>').to('円</td>').build().split(/[<>]/)[2];
-
-  price[2] = Parser.data(html).from('前日比(円)</th>').to('円<').build().split(/[<>]/)[2];
-
-  return price;
-}
-
-
-//NIKKO
-function getPriceNIKKO(code) {
-  let url = "https://www.nikkoam.com/fund/detail/643718";
-  let html = phantomJSCloudScraping(url);
-  let price = ["1/1", 0, 0]
-
-  price[0] = Utilities.parseDate(
-    />[^<]+日付/.exec(html)[0],
-    'JST',
-    '>yyyy年MM月dd日付'
-  );
-  price[1] = Parser.data(html).from('><div class="p-products-price__label">基準価額</div> ').to('</span>').build().split(/[<>]/)[6];
-  price[2] = Parser.data(html).from('><div class="p-products-price__label">前日比（円）</div> ').to('</span>').build().split(/[<>]/)[6];
-
-  return price;
-}
-
-//hihumi
-function getPrice123P() {
-  let url = "https://hifumi.rheos.jp/fund/plus/";
-  let html = phantomJSCloudScraping(url);
-  //  let html = UrlFetchApp.fetch(url).getContentText();
-  let price = ["1/1", 0, 0]
-
-  price[0] = Parser.data(html).from('<time class="hf-js-date" datetime="').to('">').build().replace(/-/g, '/');
-
-  price[1] = Parser.data(html).from('<td data-title="基準価額"><span class="hf-js-price">').to('円</span>').build();
-
-  price[2] = Parser.data(html).from('<td data-title="前日比"><span class="hf-js-rate">').to('円').build();
-
-  return price;
-}
-
-
 function signedNum(_num, keta) {
-  let dig = "";
-
-  if (_num > 0) {
-    dig = "+"
-  }
-  return ("          " + dig + _num.toLocaleString()).slice(-keta);
+  var sign = _num >= 0 ? '+' : ''; // 正の数には "+" を付ける
+  return (sign + _num).padStart(keta, ' ');
 }
 
-function mDay(_date) {
-  let mdate = new Date(_date);
+function mDay() {
+  let mdate = new Date();
   mdate.setHours(mdate.getHours() + 6);
   mdate = preWorkday(mdate);
   return new Date(mdate.getFullYear(), mdate.getMonth(), mdate.getDate(), 0, 0, 0);
 }
 
 function preWorkday(_date) {
-  let pdate = new Date(_date);
-  pdate.setDate(_date.getDate() - 1);
-  while (isHoliday(pdate)) {
-    pdate.setDate(pdate.getDate() - 1)
-  }
-  return pdate;
+  var previousDay = new Date(_date);
+  do {
+    previousDay.setDate(previousDay.getDate() - 1); // 1日前に移動
+  } while (isHoliday(previousDay));
+  return previousDay
 }
 
 function isHoliday(_date) {
