@@ -1,23 +1,28 @@
-#HtmlAgilityPackの設定
-if (-not ("HtmlAgilityPack.HtmlDocument" -as [type])) {
-    Add-Type -Path "$PSScriptRoot\lib\HtmlAgilityPack.dll"
-}
+Add-Type -Path "$PSScriptRoot\lib\HtmlAgilityPack.dll"
+Add-Type -Path "$PSScriptRoot\lib\MailKit.dll"
+Add-Type -Path "$PSScriptRoot\lib\MimeKit.dll"
 
+class OTConfig {
+    static [string]$confPath = $null
+    static [string]$confFile = $null
+    static [object]$Settings = [ordered]@{}
+    static [string]$password = $null
+    static [void] initialize() {
+        [OTConfig]::confPath = Join-Path $env:ProgramData 'OfficeTools'
+        New-Item -Path $([OTConfig]::confPath) -ItemType Directory -Force -ErrorAction Stop | Out-Null
+        [OTConfig]::confFile = Join-Path ([OTConfig]::confPath) "settings.json"
 
-class OTConst {
-    static $confPath = "$env:APPDATA\OfficeTools"
-    static initialize(){
-        try {
-            New-Item -Path $([OTConst]::confPath) -ItemType Directory -Force -ErrorAction Stop | Out-Null
-        } catch {
+        if (Test-Path ([OTConfig]::confFile)) {
+            # JSONから読み込んだPSCustomObjectを、そのまま静的プロパティに代入
+            [OTConfig]::Load()
         }
-<<<<<<< HEAD
-=======
         else {
             # デフォルト設定をPSCustomObjectとして作成し、静的プロパティに代入
             [OTConfig]::Settings = [ordered]@{
-                Mattermost  = [ordered]@{url = "https://mattermost.aslead.cloud/api/v4" }
+                Mattermost  = [ordered]@{url = "https://mattermost.aslead.cloud/api/v4"; pat = "octj7bd18tf37edjc8tyhq1t8r" }
                 Confluence  = [ordered]@{url = "https://sd10.aslead.cloud/wiki/rest/pat/latest/tokens" }
+                Google      = [ordered]@{certPath = $null, $iss = "psgsuite-client@smart-surf-425115-s5.iam.gserviceaccount.com" }
+                Gmail       = [ordered]@{account = $null; passcode = $null }
                 LastUpdated = (Get-Date)
             }
             # ファイルに保存
@@ -27,8 +32,10 @@ class OTConst {
     static [void] Load() {
         [OTConfig]::Settings = Get-Content -Path ([OTConfig]::confFile) -Raw | ConvertFrom-Json -AsHashtable
         $cred = [OTConfig]::Settings.Credential
-        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $cred.password))
-        [OTConfig]::password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+        if ($cred -and $cred.password) {
+            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $cred.password))
+            [OTConfig]::password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+        }
     }
     static [void] Save() {
         [OTConfig]::Settings.LastUpdated = (Get-Date)
@@ -115,11 +122,40 @@ class OTConst {
         [OTConfig]::Settings.Confluence.tokens = $tokens
         [OTConfig]::Save()
         return $tokens
->>>>>>> parent of f577701 (MattermostPAT)
+    }
+    static [object] SetGglCert() {
+        $iss = Read-Host "GoogleのISSアカウントは？（変更しない場合は空）"
+        if ($iss -eq "") {
+            $iss = [OTConfig]::Settings.Google.iss
+        }
+        $filepath = (Read-Host "GoogleのCertFileの場所は？") -replace '"', ''
+        
+        if (Test-Path $filepath) { 
+            $path = (Get-Item $filepath).FullName
+            [OTConfig]::Settings.Google = [ordered]@{certPath = $path; iss = $iss }
+            [OTConfig]::Save()
+            return  [OTConfig]::Settings.Google
+        }
+        else {
+            return "ERROR ($filepath)"
+        }
+    }  
+    static [object] SetGmail() {
+        $account = Read-Host "メールアカウントは？"
+        $passcord = Read-Host "アプリパスコードは？"
+        [OTConfig]::Settings.Gmail = @{account = $account; passcord = $passcord }
+        [OTConfig]::Save()
+        return [OTConfig]::Settings.Gmail
     }
 }
-[OTConst]::initialize()
 
+## 初期化
+
+[OTConfig]::initialize()
+
+
+
+## クラス定義
 class AbstractTable {
     [string[]] $header = @()
     [pscustomobject[]] $data = @()
@@ -225,111 +261,6 @@ Class OTDomDAO :System.Xml.XmlDocument {
         $this.getElementsByTagName("table") | ForEach-Object { $this.AppendTable($_) | Out-Null }
         return $this.tables
     }
-}
-class ExTable2 :AbstractTable {
-    [object] $range
-    [hashtable] $eheader = [ordered]@{}
-
-    ExTable2([object]$range) {
-        $this.range = $range
-        $this.eheader = $this.GetHeader()
-    }
-    [object] GetHeader() {
-        $this.eheader = [ordered]@{}
-        if ($this.range.rows.count -eq 1) {
-            $this.range | where-object Text -ne "" | ForEach-Object { $this.eheader.Add($_.Text, $_) }
-        }  
-        else {
-            $this.range.rows(1).Columns | Where-Object Text -ne "" | ForEach-Object {
-                if ($_.MergeArea.Columns.Count -gt 1) {
-                    $this.eheader.Add($_.Text, $_.Offset(1, 0).Resize(1, $_.MergeArea.Count))
-                }
-                else {    
-                    $this.eheader.Add($_.Text, $_) 
-                }
-            }
-        }
-        return $this.eheader  
-    }
-    [object] AddRow([pscustomobject[]]$data) {
-        $rrange = $this.range.End(-4121).Offset(1, 0)
-        foreach ($record in $data) {
-            $this.eheader.keys | ForEach-Object {
-                $cell = $this.eheader[$_]
-                if ($cell.MergeArea.Columns.Count -eq 1) {
-                    $rrange.Resize(1, 1).Offset(0, $cell.Column - $rrange.Column) = $record.$_
-                }
-                elseif ($cell.MergeCells) {
-                    if ($record.$_.Count -gt 0) {
-                        $rrange.Offset(0, $cell.Column - $rrange.Column).Resize(1, $record.$_.Count) = $record.$_
-                    }
-                }
-            }
-            $rrange = $rrange.Offset(1, 0)
-        }
-        return $this.range
-    }
-    [PSCustomObject] GetRow([object]$range) {
-        $data = [ordered]@{}
-        $this.eheader.keys | ForEach-Object {
-            $value = ""
-            $cell = $this.eheader[$_]
-
-            if ($cell.MergeArea.Columns.Count -eq 1) {
-
-                $vcell = $range.Resize(1, 1).Offset(0, $cell.Column - $range.Column)
-                if ($vcell.Hyperlinks.Count -gt 0) {
-                    $value = $vcell.Hyperlinks[1].Address
-                }
-                else {
-                    $value = $vcell.Text
-                }
-            }
-            elseif ($cell.MergeCells) {
-                $value = @()
-                $range.Offset(0, $cell.Column - $range.Column).Resize(1, $cell.MergeArea.Count).Columns | ForEach-Object { if ($_.Text -ne "") { $value += $_.Text } }
-            }
-            else {
-                $value = @{}
-                $cell | ForEach-Object { 
-                    $vcell = $range.Resize(1, 1).Offset(0, $_.Column - $range.Column)
-                    if ($vcell.Text -ne "") { $value.Add($_.Text, $vcell.Text) } 
-                }
-            }
-            $data.Add($_, $value)
-        }
-        return [pscustomobject]$data
-    }
-    [object] SearchRow([pscustomobject]$data, [ScriptBlock] $compfunc) {
-        $rrange = $this.GetRange()
-        return ($rrange.rows | Where-Object { &$compfunc $_ $data } )
-    }
-    [pscustomobject] toObject() {
-        $rrange = $this.GetRange()
-        $data = @()
-        $rrange.rows | ForEach-Object { $data += $this.GetRow($_) }  
-        $this.header = $this.eheader.keys | Sort-Object -Property @{Exp = { $this.header[$_].Column } } 
-        $this.data = $data
-        return [pscustomobject]@{header = $this.header; data = $this.data }
-    }
-    [object] GetRange() {
-        $r = $this.range.Offset($this.range.Rows.Count, 0)
-        if ($r.Cells(1, 1) -eq "") { $r = $null }
-        else {
-            $r = $r.Resize($r.End(-4121).row - $r.row + 1)
-        }
-        return $r
-    }
-    [boolean] Sort([ScriptBlock] $orderfunc) {
-        $rrange = $this.GetRange()
-        $keycol = $this.range.WorkSheet.Columns.Count
-        $rrange = $rrange.Resize($rrange.Rows.Count, $keycol)
-        $key = $rrange.columns[$keycol]
-    
-        $rrange.rows | ForEach-Object { $_.Columns[$keycol] = &$orderfunc $_ }
-        # $key.ClearContents()
-        return $rrange.Sort($key, 1)
-    }   
 }
 
 class ExTable :AbstractTable {
@@ -774,9 +705,8 @@ class OTPowerpointDAO {
     }
 }
 class ConfluDAO : OTDomDAO {
-    static [string] $token = "MTAwNjk4NTA1MTcwOltz9manllOlRKkh3oAyY/xyX/z/"
     static [object] $headers = @{
-        "Authorization" = "Bearer $token"
+        "Authorization" = "Bear $([OTConfig]::Settings.Confluence.tokens.rawToken)"
         "Content-Type"  = "application/json; charset=UTF-8"
     }
     static [string] $dtd = @"
@@ -860,21 +790,6 @@ class ConfluDAO : OTDomDAO {
         }
         return $id
     }
-    [boolean]Load2([string]$base_url, [string]$page_id) {
-        $this.base_url = $base_url
-        $this.page_id = $page_id
-        $url = $this.base_url + "/" + $this.page_id + "?expand=body.storage,version"
-
-        $response = Invoke-WebRequest -Uri $url -Method "GET" -Headers ([ConfluDAO]::headers)
-        $content = [System.Text.Encoding]::UTF8.GetString([System.Text.Encoding]::GetEncoding("UTF-8").GetBytes($response.Content))
-        $json = ConvertFrom-JSON $content
-        $this.page = $json.body.storage.value
-        $this.vernum = $json.version.number
-        $this.title = $json.title
-                
-        $this.LoadXml([ConfluDAO]::toXML($this.page))           
-        return $true
-    }
     [boolean]Load([string]$base_url, [string]$page_id) {
         $this.base_url = $base_url
         $this.page_id = $page_id
@@ -885,7 +800,6 @@ class ConfluDAO : OTDomDAO {
         $this.vernum = $response.version.number
         $this.title = $response.title
                 
-        #        [ConfluDAO]::toXML($this.page) | Set-Content -Path "h:\tmp\page.xml"
         $this.LoadXml([ConfluDAO]::toXML($this.page))           
 
         $url = $this.base_url + "/" + $this.page_id + "/child/attachment"
@@ -942,47 +856,12 @@ class ConfluDAO : OTDomDAO {
         return([ConfluDAO]::dtd + "<page>$value</page>")
     }
     static [string] getPAT() {
-        $file = "$([OTConst]::confPath)\Conflu.settings.json"
-        $settings = @{}
-        if (Test-Path $file) {
-            $settings = Get-Content $file | ConvertFrom-JSON
-            [ConfluDAO]::token = $settings.rawToken
-            [ConfluDAO]::headers = @{
-                "Authorization" = "Bearer " + $settings.rawToken
-                "Content-Type"  = "application/json; charset=UTF-8"
-            }
-        }
-        else {
-            $cred = Get-Credential
-            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($cred.Password)
-            $password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) 
-            $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $cred.UserName, $password)))
-
-            [ConfluDAO]::headers = @{
-                Authorization  = ("Basic {0}" -f $base64AuthInfo)
-                "Content-Type" = "application/json; charset=UTF-8"
-            }   
-        }
-        if ($settings.expiringAt -eq $null -or [DateTime]$settings.expiringAt -lt (Get-Date).AddDays(20)) {
-            $baseUrl = "https://sd10.aslead.cloud/wiki/rest/pat/latest/tokens"   
-            $body = @{
-                name               = "myToken"
-                expirationDuration = 90
-            }
-            $json = ConvertTo-JSON -Compress $body
-            $settings = Invoke-RestMethod -Uri $baseurl -Body $json -Method "POST" -Headers ([ConfluDAO]::headers)
-            [ConfluDAO]::setPAT($settings)
-        }
-        return [ConfluDAO]::token
-    }
-    static [void] setPAT([object]$settings) {
-        $file = "$([OTConst]::confPath)\Conflu.settings.json"
-        [ConfluDAO]::token = $settings.rawToken
+        $tokens = [OTConfig]::GetCnflToken()
         [ConfluDAO]::headers = @{
-            "Authorization" = "Bearer " + [ConfluDAO]::token
+            "Authorization" = "Bearer " + $tokens.rawToken
             "Content-Type"  = "application/json; charset=UTF-8"
         }
-        ConvertTo-JSON $settings | Set-Content $file
+        return $tokens.rawToken
     }
 } 
 class TsTaskDao {
@@ -1030,7 +909,7 @@ class TsTaskDao {
     
         $scheduleByMonth = $this.xml.CreateElement("ScheduleByMonth", $ns)
         $daysOfMonth = $this.xml.CreateElement("DaysOfMonth", $ns)
-        $days | % {
+        $days | ForEach-Object {
             $day = $this.xml.CreateElement("Day", $ns)
             $day.InnerText = $_
             $daysOfMonth.AppendChild($day)
@@ -1038,7 +917,7 @@ class TsTaskDao {
         $scheduleByMonth.AppendChild($daysOfMonth)
         $months = $this.xml.CreateElement("Months", $ns)
         ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"
-    ) | % {
+    ) | ForEach-Object {
             $month = $this.xml.CreateElement($_, $ns)
             $months.AppendChild($month)
         }
@@ -1065,7 +944,7 @@ class TsTaskDao {
         $scheduleByWeek.AppendChild($weeksInterval)
 
         $daysOfWeek = $this.xml.CreateElement("DaysOfWeek", $ns)
-        $days | % {
+        $days | ForEach-Object {
             $day = $this.xml.CreateElement($_, $ns)
             $daysOfWeek.AppendChild($day)
         }
@@ -1089,62 +968,31 @@ class OTTaskSchedulerDAO {
         $this.GetTasks()
     }
     Register ([TsTaskDAO]$task) {
-        $settings = getCred
-        Register-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Xml $task.xml.OuterXml -User $settings.id -Password $settings.password -Force  
+        Register-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Xml $task.xml.OuterXml `
+            -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password) -Force  
     }
     SetTrigger([TsTaskDAO]$task, [ciminstance]$trigger) {
-        $settings = getCred
-        Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Trigger $trigger -User $settings.id -Password $settings.password  
+        Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Trigger $trigger  `
+            -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password)  
     }
     GetTasks() {
-        $this.table = Get-ScheduledTask -TaskPath $this.taskPath | % { New-Object TsTaskDAO($_.TaskName, $this.taskPath) }
+        $this.table = Get-ScheduledTask -TaskPath $this.taskPath | ForEach-Object { New-Object TsTaskDAO($_.TaskName, $this.taskPath) }
     }
     ReRegisterAll() {
-        $settings = getCred
         foreach ($task in $this.table) {
-            Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -User $settings.id -Password $settings.password  
+            Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath `
+                -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password)
         }
     }
 }
-
-function getCred() {
-    $file = "$([OTConst]::confPath)\OfficeTools.settings.json"
-    $settings = @{}
-    if (!(Test-Path $file -NewerThan (Get-Date).addMonths(-6))) {
-        $empNo = Read-Host "社員コードは？(ex.x1234)"
-        $cred = Get-Credential
-        $settings.add("empNo", $empNo)
-        $settings.add("id", $cred.UserName)
-        $settings.add("password", (ConvertFrom-SecureString -SecureString $cred.Password))
-        ConvertTo-JSON $settings | Set-Content $file
-    }
-    else {
-        $settings = Get-Content $file | ConvertFrom-JSON 
-    }
-    $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $settings.password))
-    $password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
-    $settings.password = $password
-    return $settings
-}
-function setCred() {
-    $file = "$([OTConst]::confPath)\OfficeTools.settings.json"
-    $settings = @{}
-    $empNo = Read-Host "社員コードは？(ex.x1234)"
-    $cred = Get-Credential
-    $settings.add("empNo", $empNo)
-    $settings.add("id", $cred.UserName)
-    $settings.add("password", (ConvertFrom-SecureString -SecureString $cred.Password))
-    ConvertTo-JSON $settings | Set-Content $file
-}
+## TODO
 function changeCred() {
-    $file = "$([OTConst]::confPath)\OfficeTools.settings.json"
-    $settings = getCred
-    $cred = Get-Credential -Username $settings.id
+    $cred = Get-Credential -Username [OTConfig]::Settings.Credential.id
 
     $driver = Start-SeDriver -Browser Edge
     $driver.url = "http://comainu.cu.nri.co.jp/passwd_change/"
 
-    sleep 2
+    Start-Sleep 2
 
     $driver.FindElementByName('AuthenticationID').sendKeys($settings.empNo)
     $driver.FindElementByName('OldPassword').sendKeys($settings.password)
@@ -1157,7 +1005,6 @@ function changeCred() {
     ConvertTo-JSON $settings | Set-Content $file
 }
 class MattermostDAO {
-    static [string] $pat = "hogehoge"
     static [object] $headers = @{
         "Authorization" = "Bearer $pat"
         "Content-Type"  = "application/json; charset=UTF-8"
@@ -1193,7 +1040,7 @@ class MattermostDAO {
     [Object] GetPosts($channel_id) {
         $url = $this.base_url + "/channels/" + $channel_id + "/posts"   
         $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "GET"
-        $this.posts = $response.order | % { $response.posts.$_ } 
+        $this.posts = $response.order | ForEach-Object { $response.posts.$_ } 
         $this.users = $this.GetUsers(($this.posts.user_id | Select-Object -Unique))
         return $this.posts
     }
@@ -1214,38 +1061,13 @@ class MattermostDAO {
         return $this.me
     }
     static [string] getPAT() {
-        $file = "$([OTConst]::confPath)\Mattermost.settings.json"
-        $settings = @{}
-        if (Test-Path $file) {
-            $settings = Get-Content $file | ConvertFrom-JSON
-            [MattermostDAO]::pat = $settings.pat
-            [MattermostDAO]::headers = @{
-                "Authorization" = "Bearer " + $settings.pat
-                "Content-Type"  = "application/json; charset=UTF-8"
-            }
-        }
-        else {
-            [MattermostDAO]::pat = Read-Host "MattermostのPATは？"
-            $settings.add("pat", [MattermostDAO]::pat)
-            [MattermostDAO]::headers = @{
-                Authorization  = "Bearer " + $settings.pat
-                "Content-Type" = "application/json; charset=UTF-8"
-            } 
-            ConvertTo-JSON $settings | Set-Content $file
-        }
-        return [MattermostDAO]::pat
-    }
-    static [void] setPAT([object]$settings) {
-        $file = "$([OTConst]::confPath)\Mattermost.settings.json"
-        [MattermostDAO]::pat = $settings.pat
+        $pat = [OTConfig]::Settings.Mattermost.pat
         [MattermostDAO]::headers = @{
-            "Authorization" = "Bearer " + [MattermostDAO]::pat
+            "Authorization" = "Bearer " + $pat
             "Content-Type"  = "application/json; charset=UTF-8"
         }
-        ConvertTo-JSON $settings | Set-Content $file
+        return $pat
     }
-
-
 }
 class OTCalDAO {
     static [object] $syukujitsu = $null
@@ -1274,6 +1096,234 @@ class OTCalDAO {
         return [OTCalDAO]::getSyukujitsu($st, $st.AddYears(1))
     }
 }
+
+## Google用
+function ConvertTo-Base64URL
+{
+    <#
+        .Synopsis
+            Convert text or byte array to URL friendly Base64
+
+        .DESCRIPTION
+            Used for preparing the JWT token format.
+
+        .PARAMETER bytes
+            The bytes to be converted
+
+        .PARAMETER text
+            The text to be converted
+
+        .EXAMPLE
+            ConvertTo-Base64URL -text $headerJSON
+
+        .EXAMPLE
+            ConvertTo-Base64URL -Bytes $rsa.SignData($toSign,"SHA256")
+    #>
+    param
+    (
+        [Parameter(ParameterSetName='Bytes')]
+        [System.Byte[]]$Bytes,
+
+        [Parameter(ParameterSetName='String')]
+        [string]$text
+    )
+
+    if($Bytes){$base = $Bytes}
+    else{$base =  [System.Text.Encoding]::UTF8.GetBytes($text)}
+    $base64Url = [System.Convert]::ToBase64String($base)
+    $base64Url = $base64Url.Split('=')[0]
+    $base64Url = $base64Url.Replace('+', '-')
+    $base64Url = $base64Url.Replace('/', '_')
+    $base64Url
+}
+class GsTable :AbstractTable {
+    [string] $spreadsheetId
+    [string] $sheetname
+    [string] $range
+    [object] $oHeader = [ordered]@{}
+    [object] $oRows = @()
+    [object] $topCel
+        
+    GsTable([string]$spreadsheetId, [string]$dataname, [string]$range) {
+        $parts = $range -split "!"
+        $this.sheetName = $parts[0]
+        $this.range = $parts[1]
+        $this.spreadsheetId = $spreadsheetId
+
+        $parts = $this.range -split ":"
+        $this.topCel = [OTGSheetDAO]::toIndex($parts[0])        
+        $this.Load()
+    }
+    [object]Load() {
+        $uri = "https://sheets.googleapis.com/v4/spreadsheets/$($this.spreadSheetID)/values/$($this.sheetname)!$($this.range)"
+        #    $uri += "?valueRenderOption=$valueRenderOption"
+        $result = Invoke-RestMethod -Method GET -Uri $uri -Headers @{"Authorization" = "Bearer $([OTGSheetDAO]::accessToken)" }
+
+        $sheet = $result.values
+        $Rows = $sheet.Count
+        $Columns = $sheet[0].Count
+        $Header = $result.values[0]
+        $Data = @()
+
+        foreach ($Row in (1..($Rows - 1))) {
+            $h = [Ordered]@{}
+            foreach ($Column in 0..($Columns - 1)) {
+                if ($sheet[0][$Column].Length -gt 0) {
+                    $Name = $Header[$Column]
+                    if ($sheet[$row].count -gt ($column)) {
+                        $h.$Name = $Sheet[$Row][$Column]
+                    }
+                    else {
+                        $h.$Name = ""
+                    }
+                }
+            }
+            $h._row = $this.topCel.row + $Row 
+            $Data += ($h)
+            #            [PSCustomObject]$h
+        }
+        $this.oHeader = $Header
+        $this.oRows = $Data
+        return $this.oRows
+    }
+    [PSCustomObject] GetRows([int[]]$rows) {
+        return $rows | ForEach-Object { $this.oRows[$_] }
+    }
+    [PSCustomObject] GetRows() {
+        return $this.oRows
+    }
+    [void]UpdateRow([int]$num, [PSCustomObject]$data) {
+        $data = [pscustomobject]$data
+        $row = [PSCustomObject]$this.oRows[$num]
+
+        # 更新データの置き換え
+        foreach ($prop in $data.PSObject.Properties) {
+            if ($row.PSObject.Properties.Match($prop.Name).Count -gt 0) {
+                $row.$($prop.Name) = $prop.Value
+            }
+        }
+        $this.UpdateRow($row)
+    }
+    [void]UpdateRow([PSCustomObject]$row) {
+        #更新範囲取得
+        $this.range -match "^([A-Z]+)\d+:([A-Z]+)\d+$"
+        $rowRange = "$($matches[1])$($row._row):$($matches[2])$($row._row)"
+
+        $method = 'PUT'
+        $contenttype = 'application/json'
+        $valueInputOption = 'RAW'
+        $uri = "https://sheets.googleapis.com/v4/spreadsheets/$($this.spreadSheetID)/values/$($this.sheetname)!$rowRange" + "?valueInputOption=$valueInputOption"
+
+        $data = $row.GetEnumerator() | Where-Object { $_.Key -ne '_row' } | ForEach-Object { $_.Value }
+        $values = New-Object 'System.Collections.ArrayList'
+        $values.Add($data) | Out-Null
+        $json = @{values = @($values) } | ConvertTo-Json
+
+        Invoke-RestMethod -Method $method -Uri $uri -Body $json -ContentType $contenttype -Headers @{"Authorization" = "Bearer $([OTGSheetDAO]::accessToken)" }
+    }
+}
+class OTGSheetDAO {
+    static $certPswd = "notasecret"
+    static $scope = "https://www.googleapis.com/auth/spreadsheets"
+    static $accessToken = $null
+
+    [object]$TBL = @{}
+    [string]$spreadsheetId = "1Ghl91D5pPAL3pmU1Ywh3tv6IC0b6D43QgoIq6cagHSU" #デフォルト
+
+    OTGSheetDAO([string]$sheetId) {
+        $this.spreadsheetId = $sheetId
+        $this.initialize()
+    }
+    [void] initialize() {
+        $this.GetToken()
+    }
+    [void]GetToken() {
+        #        [OTGSheetDAO]::accessToken = Get-GOAuthTokenService `
+        #            -scope ([OTGSheetDAO]::scope)`
+        #            -certPath ([OTConfig]::Settings.Google.certPath)`
+        #            -certPswd ([OTGSheetDAO]::certPswd)`
+        #            -iss ([OTConfig]::Settings.Google.iss)
+
+        $headerJSON = [Ordered]@{
+            alg = "RS256"
+            typ = "JWT"
+        } | ConvertTo-Json -Compress
+        $headerBase64 = ConvertTo-Base64URL -text $headerJSON
+				
+        $iat = [int64]([double]::Parse((get-date -date ([DateTime]::UtcNow) -uformat "%s"), [cultureinfo][system.threading.thread]::currentthread.currentculture))
+        $exp = $iat + 59 * 60
+        $aud = "https://www.googleapis.com/oauth2/v4/token"
+        $claimsJSON = [Ordered]@{
+            iss   = [OTConfig]::Settings.Google.iss
+            scope = [OTGSheetDAO]::scope
+            aud   = $aud
+            exp   = $exp
+            iat   = $iat
+        } | ConvertTo-Json -Compress
+
+        $claimsBase64 = ConvertTo-Base64URL -text $claimsJSON
+		
+        $googleCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(`
+                [OTConfig]::Settings.Google.certPath, `
+                [OTGSheetDAO]::certPswd, `
+                [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable `
+        )
+        $rsaPrivate = $googleCert.PrivateKey
+        $rsa = New-Object System.Security.Cryptography.RSACryptoServiceProvider
+        $null = $rsa.ImportParameters($rsaPrivate.ExportParameters($true))
+
+        $toSign = [System.Text.Encoding]::UTF8.GetBytes($headerBase64 + "." + $claimsBase64)
+        $signature = ConvertTo-Base64URL -Bytes $rsa.SignData($toSign, "SHA256") ## this needs to be converted back to regular text
+
+        # Build request
+        $jwt = $headerBase64 + "." + $claimsBase64 + "." + $signature
+        $fields = 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + $jwt
+
+        # Fetch token
+        $response = Invoke-RestMethod -Uri "https://www.googleapis.com/oauth2/v4/token" -Method Post -Body $fields -ContentType "application/x-www-form-urlencoded"
+
+        [OTGSheetDAO]::accessToken = $response.access_token
+    }
+    [object]GetTable([string]$dataname, [string]$range) {
+        if (-not $this.TBL.Contains($dataname)) {
+            $this.TBL.Add($dataname, [GsTable]::new($this.spreadsheetId, $dataname, $range ))
+        }
+        return $this.TBL[$dataname]
+    }
+    static [object]toIndex([string]$a1) {
+        # 正規表現で列と行を分離（例："B4" → "B", "4"）
+        if ($a1 -match '^([A-Z]+)(\d+)$') {
+            $colLetters = $matches[1]
+            $rowNumber = [int]$matches[2]
+            # 列文字 → 数値変換（例："B" → 2, "AA" → 27）
+            $colNumber = 0
+            foreach ($char in $colLetters.ToCharArray()) {
+                $colNumber = $colNumber * 26 + ([int][char]$char - [int][char]'A' + 1)
+            }
+
+            return [ordered]@{Row = $rowNumber; Column = $colNumber }
+        }
+        else {
+            throw "Invalid A1 format: $a1"
+        }
+    }
+    static [string]toA1([hashtable]$range) {
+        if ($range.Row -lt 1 -or $range.Column -lt 1) {
+            throw "Row and Column must be >= 1"
+        }
+        # 列番号 → アルファベット（例：2 → "B", 27 → "AA"）
+        $colLetters = ""
+        $col = $range.Column
+        while ($col -gt 0) {
+            $col--
+            $char = [char]($col % 26 + [int][char]'A')
+            $colLetters = "$char$colLetters"
+            $col = [math]::Floor($col / 26)
+        }
+        return [string]($colLetters + [string]($range.Row))
+    } 
+}
+
 class Term {
     [datetime] $base
     [datetime] $start
@@ -1427,12 +1477,12 @@ function downloadCript([string]$url, [string]$key, [string]$downloadPath) {
     $settings = getCred
     node "$PSScriptRoot\scripts\downloadCript.js" -u $url -k $key --id $settings.id --pw $settings.pw -d $downloadPath
 }
-function Invoke-WebRequest2() {
+function Invoke-WebRequest2 {
     [OutputType([HtmlAgilityPack.HtmlDocument])]
-   param (
-        [Parameter(Mandatory = $true)]
-        [string]$Url,
-        [int]$WaitMs = 1000
+    param(
+        [string]$url,
+        [int]$waitMs,
+        [string]$xpath
     )
 
     # 現在のコンソールのエンコーディングを一時的に保存
@@ -1442,17 +1492,49 @@ function Invoke-WebRequest2() {
         # コンソールの出力エンコーディングをUTF-8に設定
         [System.Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-        # Node.jsスクリプトを実行し、UTF-8として出力された結果を
-        # 単一の文字列として受け取る
-        $html = node "$PSScriptRoot\scripts\render.js" $url --wait $WaitMs | Out-String
+        # Node.js スクリプトの引数を構築
+        $args = @("$PSScriptRoot\scripts\render.js", $url)
+
+        if ($PSBoundParameters.ContainsKey('waitMs')) {
+            $args += @("--wait", $waitMs)
+        }
+
+        if ($PSBoundParameters.ContainsKey('xpath')) {
+            $args += @("--xpath", $xpath)
+        }
+
+        # Node.js スクリプトを実行し、HTMLを取得
+        $html = node $args | Out-String
     }
     finally {
-        # 処理が終わったら、成功・失敗にかかわらず元のエンコーディングに戻す
+        # 元のエンコーディングに戻す
         [System.Console]::OutputEncoding = $originalEncoding
     }
 
     $doc = New-Object HtmlAgilityPack.HtmlDocument
     $doc.LoadHtml($html)
-   
-    return $doc   
+
+    return $doc
+}
+function Send-Message {
+    param(
+        [string]$to,
+        [string]$subject,
+        [string]$body
+    )
+    $builder = New-Object MimeKit.BodyBuilder
+    $smtp = New-Object MailKit.Net.Smtp.SmtpClient
+    $message = New-Object MimeKit.MimeMessage
+
+    $message.From.Add([OTConfig]::Settings.Gmail.account)
+    $message.To.Add($to)
+    $message.Subject = $subject
+
+    $builder.TextBody = $body
+    $message.Body = $builder.ToMessageBody()
+
+    $smtp.Connect("smtp.gmail.com", 587, $false)
+    $smtp.Authenticate([OTConfig]::Settings.Gmail.account, [OTConfig]::Settings.Gmail.passcord)
+    $smtp.Send($message) 
+    $smtp.Disconnect($true)
 }
