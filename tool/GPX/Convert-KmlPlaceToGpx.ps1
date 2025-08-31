@@ -68,7 +68,7 @@ function Convert-KmlRouteToGpx {
     return $gpxDoc
 }
 
-$GpxInputPath = "D:\tool\仙台茶屋.kml"
+$GpxInputPath = "C:\Users\shuma\Downloads\米沢茶屋.kml"
 
 [xml]$kml = Get-Content $GpxInputPath -Raw
 $doc = Convert-KmlRouteToGpx($kml)
