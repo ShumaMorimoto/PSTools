@@ -1098,8 +1098,7 @@ class OTCalDAO {
 }
 
 ## Google用
-function ConvertTo-Base64URL
-{
+function ConvertTo-Base64URL {
     <#
         .Synopsis
             Convert text or byte array to URL friendly Base64
@@ -1121,15 +1120,15 @@ function ConvertTo-Base64URL
     #>
     param
     (
-        [Parameter(ParameterSetName='Bytes')]
+        [Parameter(ParameterSetName = 'Bytes')]
         [System.Byte[]]$Bytes,
 
-        [Parameter(ParameterSetName='String')]
+        [Parameter(ParameterSetName = 'String')]
         [string]$text
     )
 
-    if($Bytes){$base = $Bytes}
-    else{$base =  [System.Text.Encoding]::UTF8.GetBytes($text)}
+    if ($Bytes) { $base = $Bytes }
+    else { $base = [System.Text.Encoding]::UTF8.GetBytes($text) }
     $base64Url = [System.Convert]::ToBase64String($base)
     $base64Url = $base64Url.Split('=')[0]
     $base64Url = $base64Url.Replace('+', '-')
@@ -1139,16 +1138,17 @@ function ConvertTo-Base64URL
 class GsTable :AbstractTable {
     [string] $spreadsheetId
     [string] $sheetname
+    [string] $sheetId
     [string] $range
     [object] $oHeader = [ordered]@{}
     [object] $oRows = @()
     [object] $topCel
         
-    GsTable([string]$spreadsheetId, [string]$dataname, [string]$range) {
-        $parts = $range -split "!"
-        $this.sheetName = $parts[0]
-        $this.range = $parts[1]
+    GsTable([string]$spreadsheetId, [string]$dataname, [int]$sheetId, [string]$sheetName, [string]$range) {
         $this.spreadsheetId = $spreadsheetId
+        $this.sheetId = $sheetId
+        $this.sheetName = $sheetName
+        $this.range = $range
 
         $parts = $this.range -split ":"
         $this.topCel = [OTGSheetDAO]::toIndex($parts[0])        
@@ -1162,7 +1162,7 @@ class GsTable :AbstractTable {
         $sheet = $result.values
         $Rows = $sheet.Count
         $Columns = $sheet[0].Count
-        $Header = $result.values[0]
+        $Header = [string[]]$result.values[0]
         $Data = @()
 
         foreach ($Row in (1..($Rows - 1))) {
@@ -1178,33 +1178,31 @@ class GsTable :AbstractTable {
                     }
                 }
             }
-            $h._row = $this.topCel.row + $Row 
+            $h._row = $this.topCel.Row + $Row 
             $Data += ($h)
-            #            [PSCustomObject]$h
         }
         $this.oHeader = $Header
         $this.oRows = $Data
         return $this.oRows
     }
-    [PSCustomObject] GetRows([int[]]$rows) {
+    [hashtable[]] GetRows([int[]]$rows) {
         return $rows | ForEach-Object { $this.oRows[$_] }
     }
-    [PSCustomObject] GetRows() {
+    [hashtable[]] GetRows() {
         return $this.oRows
     }
-    [void]UpdateRow([int]$num, [PSCustomObject]$data) {
-        $data = [pscustomobject]$data
-        $row = [PSCustomObject]$this.oRows[$num]
+    [void]UpdateRow([int]$num, [hashtable]$data) {
+        $row = $this.oRows[$num]
 
         # 更新データの置き換え
-        foreach ($prop in $data.PSObject.Properties) {
-            if ($row.PSObject.Properties.Match($prop.Name).Count -gt 0) {
+        foreach ($prop in $data.keys | Where-Object { $_ -ne '_row' }) {
+            if ($row.keys.Contains($prop)) {
                 $row.$($prop.Name) = $prop.Value
             }
         }
         $this.UpdateRow($row)
     }
-    [void]UpdateRow([PSCustomObject]$row) {
+    [void]UpdateRow([hashtable]$row) {
         #更新範囲取得
         $this.range -match "^([A-Z]+)\d+:([A-Z]+)\d+$"
         $rowRange = "$($matches[1])$($row._row):$($matches[2])$($row._row)"
@@ -1214,19 +1212,41 @@ class GsTable :AbstractTable {
         $valueInputOption = 'RAW'
         $uri = "https://sheets.googleapis.com/v4/spreadsheets/$($this.spreadSheetID)/values/$($this.sheetname)!$rowRange" + "?valueInputOption=$valueInputOption"
 
-        $data = $row.GetEnumerator() | Where-Object { $_.Key -ne '_row' } | ForEach-Object { $_.Value }
+        $data = [string[]]$this.oHeader | ForEach-Object { $row.$_ }
         $values = New-Object 'System.Collections.ArrayList'
         $values.Add($data) | Out-Null
         $json = @{values = @($values) } | ConvertTo-Json
 
         Invoke-RestMethod -Method $method -Uri $uri -Body $json -ContentType $contenttype -Headers @{"Authorization" = "Bearer $([OTGSheetDAO]::accessToken)" }
     }
+    [void]InsertRow([int]$row) {
+        $suffix = "$($this.spreadSheetID)" + ":batchUpdate"
+        $uri = "https://sheets.googleapis.com/v4/spreadsheets/$suffix"
+
+        $idx = $this.oRows[$row]._row
+
+        $json = @{requests = @(
+                @{
+                    "insertDimension" = @{
+                        range             = @{sheetId = $this.sheetId; dimension = "ROWS"; startIndex = $idx; endIndex = $idx + 1 }
+                        inheritFromBefore = $false
+                    }
+                }
+            )
+        } | ConvertTo-Json -depth 5
+
+        Invoke-RestMethod -Method Post -Uri $uri `
+            -Body $json `
+            -ContentType "application/json" `
+            -Headers @{"Authorization" = "Bearer $([OTGSheetDAO]::accessToken)" }
+    }
+
 }
 
 class OTGoogleDAO {
     static $certPswd = "notasecret"
 
-    OTGoogleDAO(){
+    OTGoogleDAO() {
     }
 
     static [string]GetToken([string]$scope) {
@@ -1278,24 +1298,36 @@ class OTGSheetDAO:OTGoogleDAO {
 
     [object]$TBL = @{}
     [string]$spreadsheetId = "1Ghl91D5pPAL3pmU1Ywh3tv6IC0b6D43QgoIq6cagHSU" #デフォルト
+    [object]$sheets = $null
 
-    OTGSheetDAO([string]$sheetId) {
-        $this.spreadsheetId = $sheetId
+    OTGSheetDAO([string]$spreadsheetId) {
+        $this.spreadsheetId = $spreadsheetId
         $this.initialize()
     }
     [void] initialize() {
         [OTGSheetDAO]::GetToken()
+        $null = $this.GetSheets()
     }
     static [void] GetToken() {
         [OTGSheetDAO]::accessToken = [OTGoogleDAO]::GetToken([OTGSheetDAO]::scope)
     }
+    [object] GetSheets() {
+        $uri = "https://sheets.googleapis.com/v4/spreadsheets/$($this.spreadSheetID)"
+        $ss = Invoke-RestMethod -Method GET -Uri $uri -Headers @{"Authorization" = "Bearer  $([OTGSheetDAO]::accessToken)" }
+        $this.sheets = $ss.sheets
+        return $this.sheets
+    }
     [object]GetTable([string]$dataname, [string]$range) {
         if (-not $this.TBL.Contains($dataname)) {
-            $this.TBL.Add($dataname, [GsTable]::new($this.spreadsheetId, $dataname, $range ))
+            $parts = $range -split "!"
+            $sheetName = $parts[0]
+            $range = $parts[1]
+            $sheetId = ($this.sheets.properties | Where-Object { $_.title -eq $sheetName }).sheetID           
+            $this.TBL.Add($dataname, [GsTable]::new($this.spreadsheetId, $dataname, $sheetid, $sheetname, $range ))
         }
         return $this.TBL[$dataname]
     }
-    static [object]toIndex([string]$a1) {
+    static [hashtable]toIndex([string]$a1) {
         # 正規表現で列と行を分離（例："B4" → "B", "4"）
         if ($a1 -match '^([A-Z]+)(\d+)$') {
             $colLetters = $matches[1]
