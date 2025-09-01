@@ -1212,23 +1212,26 @@ class GsTable :AbstractTable {
         $valueInputOption = 'RAW'
         $uri = "https://sheets.googleapis.com/v4/spreadsheets/$($this.spreadSheetID)/values/$($this.sheetname)!$rowRange" + "?valueInputOption=$valueInputOption"
 
-        $data = [string[]]$this.oHeader | ForEach-Object { $row.$_ }
-        $values = New-Object 'System.Collections.ArrayList'
-        $values.Add($data) | Out-Null
-        $json = @{values = @($values) } | ConvertTo-Json
+        $data = , (@($this.oHeader | ForEach-Object { $row.$_ }))
+        $json = @{ values = $data } | ConvertTo-Json -Depth 3
+
+        #$data = [string[]]$this.oHeader | ForEach-Object { $row.$_ }
+        #        $values = New-Object 'System.Collections.ArrayList'
+        #        $values.Add($data) | Out-Null
+        #        $json = @{values = @($values) } | ConvertTo-Json
 
         Invoke-RestMethod -Method $method -Uri $uri -Body $json -ContentType $contenttype -Headers @{"Authorization" = "Bearer $([OTGSheetDAO]::accessToken)" }
     }
-    [void]InsertRow([int]$row) {
+    [void]InsertRow([int]$idx) {
         $suffix = "$($this.spreadSheetID)" + ":batchUpdate"
         $uri = "https://sheets.googleapis.com/v4/spreadsheets/$suffix"
 
-        $idx = $this.oRows[$row]._row
+        $row = $this.oRows[$idx]._row
 
         $json = @{requests = @(
                 @{
                     "insertDimension" = @{
-                        range             = @{sheetId = $this.sheetId; dimension = "ROWS"; startIndex = $idx; endIndex = $idx + 1 }
+                        range             = @{sheetId = $this.sheetId; dimension = "ROWS"; startIndex = $row; endIndex = $row + 1 }
                         inheritFromBefore = $false
                     }
                 }
