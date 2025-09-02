@@ -1209,7 +1209,7 @@ class GsTable :AbstractTable {
 
         $method = 'PUT'
         $contenttype = 'application/json'
-        $valueInputOption = 'RAW'
+        $valueInputOption = 'USER_ENTERED'
         $uri = "https://sheets.googleapis.com/v4/spreadsheets/$($this.spreadSheetID)/values/$($this.sheetname)!$rowRange" + "?valueInputOption=$valueInputOption"
 
         $data = , (@($this.oHeader | ForEach-Object { $row.$_ }))
