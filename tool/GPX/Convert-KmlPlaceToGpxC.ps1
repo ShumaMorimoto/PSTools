@@ -104,7 +104,7 @@ function Convert-KmlPlaceToGpx {
 # ========================
 
 # デフォルトパス
-$defaultPath = "C:\Users\shuma\Downloads\米沢茶屋.kml"
+$defaultPath = "C:\Users\shuma\Downloads\仙台茶屋.kml"
 
 # 引数からパス取得（なければデフォルト）
 $KmlInputPath = if ($args.Count -ge 1) { $args[0] } else { $defaultPath }

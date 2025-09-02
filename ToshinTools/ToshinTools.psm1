@@ -131,10 +131,10 @@ class ToshinDAO {
             cpath = "(//td)[3]"
         }
         '201707310D' = [ordered]@{
-            url   = 'https://www.nikkoam.com/fund/detail/643718'
-            bpath = "(//*[@class='p-products-price__label'])[1]"
-            npath = "(//*[@class='p-products-price__number'])[1]"
-            cpath = "(//*[@class='p-products-price__number'])[2]"
+            url   = 'https://www.amova-am.com/fund/detail/643718'
+            bpath = "((//div[@class='p-products-price__row'])[1]/div)"
+            npath = "((//div[@class='p-products-price__row'])[2]//span)[1]"
+            cpath = "((//div[@class='p-products-price__row'])[3]//span)[1]"
         }
         "2012052801" = [ordered]@{
             url   = 'https://hifumi.rheos.jp/fund/plus/'

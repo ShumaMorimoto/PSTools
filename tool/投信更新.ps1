@@ -13,11 +13,24 @@ function Write-Log {
 function UpdateJika() {
     $spreadsheetId = "1Ghl91D5pPAL3pmU1Ywh3tv6IC0b6D43QgoIq6cagHSU"
     $range = "シート1!C1:G18"
-    $base = (Get-Date).AddHours(6).AddWorkDays(-1).Date
+    $base = (Get-Date).AddHours(6).AddWorkDays(-1).Date.ToString("M月d日")
 
     $gs = [OTGSheetDAO]::new($spreadsheetId)
     $tbl = $gs.GetTable("銘柄", $range)
-    $codes = $tbl.oRows | Where-Object { [datetime]::ParseExact($_.日付, "M月d日", $null) -lt $base } 
+    $bday = $gs.GetTable("基準日", "シート1!I17:I18")
+
+    if ($bday.oRows[0].日付 -ne $base) {
+        $jika = $gs.GetTable("時価", "シート1!I17:M19")
+        $jika.InsertRow(0)
+        $sum = $jika.oRows[0]
+        $sum._row ++
+        $jika.UpdateRow($sum)
+
+        $bday.oRows[0].日付 = $base
+        $bday.UpdateRow($bday.oRows[0])
+    }
+
+    $codes = $tbl.oRows | Where-Object { $_.日付 -ne $base } 
 
     try {
         $prices = @()
@@ -55,7 +68,7 @@ function UpdateJika() {
             }
         }
         $tbl.Load() | Out-Null
-        $codes = $tbl.oRows | Where-Object { [datetime]::ParseExact($_.日付, "M月d日", $null) -lt $base } 
+        $codes = $tbl.oRows | Where-Object { $_.日付 -ne $base } 
       
         if ($codes.count -gt 0) {
             Write-EventLog -LogName Application -Source "投信更新" `
