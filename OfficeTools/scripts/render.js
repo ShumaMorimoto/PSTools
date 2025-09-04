@@ -9,7 +9,7 @@ const argv = yargs(hideBin(process.argv))
     alias: "w",
     type: "number",
     description: "ページ読み込み後の待機時間（ミリ秒）",
-    default: 1000,
+    default: 0,
   })
   .option("xpath", {
     alias: "x",

@@ -12,15 +12,17 @@ function Write-Log {
 
 function UpdateJika() {
     $spreadsheetId = "1Ghl91D5pPAL3pmU1Ywh3tv6IC0b6D43QgoIq6cagHSU"
-    $range = "シート1!C1:G18"
+    $range = "シート1!C1:G16"
+    $jika_range = "シート1!I17:M19"
+    $bday_range = "シート1!I17:I18"
     $base = (Get-Date).AddHours(6).AddWorkDays(-1).Date.ToString("M月d日")
 
     $gs = [OTGSheetDAO]::new($spreadsheetId)
     $tbl = $gs.GetTable("銘柄", $range)
-    $bday = $gs.GetTable("基準日", "シート1!I17:I18")
+    $bday = $gs.GetTable("基準日",$bday_range)
 
     if ($bday.oRows[0].日付 -ne $base) {
-        $jika = $gs.GetTable("時価", "シート1!I17:M19")
+        $jika = $gs.GetTable("時価", $jika_range)
         $jika.InsertRow(0)
         $sum = $jika.oRows[0]
         $sum._row ++
@@ -115,17 +117,17 @@ function ConvertTo-Base64Url {
 }
 function SendJika() {
     $spreadsheetId = "1Ghl91D5pPAL3pmU1Ywh3tv6IC0b6D43QgoIq6cagHSU"
-    $range = "シート1!B1:L16"
-    $rangeall = "シート1!I17:L18"
+    $range = "シート1!C1:G18"
+    $jika_range = "シート1!I17:M19"
 
     $gs = [OTGSheetDAO]::new($spreadsheetId)
 
     $tbl = $gs.GetTable("銘柄別時価", $range)
-    $sum = $gs.GetTable("総計時価", $rangeall)
+    $sum = $gs.GetTable("総計時価", $jika_range)
 
-    $subject = "【投信:$($sum.oRows.前日比)円】＠$((Get-Date).ToString("HH:mm"))"
+    $subject = "【投信:$($sum.oRows[0].前日比)円】＠$((Get-Date).ToString("HH:mm"))"
 
-    $message = @("時価:$($sum.oRows.時価)円 損益:$($sum.oRows.損益)円 ($($sum.oRows.前日比)円)")
+    $message = @("時価:$($sum.oRows[0].時価)円 損益:$($sum.oRows[0].損益)円 ($($sum.oRows[0].前日比)円)")
     foreach ($row in $tbl.oRows) {
         $message += "$(PadRightDisplay $row.略称 12)  $($row.日付) {0,7} ({1,5}): {2,10}" -f $row.価格, $row.前日比, $row.前日比損益
     }

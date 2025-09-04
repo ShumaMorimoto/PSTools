@@ -11,7 +11,7 @@ class ToshinDAO {
 
         $price = [ToshinDAO]::ParsePrice($code, $doc)
 
-        if($null -eq $price.date){
+        if ($null -eq $price.date) {
             $price = [ToshinDAO]::GetPriceFromWLT($code)
         }
         return $price
@@ -30,6 +30,17 @@ class ToshinDAO {
         $doc = Invoke-WebRequest2 -Url $url -xpath  ([ToshinDAO]::pricesrc['default'].bpath)
     
         $price = [ToshinDAO]::ParsePrice('default', $doc)
+        $price.code = $code
+        return $price
+    }
+    static [PSCustomObject] GetPriceFromNikkei([string]$code) {
+        while ($code.Length -lt 8) {
+            $code = "0" + $code
+        }
+        $url = [ToshinDAO]::pricesrc['nikkei'].url + $code
+        $doc = Invoke-WebRequest2 -Url $url -xpath  ([ToshinDAO]::pricesrc['nikkei'].bpath)
+    
+        $price = [ToshinDAO]::ParsePrice('nikkei', $doc)
         $price.code = $code
         return $price
     }
@@ -74,7 +85,11 @@ class ToshinDAO {
         $price = [ordered]@{"code" = $code; "date" = $base_date; "nav" = $nav; "cmp" = $cmp_prev_day }
         return $price
     }
-
+    static [string]ToQCode([string]$code) {
+        $dom = Invoke-WebRequest2 "https://www.wealthadvisor.co.jp/snapshot/$($code)"
+        $dom.DocumentNode.SelectNodes('//title').InnerText -Match '[\d]{7}[\dA-Z]'
+        return $Matches[0]
+    }
     static [pscustomobject] $pricesrc = @{
         "2000032406" = [ordered]@{
             url   = 'https://www.alamco.co.jp/fund/globalvalue/index.html'
@@ -141,6 +156,12 @@ class ToshinDAO {
             bpath = "(//*[@class='hf-js-date'])[1]"
             npath = "(//td)[1]"
             cpath = "(//td)[2]"
+        }
+        "nikkei"     = [ordered]@{
+            url   = 'https://www.nikkei.com/nkd/fund/?fcode='
+            bpath = "(//div[@class='m-stockPriceElm']/dl[1]/dt)"
+            npath = "(//div[@class='m-stockPriceElm']/dl[1]/dd)"
+            cpath = "(//div[@class='m-stockPriceElm']/dl[2]/dd)"
         }
         default      = [ordered]@{
             url   = 'https://www.wealthadvisor.co.jp/snapshot/'
