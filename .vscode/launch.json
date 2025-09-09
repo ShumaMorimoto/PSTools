@@ -14,6 +14,18 @@
       "env": {
         "DEBUG_MODE": "true"
       }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Node.js Script",
+      "program": "${workspaceFolder}/cheerio-runner.js"
+    },
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Attach to Node.js",
+      "port": 9229
     }
   ]
 }

@@ -16,7 +16,7 @@ function Get-Price([string]$code) {
     $url = $script:ParseInfo[$code].url
     $doc = Invoke-WebRequest2 -Url $url -xpath  ($script:ParseInfo[$code].bpath)
 
-    $price = Get-ParsedPrice $code $doc
+    $price = Get-ParsedPrice $doc $script:ParseInfo[$code]
 
     if ($null -eq $price.date) {
         $price = Get-PriceFromWLTA $code
@@ -27,7 +27,7 @@ function  Get-PriceFromWLTA([string]$code) {
     $url = $script:ParseInfo['default'].url + $code
     $doc = Invoke-WebRequest2 -Url $url -xpath  ($script:ParseInfo['default'].bpath)
     
-    $price = Get-ParsedPrice 'default' $doc
+    $price = Get-ParsedPrice $doc $script:ParseInfo['default']
     $price.code = $code
     return $price
 }
@@ -39,32 +39,30 @@ function Get-PriceFromNikkei([string]$code) {
     $url = $script:ParseInfo['nikkei'].url + $code
     $doc = Invoke-WebRequest2 -Url $url -xpath  ($script:ParseInfo['nikkei'].bpath)
     
-    $price = Get-ParsedPrice 'nikkei' $doc
+    $price = Get-ParsedPrice $doc $script:ParseInfo['default']
     $price.code = $code
     return $price
 }
-function Get-ParsedPrice([string]$code, [object]$doc) {
-    $html = $doc.DocumentNode 
+function Get-ParsedPrice($doc, $config) {
+    $html = $doc.DocumentNode
 
-    $path = $script:ParseInfo[$code].bpath
-    $base = $html.SelectNodes($path).InnerText
+    $base = $html.SelectNodes($config.bpath).InnerText
     if (($base -replace "年|月", "/") -match "[\d/]+") {
-        $base = (Get-Date($Matches[0])).ToString("yyyyMMdd")
+        $base = (Get-Date $Matches[0]).ToString("yyyyMMdd")
     }
 
-    $path = $script:ParseInfo[$code].npath
-    $nav = $html.SelectNodes($path).InnerText
-    if ($nav -match "[\d\,]+") {
+    $nav = $html.SelectNodes($config.npath).InnerText
+    if ($nav -match "[\d,]+") {
         $nav = $Matches[0]
     }
 
-    $path = $script:ParseInfo[$code].cpath
-    $cmp = $html.SelectNodes($path).InnerText
-    if ($cmp -match "[-\d\,]+") {
+    $cmp = $html.SelectNodes($config.cpath).InnerText
+    if ($cmp -match "[-\d,]+") {
         $cmp = $Matches[0]
     }
-    return  [ordered]@{
-        code = $code
+
+    return [ordered]@{
+        code = $config.code
         date = $base
         nav  = $nav
         cmp  = $cmp
