@@ -86,7 +86,7 @@
     function Get-FunctionNames {
         param ($folder)
         Get-ChildItem -Path $folder -Filter *.ps1 -ErrorAction SilentlyContinue |
-            ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_.Name) }
+        ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_.Name) }
     }
 
     function Generate-DotSourceBlock {
@@ -105,37 +105,70 @@
         return 'Export-ModuleMember -Function ' + ($publicFuncs -join ', ')
     }
 
+    function Get-DllPaths {
+        param ([string]$libPath)
+        if (-not (Test-Path $libPath)) {
+            return @()
+        }
+        return Get-ChildItem -Path $libPath -Filter *.dll -File -ErrorAction SilentlyContinue |
+        Sort-Object Name |
+        ForEach-Object { $_.FullName }
+    }
+    function Generate-AddTypeBlock {
+        param ($dllPaths)
+        if (-not $dllPaths -or $dllPaths.Count -eq 0) {
+            return ''
+        }
+        return ($dllPaths | ForEach-Object {
+                $fileName = [System.IO.Path]::GetFileName($_)
+                'Add-Type -Path "$script:ModuleRoot\lib\{0}"' -f $fileName
+            }) -join "`r`n"
+    }
+    function Generate-RequiredAssembliesLine {
+        param ($dllPaths)
+        $quoted = $dllPaths | ForEach-Object {
+            '$script:ModuleRoot\lib\{0}' -f ([System.IO.Path]::GetFileName($_)) | ForEach-Object { "'$_'" }
+        }
+        return $quoted -join ", "
+    }
+
     # ─────────────────────────────────────────────
     # メイン処理
     $moduleName = Split-Path $ModuleRoot -Leaf
-    $psm1Path   = Join-Path $ModuleRoot "$moduleName.psm1"
-    $psd1Path   = Join-Path $ModuleRoot "$moduleName.psd1"
+    $psm1Path = Join-Path $ModuleRoot "$moduleName.psm1"
+    $psd1Path = Join-Path $ModuleRoot "$moduleName.psd1"
 
     $templatePaths = Resolve-TemplatePaths -ModuleRoot $ModuleRoot -ModuleToolsTemplateRoot $script:TemplateRoot
 
-    $structure     = Get-Content $templatePaths.StructurePath | ConvertFrom-Json
-    $psm1Template  = Get-Content $templatePaths.Psm1TemplatePath -Raw
-    $psd1Template  = Get-Content $templatePaths.Psd1TemplatePath -Raw
+    $structure = Get-Content $templatePaths.StructurePath | ConvertFrom-Json
+    $psm1Template = Get-Content $templatePaths.Psm1TemplatePath -Raw
+    $psd1Template = Get-Content $templatePaths.Psd1TemplatePath -Raw
 
     $folderBlock = Generate-FolderBlock $structure
 
-    $classesPath  = Join-Path $ModuleRoot "Classes"
-    $publicPath   = Join-Path $ModuleRoot "Public"
-    $privatePath  = Join-Path $ModuleRoot "Private"
+    $classesPath = Join-Path $ModuleRoot "Classes"
+    $publicPath = Join-Path $ModuleRoot "Public"
+    $privatePath = Join-Path $ModuleRoot "Private"
+    $libPath = Join-Path $ModuleRoot "lib"
 
-    $classFiles     = Get-ChildItem -Path $classesPath -Filter *.ps1 -File | Select-Object -ExpandProperty FullName
-    $classCodeList  = Get-ClassInheritanceOrder $classFiles
-    $classBlock     = $classCodeList -join "`r`n`r`n"
+    $classFiles = Get-ChildItem -Path $classesPath -Filter *.ps1 -File | Select-Object -ExpandProperty FullName
+    $classCodeList = Get-ClassInheritanceOrder $classFiles
+    $classBlock = $classCodeList -join "`r`n`r`n"
 
-    $publicFuncs    = Get-FunctionNames $publicPath
-    $privateFuncs   = Get-FunctionNames $privatePath
+    $publicFuncs = Get-FunctionNames $publicPath
+    $privateFuncs = Get-FunctionNames $privatePath
     $dotSourceBlock = Generate-DotSourceBlock $publicFuncs $privateFuncs
-    $exportBlock    = Generate-ExportBlock $publicFuncs
+    $exportBlock = Generate-ExportBlock $publicFuncs
+
+    $dllPaths = Get-DllPaths $libPath
+    $addTypeBlock = Generate-AddTypeBlock $dllPaths
+    $requiredAssemblies = Generate-RequiredAssembliesLine $dllPaths
 
     # 📝 psm1生成（安全な置換）
     $psm1Content = [Regex]::Replace($psm1Template, '{{FolderPaths}}', { $folderBlock })
     $psm1Content = [Regex]::Replace($psm1Content, '{{Classes}}', { $classBlock })
     $psm1Content = [Regex]::Replace($psm1Content, '{{DotSource}}', { $dotSourceBlock })
+    $psm1Content = [Regex]::Replace($psm1Content, '{{AddTypeBlock}}', { $addTypeBlock })
     $psm1Content = [Regex]::Replace($psm1Content, '{{Export}}', { $exportBlock })
 
     Set-Content -Path $psm1Path -Value $psm1Content
@@ -151,7 +184,8 @@
         -replace '{{GUID}}', ([guid]::NewGuid().ToString()) `
         -replace '{{Author}}', 'Shuma' `
         -replace '{{Description}}', 'Auto-generated module manifest.' `
-        -replace '{{ExportFunctions}}', $funcsExportLine
+        -replace '{{ExportFunctions}}', $funcsExportLine `
+        -replace '{{RequiredAssemblies}}', $requiredAssemblies
 
     Set-Content -Path $psd1Path -Value $psd1Content
     Write-Host "✅ $moduleName.psd1 を生成しました: $psd1Path"

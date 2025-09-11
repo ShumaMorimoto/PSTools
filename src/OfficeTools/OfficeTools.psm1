@@ -1,11 +1,16 @@
-# モジュールルート定義
-$script:ModuleRoot = $PSScriptRoot
+# ─── モジュールフォルダ構成 ───
 $script:ClassesPath = Join-Path $script:ModuleRoot "Classes"
 $script:PublicPath = Join-Path $script:ModuleRoot "Public"
 $script:PrivatePath = Join-Path $script:ModuleRoot "Private"
 $script:TemplatesPath = Join-Path $script:ModuleRoot "Templates"
 $script:etcPath = Join-Path $script:ModuleRoot "etc"
 
+# ─── DLL 読み込み ───
+Add-Type -Path "$ModuleRoot\lib\HtmlAgilityPack.dll"
+Add-Type -Path "$ModuleRoot\lib\MailKit.dll"
+Add-Type -Path "$ModuleRoot\lib\MimeKit.dll"
+
+# ─── クラス定義 ───
 class OTOutlookDAO {
     static [object] $outlook
     static [object] $namespace
@@ -1421,6 +1426,7 @@ class OTExcelDAO {
 }
 
 
+# ─── 関数読み込み ───
 . "$PSScriptRoot\Public\.ps1"
 . "$PSScriptRoot\Private\changeCred.ps1"
 . "$PSScriptRoot\Private\ConvertTo-Base64URL.ps1"
@@ -1431,4 +1437,5 @@ class OTExcelDAO {
 . "$PSScriptRoot\Private\isHoliday.ps1"
 . "$PSScriptRoot\Private\Send-Message.ps1"
 
+# ─── 公開関数 ───
 

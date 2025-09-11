@@ -4,9 +4,20 @@
     GUID              = '{{GUID}}'
     Author            = '{{Author}}'
     Description       = '{{Description}}'
-    PowerShellVersion = '5.1'
+
     FunctionsToExport = @({{ExportFunctions}})
     CmdletsToExport   = @()
     VariablesToExport = @()
     AliasesToExport   = @()
+
+    RequiredAssemblies = @({{RequiredAssemblies}})
+
+    PrivateData = @{
+        PSData = @{
+            Tags         = @('Automation', 'Generated')
+            LicenseUri   = ''
+            ProjectUri   = ''
+            ReleaseNotes = ''
+        }
+    }
 }
