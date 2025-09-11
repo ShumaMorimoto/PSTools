@@ -13,7 +13,7 @@
     PowerShellVersion = '5.1'
 
     # エクスポート対象
-    FunctionsToExport = @('Split-Module', 'Build-Module')
+    FunctionsToExport = @('Split-Module', 'Build-Module', 'Get-ClassDependencyTree')
     CmdletsToExport   = @()
     VariablesToExport = @()
     AliasesToExport   = @()
