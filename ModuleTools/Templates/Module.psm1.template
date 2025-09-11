@@ -1,0 +1,9 @@
+﻿# モジュールルート定義
+$script:ModuleRoot = $PSScriptRoot
+{{FolderPaths}}
+
+{{Classes}}
+
+{{DotSource}}
+
+{{Export}}
