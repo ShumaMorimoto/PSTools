@@ -1,21 +1,3 @@
-$this.header = $table.GetElementsByTagName("th") | ForEach-Object { $_.innerText }
-
-$tables = $presen.slides | ForEach-Object { ($_.shapes | Where-Object { $null -ne $_.table } | ForEach-Object { $_.table }) }
-
-$this.table = Get-ScheduledTask -TaskPath $this.taskPath | ForEach-Object { New-Object TsTaskDAO($_.TaskName, $this.taskPath) }
-
-$this.posts = $response.order | ForEach-Object { $response.posts.$_ }
-
-$data = , (@($this.oHeader | ForEach-Object { $row.$_ }))
-
-$sheetId = ($this.sheets.properties | Where-Object { $_.title -eq $sheetName }).sheetID
-
-$diff = switch ($_base.Month) { { (4 -le $_) -and ($_ -le 9) } { 4 }; default { 10 } }
-
-$diff = switch ($_base.Month) { { 4 -le $_ } { 4 }; default { -8 } }
-
-$diff = switch ($this.base.Month) { { (4 -le $_) -and ($_ -le 9) } { 4 }; default { 10 } }
-
 $AddWorkDays = {
     param([int]$days)
     $idx = switch ($days -gt 0) { $true { 1 }; $false { -1 } }

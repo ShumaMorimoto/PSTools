@@ -93,9 +93,22 @@
 
     function Generate-DotSourceBlock {
         param ($publicFuncs, $privateFuncs)
+
         $lines = @()
+        # Public 関数
         $lines += $publicFuncs  | ForEach-Object { '. "$PSScriptRoot\Public\{0}.ps1"' -f $_ }
+
+        # Private 関数
         $lines += $privateFuncs | ForEach-Object { '. "$PSScriptRoot\Private\{0}.ps1"' -f $_ }
+
+        # Extension 型拡張
+        $extensionDir = Join-Path $PSScriptRoot 'Extensions'
+        if (Test-Path $extensionDir) {
+            $extensionFiles = Get-ChildItem -Path $extensionDir -Filter '*.Extension.ps1' -File
+            $lines += $extensionFiles | ForEach-Object {
+                '. "$PSScriptRoot\Extensions\{0}"' -f $_.Name
+            }
+        }
         return $lines -join "`r`n"
     }
 
@@ -165,11 +178,11 @@
 
     # 📝 psm1生成（安全な置換）
     $psm1Content = $psm1Template
-    $psm1Content = [Regex]::Replace($psm1Content, '{{FolderPaths}}', {return $folderBlock})
-    $psm1Content = [Regex]::Replace($psm1Content, '{{Classes}}', {return $classBlock})
-    $psm1Content = [Regex]::Replace($psm1Content, '{{DotSource}}', {return $dotSourceBlock})
-    $psm1Content = [Regex]::Replace($psm1Content, '{{AddTypeBlock}}', {return $addTypeBlock})
-    $psm1Content = [Regex]::Replace($psm1Content, '{{Export}}', {return $exportBlock})
+    $psm1Content = [Regex]::Replace($psm1Content, '{{FolderPaths}}', { return $folderBlock })
+    $psm1Content = [Regex]::Replace($psm1Content, '{{Classes}}', { return $classBlock })
+    $psm1Content = [Regex]::Replace($psm1Content, '{{DotSource}}', { return $dotSourceBlock })
+    $psm1Content = [Regex]::Replace($psm1Content, '{{AddTypeBlock}}', { return $addTypeBlock })
+    $psm1Content = [Regex]::Replace($psm1Content, '{{Export}}', { return $exportBlock })
 
     Set-Content -Path $psm1Path -Value $psm1Content -Encoding UTF8
     Write-Host "✅ $moduleName.psm1 を生成しました: $psm1Path"
