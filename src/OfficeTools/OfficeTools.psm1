@@ -1,4 +1,5 @@
 # ─── モジュールフォルダ構成 ───
+$script:ModuleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:ClassesPath = Join-Path $script:ModuleRoot "Classes"
 $script:PublicPath = Join-Path $script:ModuleRoot "Public"
 $script:PrivatePath = Join-Path $script:ModuleRoot "Private"
@@ -6,93 +7,86 @@ $script:TemplatesPath = Join-Path $script:ModuleRoot "Templates"
 $script:etcPath = Join-Path $script:ModuleRoot "etc"
 
 # ─── DLL 読み込み ───
-Add-Type -Path "$ModuleRoot\lib\HtmlAgilityPack.dll"
-Add-Type -Path "$ModuleRoot\lib\MailKit.dll"
-Add-Type -Path "$ModuleRoot\lib\MimeKit.dll"
+Add-Type -Path "$script:ModuleRoot\lib\HtmlAgilityPack.dll"
+Add-Type -Path "$script:ModuleRoot\lib\MailKit.dll"
+Add-Type -Path "$script:ModuleRoot\lib\MimeKit.dll"
 
 # ─── クラス定義 ───
-class OTOutlookDAO {
-    static [object] $outlook
-    static [object] $namespace
+class OTExcelDAO {
+    static [object] $excel
+    [object] $book
+    [hashtable] $tables = @{}
 
-    OTOutlookDAO() {
-        $this.initialize()
+    [void]Show() {
+        if (-not [OTExcelDAO]::excel.Visible) {
+            [OTExcelDAO]::excel.Visible = $true
+            if ($this.book.ReadOnly) { $this.book.ChangeFileAccess(2) }
+        } 
     }
-    [void] initialize() {
+    [void]Save() {
+        $this.book.Save()
+    }
+    [void]Close() {
+        $this.book.Close()
+    }
+    OTExcelDAO([string]$path, [boolean]$readOnly = $true) {
+        $this.initialize($path, $readOnly)
+    }
+    [void] initialize([string]$path, [boolean]$readOnly) {
+        $path -match "[^\\]+\.xls[m]*"
+        $bookname = $Matches[0]
         try {
-            if ($null -ne [OTOutlookDAO]::outlook) {
-                [OTOutlookDAO]::namespace = [OTOutlookDAO]::outlook.GetNamespace("MAPI")
+            if ($null -ne [OTExcelDAO]::excel) {
+                $this.book = [OTExcelDAO]::excel.Workbooks | Where-Object Name -eq $bookname
+                if ($null -eq $this.book ) {
+                    $this.book = [OTExcelDAO]::excel.Workbooks.Open($path, 0, $readOnly)
+                }
             }
             else {
                 throw "New Object"
             }
         }
         catch {
-            [OTOutlookDAO]::outlook = New-Object -ComObject Outlook.Application
-            [OTOutlookDAO]::namespace = [OTOutlookDAO]::outlook.GetNamespace("MAPI")
+            Get-Process | where-object name -eq "Excel" | Stop-Process
+            [OTExcelDAO]::excel = New-Object -ComObject Excel.Application
+            $this.book = [OTExcelDAO]::excel.Workbooks.Open($path, 0, $readOnly)  
         }
     }
-    [OlApoTable] GetApoTable([string]$receiver) {        
-        $folder = switch ($receiver) {
-            "" {
-                [OTOutlookDAO]::namespace.GetDefaultFolder(9)
-            }
-            default {
-                $rec = [OTOutlookDAO]::namespace.CreateRecipient($receiver)
-                [OTOutlookDAO]::namespace.GetSharedDefaultFolder($rec, 9)           
-            }
+    [Extable] GetTable([object]$parm, [string]$header) {
+        $sheet = $this.book.Worksheets($parm)
+        $range = $sheet.Range($header)
+        $table = New-Object ExTable($range)
+        $this.tables.Add($sheet.Name, $table)
+        return $table
+    }
+}
+
+
+class OTCalDAO {
+    static [object] $syukujitsu = $null
+    static [void] loadSyukujitsu() {
+        if (!(Test-Path "$PSScriptRoot\data\syukujitsu.csv" -NewerThan (Get-Date).addMonths(-6))) {
+            $url = 'https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv'
+            Invoke-WebRequest -URI $url -OutFile "$PSScriptRoot\data\syukujitsu.csv"
         } 
-        return New-Object OlApoTable($folder)
-    }
-    [object] GetApoTable() {        
-        return $this.GetApoTable($null)
-    }
-    [OlMailTable] GetMailTable() {
-        return New-Object OLMailTable([OTOutlookDAO]::namespace.GetDefaultFolder(6))
-    }
-    [OlMailTable] GetMailTable([string]$path) {
-        $folder = [OTOutlookDAO]::namespace
-        $path -split "\\" | select-object -skip 2 | ForEach-Object { $folder = $folder.folders($_) }
-        return New-Object OLMailTable($folder)
-    }
-    [OlMailTable] GetUnsentMailTable() {
-        return New-Object OLMailTable([OTOutlookDAO]::namespace.GetDefaultFolder(4))
-    }
-    static [string] formatDT ([Object]$dt) {
-        if ($dt -is [datetime]) { $dt = $dt.toString("yyyy/M/d HH:mm") } 
-        return $dt
-    }
-    static [object] filterItems([Object]$items, [Object]$keywords) { 
-        $filter = "@SQL=urn:schemas:httpmail:subject LIKE '" + [string]::Join("' OR urn:schemas:httpmail:subject LIKE '", $keywords) + "'" 
-        return $items.Restrict($filter)
-    }
-    [object] SearchItem([object] $id) {
-        return [OTOutlookDAO]::namespace.GetItemFromID($id)
-    }
-    [object] createMail() {
-        return [OTOutlookDAO]::outlook.CreateItem(0)
-    }
-    static [object] ResolveAddress([string]$name) {
-        if (($name -eq "") -or $null -eq $name) {
-            return $null
+        if ((Get-Host).Version.Major -eq 7) {
+            [OTCalDAO]::syukujitsu = Import-Csv "$PSScriptRoot\data\syukujitsu.csv" -Encoding ANSI
         }
-        if ($name -match "(.{3})　(.{3})") {   
-            $name = ($Matches[1] -replace "　", "") + " " + ($Matches[2] -replace "　", "")
+        else {
+            [OTCalDAO]::syukujitsu = Import-Csv "$PSScriptRoot\data\syukujitsu.csv" -Encoding Default 
         }
-        $recip = [OTOutlookDAO]::namespace.CreateRecipient($name)
-        $user = @{氏名 = $name }
-
-        if ($recip.Resolve()) {     
-            $user.氏名 = $recip.Name
-            $user.メール = $recip.AddressEntry.GetExchangeUser().PrimarySmtpAddress
-
-            if ($recip.Name -match "(.+　.+)\((\d+)\)(.+)$") {
-                $user.氏名 = $Matches[1]
-                $user.内線番号 = $Matches[2]
-                $user.所属 = $Matches[3]
-            }
-        }       
-        return $user
+    }
+    static [object] getSyukujitsu([datetime]$st, [datetime]$ed) {
+        return [OTCalDAO]::syukujitsu | Where-Object { ($st -lt (Get-Date($_."国民の祝日・休日月日"))) -and ((Get-Date($_."国民の祝日・休日月日")) -lt $ed) }
+    }
+    static [object] getSyukujitsu([Term]$term) {
+        return [OTCalDAO]::getSyukujitsu($term.start, $term.end) 
+    }
+    static [object] getSyukujitsu([string]$st, [string]$ed) {
+        return [OTCalDAO]::getSyukujitsu((Get-Date($st)), (Get-Date($ed)))
+    }
+    static [object] getSyukujitsu([datetime]$st) {
+        return [OTCalDAO]::getSyukujitsu($st, $st.AddYears(1))
     }
 }
 
@@ -191,73 +185,6 @@ class TsTaskDao {
 }
 
 
-class OTGoogleDAO {
-    static $certPswd = "notasecret"
-
-    OTGoogleDAO() {
-    }
-
-    static [string]GetToken([string]$scope) {
-        $headerJSON = [Ordered]@{
-            alg = "RS256"
-            typ = "JWT"
-        } | ConvertTo-Json -Compress
-        $headerBase64 = ConvertTo-Base64URL -text $headerJSON
-				
-        $iat = [int64]([double]::Parse((get-date -date ([DateTime]::UtcNow) -uformat "%s"), [cultureinfo][system.threading.thread]::currentthread.currentculture))
-        $exp = $iat + 59 * 60
-        $aud = "https://www.googleapis.com/oauth2/v4/token"
-        $claimsJSON = [Ordered]@{
-            iss   = [OTConfig]::Settings.Google.iss
-            scope = [OTGSheetDAO]::scope
-            aud   = $aud
-            exp   = $exp
-            iat   = $iat
-        } | ConvertTo-Json -Compress
-
-        $claimsBase64 = ConvertTo-Base64URL -text $claimsJSON
-		
-        $googleCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(`
-                [OTConfig]::Settings.Google.certPath, `
-                [OTGoogleDAO]::certPswd, `
-                [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable `
-        )
-        $rsaPrivate = $googleCert.PrivateKey
-        $rsa = New-Object System.Security.Cryptography.RSACryptoServiceProvider
-        $null = $rsa.ImportParameters($rsaPrivate.ExportParameters($true))
-
-        $toSign = [System.Text.Encoding]::UTF8.GetBytes($headerBase64 + "." + $claimsBase64)
-        $signature = ConvertTo-Base64URL -Bytes $rsa.SignData($toSign, "SHA256") ## this needs to be converted back to regular text
-
-        # Build request
-        $jwt = $headerBase64 + "." + $claimsBase64 + "." + $signature
-        $fields = 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + $jwt
-
-        # Fetch token
-        $response = Invoke-RestMethod -Uri "https://www.googleapis.com/oauth2/v4/token" -Method Post -Body $fields -ContentType "application/x-www-form-urlencoded"
-
-        return $response.access_token
-    }
-
-}
-
-
-class OTGMailDAO:OTGoogleDAO {
-    static $scope = "https://www.googleapis.com/auth/gmail.modify"
-    static $accessToken = $null
-
-    OTGMailDAO() {
-        $this.initialize()
-    }
-    [void] initialize() {
-        [OTGMailDAO]::GetToken()
-    }
-    static [void] GetToken() {
-        [OTGMailDAO]::accessToken = [OTGoogleDAO]::GetToken([OTGMailDAO]::scope)
-    }
-}
-
-
 class AbstractTable {
     [string[]] $header = @()
     [pscustomobject[]] $data = @()
@@ -331,358 +258,161 @@ class DomTable : AbstractTable {
 }
 
 
-class OTConfig {
-    static [string]$confPath = $null
-    static [string]$confFile = $null
-    static [object]$Settings = [ordered]@{}
-    static [string]$password = $null
-    static [void] initialize() {
-        [OTConfig]::confPath = Join-Path $env:ProgramData 'OfficeTools'
-        New-Item -Path $([OTConfig]::confPath) -ItemType Directory -Force -ErrorAction Stop | Out-Null
-        [OTConfig]::confFile = Join-Path ([OTConfig]::confPath) "settings.json"
+class OTPowerpointDAO {
+    static [object] $powerpoint
+    [object] $presen
 
-        if (Test-Path ([OTConfig]::confFile)) {
-            # JSONから読み込んだPSCustomObjectを、そのまま静的プロパティに代入
-            [OTConfig]::Load()
-        }
-        else {
-            # デフォルト設定をPSCustomObjectとして作成し、静的プロパティに代入
-            [OTConfig]::Settings = [ordered]@{
-                Mattermost  = [ordered]@{url = "https://mattermost.aslead.cloud/api/v4"; pat = "octj7bd18tf37edjc8tyhq1t8r" }
-                Confluence  = [ordered]@{url = "https://sd10.aslead.cloud/wiki/rest/pat/latest/tokens" }
-                Google      = [ordered]@{certPath = $null, $iss = "psgsuite-client@smart-surf-425115-s5.iam.gserviceaccount.com" }
-                Gmail       = [ordered]@{account = $null; passcode = $null }
-                LastUpdated = (Get-Date)
-            }
-            # ファイルに保存
-            [OTConfig]::Save()
+    OTPowerpointDAO([string]$path) {
+        [OTPowerpointDAO]::initialize()
+        $this.presen = [OTPowerpointDAO]::powerpoint.Presentations.Open($path)
+    }
+    static [void] initialize() {
+        if ($null -eq [OTPowerpointDAO]::powerpoint) {
+            [OTPowerpointDAO]::powerpoint = New-Object -ComObject PowerPoint.Application
         }
     }
-    static [void] Load() {
-        [OTConfig]::Settings = Get-Content -Path ([OTConfig]::confFile) -Raw | ConvertFrom-Json -AsHashtable
-        $cred = [OTConfig]::Settings.Credential
-        if ($cred -and $cred.password) {
-            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $cred.password))
-            [OTConfig]::password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+    [PpTable] GetTable() {
+        return New-Object PpTable($this.presen)
+    }
+}
+
+
+class OlApoTable:AbstractTable {
+    [object]$folder
+    [object]$items
+
+    static $selectheader = @(
+        @{label = "日付"; expression = { $_.Start.toString("M/d(ddd)") } },
+        @{label = "時間"; expression = { $_.Start.toString("HH:mm-") + $_.End.toString("HH:mm") } },
+        "Subject", "Location", "Body", "EntryID"
+    )
+
+    OlApoTable([object]$folder) {
+        $this.folder = $folder
+        $this.items = $this.folder.items       
+        $this.items.IncludeRecurrences = $true       
+        $this.items.Sort("[Start]")
+    }
+    [pscustomobject] toObject() {
+        return [OlApoTable]::toObject($this.items)
+    }
+    static [pscustomobject] toObject([object]$items) {
+        return [pscustomobject]@{
+            header = @("日付", "時間", "Subject", "Location", "Body", "EntryID")
+            data   = $items | Select-Object ([OlApoTable]::selectheader) 
         }
     }
-    static [void] Save() {
-        [OTConfig]::Settings.LastUpdated = (Get-Date)
-        [OTConfig]::Settings | ConvertTo-Json -Depth 5 | Set-Content -Path ([OTConfig]::confFile)
+    [object] Search([pscustomobject]$data, [ScriptBlock] $compfunc) {
+        return $this.items | Where-Object { &$compfunc $_ $data }
     }
-    static [object] GetCred() {
-        $cred = [OTConfig]::Settings.Credential
-        if (($null -eq $cred) -or ([OTConfig]::Settings.LastUpdated -lt (Get-Date).addMonths(-6))) {
-            $cred = [OTConfig]::SetCred()
+    [object] SearchApos([object] $startDT, [object] $endDT) {
+        $startDT = [OTOutlookDAO]::formatDT($startDT)
+        $endDT = [OTOutlookDAO]::formatDT($endDT)
+        $filter = "[Start] = '$startDT' AND [End] = '$endDT'"
+        return $this.items.Restrict($filter)
+    }
+    [object] GetApos([string] $startDT, [string] $endDT) {
+        $filter = "[Start] < '$endDT' AND [End] > '$startDT'"   
+        $this.items = $this.folder.items       
+        $this.items.IncludeRecurrences = $true       
+        $this.items.Sort("[Start]")
+        $this.items = $this.items.Restrict($filter)
+        return $this.Items
+    }
+    [object] GetApos() {
+        return $this.GetApos(1)
+    }
+    [object] GetApos([int]$term) {
+        $date = Get-Date  
+        return $this.GetApos($date.toString("yyyy/M/d 00:00"), $date.adddays($term).toString("yyyy/M/d 00:00"))
+    }
+    [void] Sort([ScriptBlock] $orderfunc) {
+        $this.items.Sort("[Start]")
+    }
+    [object]CreateApo([pscustomobject] $data) { 
+        $item = $this.items.Add()
+        $item.Start = [OTOutlookDAO]::FormatDT($data."Start")
+        $item.End = [OTOutlookDAO]::formatDT($data."End")
+        return $item
+    }
+    [object]CreateEvent([datetime] $date) { 
+        $item = $this.items.Add()
+        $item.Start = $date.toString("yyy/M/d 00:00")
+        $item.End = $date.addDays(1).toString("yyy/M/d 00:00")
+        $item.AllDayEvent = $true
+        return $item
+    }
+    [object]Restrict([Object]$keywords) { 
+        $this.items = [OTOutlookDAO]::filterItems($this.items, $keywords)
+        return $this.items
+    }
+}
+
+
+class MattermostDAO {
+    static [object] $headers = @{
+        "Authorization" = "Bearer $pat"
+        "Content-Type"  = "application/json; charset=UTF-8"
+    }
+    [string] $base_url
+    [object] $me
+    [object] $users
+    [object] $posts
+    $selectheader = @(
+        @{label = "ID"; expression = { $_.id } } ,
+        @{label = "日付"; expression = { (Get-Date("1970/1/1")).AddMilliseconds($_.create_at ) } },
+        @{label = "投稿者"; expression = { $uid = $_.user_id; ($users | Where-Object { $_.id -eq $uid }).first_name } }
+        @{label = "投稿内容"; expression = { $_.message } }
+    )
+    MattermostDAO([string]$base_url) {
+        [MattermostDAO]::getPAT() | Out-Null
+        $this.base_url = $base_url
+        $this.me = $this.GetMe()
+    }
+    MattermostDAO() {
+        [MattermostDAO]::getPAT() | Out-Null
+    }
+    [Object] Post($channel_id, $message) {
+        $url = $this.base_url + "/posts"
+        $payload = @{
+            "channel_id" = $channel_id
+            "message"    = $message
         }
-        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $cred.password))
-        [OTConfig]::password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
-        return $cred
-    } 
-    static [object] SetCred() {
-        $cred = @{}
-        $empNo = Read-Host "社員コードは？(ex.x1234)"
-        $_cred = Get-Credential
-        $cred.add("empNo", $empNo)
-        $cred.add("id", $_cred.UserName)
-        $cred.add("password", (ConvertFrom-SecureString -SecureString $_cred.Password))
-        [OTConfig]::Settings.Credential = $cred
-        [OTConfig]::Save()
-        return $cred
-    }  
-    static [string] GetMtmPAT() {
+        $json = ConvertTo-JSON -Compress $payload
+        $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "POST" -Body $json
+        return $payload
+    }
+    [Object] GetPosts($channel_id) {
+        $url = $this.base_url + "/channels/" + $channel_id + "/posts"   
+        $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "GET"
+        $this.posts = $response.order | ForEach-Object { $response.posts.$_ } 
+        $this.users = $this.GetUsers(($this.posts.user_id | Select-Object -Unique))
+        return $this.posts
+    }
+    [Object] DeletePost($post_id) {
+        $url = $this.base_url + "/posts/" + $post_id 
+        $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "DEL"
+        return $response
+    }
+    [Object] GetUsers($ids) {
+        $url = $this.base_url + "/users/ids" 
+        $json = ConvertTo-JSON -Compress $ids
+        $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "POST" -Body $json
+        return $response
+    }
+    [Object] GetMe() {
+        $url = $this.base_url + "/users/me" 
+        $this.me = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "GET" 
+        return $this.me
+    }
+    static [string] getPAT() {
         $pat = [OTConfig]::Settings.Mattermost.pat
-        if ($null -eq $pat) {
-            $pat = [OTConfig]::SetMtmPAT()
-        }
-        return $pat
-    } 
-    static [string] SetMtmPAT() {
-        $pat = Read-Host "MattermostのPATは？"
-        [OTConfig]::Settings.Mattermost = @{pat = $pat }
-        [OTConfig]::Save()
-        return $pat
-    }
-    static [string] GetCnflToken() {
-        $tokens = [OTConfig]::Settings.Confluence.tokens
-        if ($null -eq $tokens) {
-            $tokens = [OTConfig]::SetCnflToken()
-        }
-        if (
-            ($null -eq $tokens.expiringAt) -or `
-            ([Datetime]($tokens.expiringAt) -lt (Get-Date).AddDays(20))
-        ) {
-            $tokens = [OTConfig]::UpdateCnflToken($tokens.rawToken)
-        }
-        return $tokens
-    } 
-    static [object] UpdateCnflToken([string]$token) {
-        $headers = @{
-            "Authorization" = "Bearer $token"
+        [MattermostDAO]::headers = @{
+            "Authorization" = "Bearer " + $pat
             "Content-Type"  = "application/json; charset=UTF-8"
         }
-        $body = @{
-            name               = "myToken"
-            expirationDuration = 90
-        }
-        $json = ConvertTo-JSON -Compress $body
-        $tokens = Invoke-RestMethod -Uri ([OTConfig]::Settings.Confluence.url) -Body $json -Method "POST" -Headers ($headers)
-        [OTConfig]::Settings.Confluence.tokens = $tokens
-        [OTConfig]::Save()
-        return $tokens
+        return $pat
     }
-    static [object] SetCnflToken() {
-        $base64AuthInfo = [Convert]::ToBase64String( `
-                [Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f `
-                    ([OTConfig]::Settings.Credential.id -replace "cu.nri.co.jp", "nri.co.jp"), `
-                        [OTConfig]::password))`
-        )
-
-        $headers = @{
-            Authorization  = ("Basic {0}" -f $base64AuthInfo)
-            "Content-Type" = "application/json; charset=UTF-8"
-        }   
-        $body = @{
-            name               = "myToken"
-            expirationDuration = 90
-        }
-        $json = ConvertTo-JSON -Compress $body
-        $tokens = Invoke-RestMethod -Uri ([OTConfig]::Settings.Confluence.url) -Body $json -Method "POST" -Headers ($headers)
-        [OTConfig]::Settings.Confluence.tokens = $tokens
-        [OTConfig]::Save()
-        return $tokens
-    }
-    static [object] SetGglCert() {
-        $iss = Read-Host "GoogleのISSアカウントは？（変更しない場合は空）"
-        if ($iss -eq "") {
-            $iss = [OTConfig]::Settings.Google.iss
-        }
-        $filepath = (Read-Host "GoogleのCertFileの場所は？") -replace '"', ''
-        
-        if (Test-Path $filepath) { 
-            $path = (Get-Item $filepath).FullName
-            [OTConfig]::Settings.Google = [ordered]@{certPath = $path; iss = $iss }
-            [OTConfig]::Save()
-            return  [OTConfig]::Settings.Google
-        }
-        else {
-            return "ERROR ($filepath)"
-        }
-    }  
-    static [object] SetGmail() {
-        $account = Read-Host "メールアカウントは？"
-        $passcord = Read-Host "アプリパスコードは？"
-        [OTConfig]::Settings.Gmail = @{account = $account; passcord = $passcord }
-        [OTConfig]::Save()
-        return [OTConfig]::Settings.Gmail
-    }
-}
-
-
-class OTTaskSchedulerDAO {
-    [string]$taskPath = "\マイタスク\"
-    [TsTaskDAO[]]$table
-
-    OtTaskSchedulerDAO($taskPath) {
-        $this.taskPath = $taskPath
-        $this.GetTasks()
-    }
-    OtTaskSchedulerDAO() {
-        $this.GetTasks()
-    }
-    Register ([TsTaskDAO]$task) {
-        Register-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Xml $task.xml.OuterXml `
-            -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password) -Force  
-    }
-    SetTrigger([TsTaskDAO]$task, [ciminstance]$trigger) {
-        Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Trigger $trigger  `
-            -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password)  
-    }
-    GetTasks() {
-        $this.table = Get-ScheduledTask -TaskPath $this.taskPath | ForEach-Object { New-Object TsTaskDAO($_.TaskName, $this.taskPath) }
-    }
-    ReRegisterAll() {
-        foreach ($task in $this.table) {
-            Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath `
-                -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password)
-        }
-    }
-}
-
-
-class Term {
-    [datetime] $base
-    [datetime] $start
-    [datetime] $end
-    
-    Term([datetime]$_base) {
-        $this.base = $_base
-        $this.start = Get-Date($_base.toString("yyyy/MM/dd"))
-        $this.end = $this.start.addDays(1)
-    }
-    Term([datetime]$st, [datetime]$ed) {
-        $this.base = $st
-        $this.start = $st
-        $this.end = $ed
-    }
-    Term([datetime]$_base, [string]$span) {
-        # span 1:month, 2:half, 3:year
-        $this.base = $_base
-        switch ($span) {
-            "1" {
-                $this.start = Get-Date($_base.toString("yyyy/MM/1"))
-                $this.end = $this.start.addMonths(1)
-            }
-            "2" {
-                $diff = switch ($_base.Month) { { (4 -le $_) -and ($_ -le 9) } { 4 }; default { 10 } } 
-                $this.start = Get-Date($_base.AddMonths($diff - $_base.Month).toString("yyyy/MM/1"))
-                $this.end = $this.start.AddMonths(6)
-            }
-            "3" {
-                $diff = switch ($_base.Month) { { 4 -le $_ } { 4 }; default { -8 } } 
-                $this.start = Get-Date($_base.AddMonths($diff - $_base.Month).toString("yyyy/MM/1"))
-                $this.end = $this.start.AddMonths(12)
-            }
-            default {}
-        } 
-    }
-    [boolean] Contains([datetime]$dt) {
-        return ($this.start -le $dt) -and ($dt -lt $this.end)
-    }
-    [Term] ThisMonth() {
-        return New-Object Term($this.base, 1)
-    }
-    [Term] PrevMonth() {
-        return New-Object Term($this.base.addMonts(-1), 1)
-    }
-    [Term] Half() {
-        return New-Object Term($this.base, 2)
-    }
-    [Term[]] HalfMonths() {
-        $diff = switch ($this.base.Month) { { (4 -le $_) -and ($_ -le 9) } { 4 }; default { 10 } } 
-        $diff -= $this.base.Month
-        return $diff..0 | ForEach-Object { New-Object Term($this.base.addmonths($_), 1) }
-    }
-}
-
-
-class ExTable :AbstractTable {
-    [object] $sheet
-    [object] $range
-    [PSCustomObject] $oHeader = [ordered]@{}
-    [PSCustomObject] $oRows = @()
-        
-    ExTable([object]$range) {
-        $this.sheet = $range.WorkSheet
-        $this.range = $range
-        $this.oHeader = $this.GetHeader()
-    }
-    [object] GetHeader() {
-        return $this.getItems($this.range.Row, $this.range.Column, $this.range.Columns.Count)
-    }   
-    [PSCustomObject] getItems($row, $col, $count) {
-        $obj = [ordered]@{}
-        while ($count -gt 0) {
-            $cell = $this.sheet.Cells($row, $col)
-            $text = $cell.Text
-            if ($text -ne "") {
-                $cols = $cell.MergeArea.Columns.Count
-                if ($cols -eq 1) {
-                    # $obj.Add($cell.Text, $col)
-                    $obj[$cell.Text] = $col
-                }
-                else {
-                    $obj2 = $this.getItems($row + 1, $col, $cols)
-                    #$obj.Add($cell.Text, $obj2)
-                    $obj[$cell.Text] = $obj2
-                }
-            }
-            $count --; $col ++
-        }
-        return $obj
-    }
-    [PSCustomObject] GetRows([int[]]$rows) {
-        $this.oRows = @()
-        foreach ($row in $rows) {
-            $this.oRows += ($this.getData($row, $this.oHeader) + @{"_row" = $row })
-        }
-        return $this.oRows
-    }
-    [PSCustomObject] GetRows() {
-        [int]$start = $this.startRow()
-        [int]$end = $this.lastRow()
-        if ($start -gt $end) {
-            return $null
-        }
-        return $this.GetRows(($start..$end))
-    }
-    [PSCustomObject]getData([int]$row, [PSCustomObject]$item) {
-        $obj = [ordered]@{}
-        foreach ($key in $item.Keys) {
-            if ($item.$key -is [int]) {
-                $cell = $this.sheet.Cells($row, $item.$key)
-                if ($cell.Hyperlinks.Count -eq 0) {
-                    $obj.Add($key, $cell.Text)
-                }
-                else {
-                    $obj.Add($key, @{Text = $cell.Text; Address = $cell.HyperLinks[1].Address })
-                }
-            }
-            else {
-                $obj.Add($key, $this.getData($row, $item.$key))
-            }
-        }
-        return $obj
-    }
-    [PSCustomObject] AddRows([PSCustomObject[]]$data) {
-        $lastrow = $this.lastRow() + 1
-        foreach ($record in $data) {
-            $this.setData($lastrow, $this.oHeader, $record)
-        }
-        $this.oROws = $this.GetRows()
-        return $this.oRows
-    }
-    [void]setData([int]$row, [PSCustomObject]$item, [PSCustomObject]$data) {
-        if ($null -ne $data) {
-            foreach ($key in $item.Keys) {
-                if ($item.$key -is [int]) {
-                    $this.sheet.Cells($row, $item.$key) = $data.$key
-                }
-                else {
-                    $this.setData($row, $item.$key, $data.$key)
-                }
-            }
-        }
-    }
-    [PSCustomObject] SearchRows([ScriptBlock] $compfunc) {
-        return ($this.oRows | Where-Object { &$compfunc $_ } )
-    }
-    [PSCustomObject] toObject() {
-        return [PSCustomObject]@{header = $this.oHeader; data = $this.oRows }
-    }
-    [int] startRow() {
-        return $this.range.Row + $this.range.Rows.Count
-    }  
-    [int] lastRow() {
-        $cell = $this.sheet.Cells($this.startRow(), $this.range.Column)
-        $lastrow = switch ($cell.Text) {
-            "" { $this.startRow() - 1 }
-            default { $cell.End( - 4121).row }
-        }
-        return $lastrow
-    }  
-    [boolean] Sort([ScriptBlock] $orderfunc) {
-        $keycol = $this.sheet.Columns.Count
-        
-        foreach ($data in $this.oRows) { $this.sheet.Cells($data._row, $keycol) = &$orderfunc $data }
-
-        $cell1 = $this.sheet.Cells(($this.oRows._row | Select-Object -First 1), $this.range.Column)
-        $cell2 = $this.sheet.Cells(($this.oRows._row | Select-Object -Last 1), $keycol)
-        $drange = $this.sheet.Range($cell1, $cell2)
-        $key = $drange.Columns[$keycol]
-        # $key.ClearContents()
-        return $drange.Sort($key, 1)
-    } 
 }
 
 
@@ -720,76 +450,126 @@ class PpTable:AbstractTable {
 }
 
 
-class OlMailTable:AbstractTable {
-    [object]$folder
-    [object]$items
-    
-    static $selectheader = @(
-        @{label = "受信日時"; expression = { $_.ReceivedTime } },
-        @{label = "送信者"; expression = { $_.Sender.Address } },
-        @{label = "宛先"; expression = { $_.To } },
-        @{label = "CC"; expression = { $_.Cc } },
-        "Subject", "Body", "EntryID"
-    )   
-    OlMailTable([object]$folder) {
-        $this.folder = $folder
-        $this.items = $this.folder.items
-        $this.items.Sort("[ReceivedTime]")
+class GsTable :AbstractTable {
+    [string] $spreadsheetId
+    [string] $sheetname
+    [string] $sheetId
+    [string] $range
+    [object] $oHeader = [ordered]@{}
+    [object] $oRows = @()
+    [object] $topCel
+        
+    GsTable([string]$spreadsheetId, [string]$dataname, [int]$sheetId, [string]$sheetName, [string]$range) {
+        $this.spreadsheetId = $spreadsheetId
+        $this.sheetId = $sheetId
+        $this.sheetName = $sheetName
+        $this.range = $range
+
+        $parts = $this.range -split ":"
+        $this.topCel = [OTGSheetDAO]::toIndex($parts[0])        
+        $this.Load()
     }
-    [pscustomobject] toObject() {
-        return [OlMailTable]::toObject($this.items)
-    }
-    static [pscustomobject] toObject([object]$items) {
-        return [pscustomobject]@{
-            header = @("受信日時", "送信者", "宛先", "CC", "Subject", "Body", "EntryID")
-            data   = $items | Select-Object ([OlMailTable]::selectheader)
+    [object]Load() {
+        $uri = "https://sheets.googleapis.com/v4/spreadsheets/$($this.spreadSheetID)/values/$($this.sheetname)!$($this.range)"
+        #    $uri += "?valueRenderOption=$valueRenderOption"
+        $result = Invoke-RestMethod -Method GET -Uri $uri -Headers @{"Authorization" = "Bearer $([OTGSheetDAO]::accessToken)" }
+
+        $sheet = $result.values
+        $Rows = $sheet.Count
+        $Columns = $sheet[0].Count
+        $Header = [string[]]$result.values[0]
+        $Data = @()
+
+        foreach ($Row in (1..($Rows - 1))) {
+            $h = [Ordered]@{}
+            foreach ($Column in 0..($Columns - 1)) {
+                if ($sheet[0][$Column].Length -gt 0) {
+                    $Name = $Header[$Column]
+                    if ($sheet[$row].count -gt ($column)) {
+                        $h.$Name = $Sheet[$Row][$Column]
+                    }
+                    else {
+                        $h.$Name = ""
+                    }
+                }
+            }
+            $h._row = $this.topCel.Row + $Row 
+            $Data += ($h)
         }
+        $this.oHeader = $Header
+        $this.oRows = $Data
+        return $this.oRows
     }
-    [object] Search([pscustomobject]$data, [ScriptBlock] $compfunc) {
-        return $this.items | Where-Object { &$compfunc $_ $data }
+    [hashtable[]] GetRows([int[]]$rows) {
+        return $rows | ForEach-Object { $this.oRows[$_] }
     }
-    [object] GetUnreadMails([string] $startDT, [string] $endDT) {
-        $filter = "[UnRead] =True AND [ReceivedTime] < '$endDT' AND [ReceivedTime] > '$startDT'"
-        $this.items = $this.folder.items       
-        $this.items.IncludeRecurrences = $true       
-        $this.items = $this.folder.items.Restrict($filter)
-        return $this.items
+    [hashtable[]] GetRows() {
+        return $this.oRows
     }
-    [object] GetUnreadMails() {
-        return $this.GetUnreadMails(1)
+    [void]UpdateRow([int]$num, [hashtable]$data) {
+        $row = $this.oRows[$num]
+
+        # 更新データの置き換え
+        foreach ($prop in $data.keys | Where-Object { $_ -ne '_row' }) {
+            if ($row.keys.Contains($prop)) {
+                $row.$($prop.Name) = $prop.Value
+            }
+        }
+        $this.UpdateRow($row)
     }
-    [object] GetUnreadMails([int]$term) {
-        $date = Get-Date
-        return $this.GetUnreadMails($date.addDays(-$term).toString("yyyy/M/d 23:59"), $date.toString("yyyy/M/d 23:59"))
+    [void]UpdateRow([hashtable]$row) {
+        #更新範囲取得
+        $this.range -match "^([A-Z]+)\d+:([A-Z]+)\d+$"
+        $rowRange = "$($matches[1])$($row._row):$($matches[2])$($row._row)"
+
+        $method = 'PUT'
+        $contenttype = 'application/json'
+        $valueInputOption = 'USER_ENTERED'
+        $uri = "https://sheets.googleapis.com/v4/spreadsheets/$($this.spreadSheetID)/values/$($this.sheetname)!$rowRange" + "?valueInputOption=$valueInputOption"
+
+        $data = , (@($this.oHeader | ForEach-Object { $row.$_ }))
+        $json = @{ values = $data } | ConvertTo-Json -Depth 3
+
+        #$data = [string[]]$this.oHeader | ForEach-Object { $row.$_ }
+        #        $values = New-Object 'System.Collections.ArrayList'
+        #        $values.Add($data) | Out-Null
+        #        $json = @{values = @($values) } | ConvertTo-Json
+
+        Invoke-RestMethod -Method $method -Uri $uri -Body $json -ContentType $contenttype -Headers @{"Authorization" = "Bearer $([OTGSheetDAO]::accessToken)" }
     }
-    [object] GetMails([string] $startDT, [string] $endDT) {
-        $filter = "[ReceivedTime] < '$endDT' AND [ReceivedTime] > '$startDT'"
-        $this.items = $this.folder.items       
-        $this.items.IncludeRecurrences = $true       
-        $this.items = $this.folder.items.Restrict($filter)
-        return $this.items
+    [void]InsertRow([int]$idx) {
+        $suffix = "$($this.spreadSheetID)" + ":batchUpdate"
+        $uri = "https://sheets.googleapis.com/v4/spreadsheets/$suffix"
+
+        $row = $this.oRows[$idx]._row
+
+        $json = @{requests = @(
+                @{
+                    "insertDimension" = @{
+                        range             = @{sheetId = $this.sheetId; dimension = "ROWS"; startIndex = $row; endIndex = $row + 1 }
+                        inheritFromBefore = $false
+                    }
+                }
+            )
+        } | ConvertTo-Json -depth 5
+
+        Invoke-RestMethod -Method Post -Uri $uri `
+            -Body $json `
+            -ContentType "application/json" `
+            -Headers @{"Authorization" = "Bearer $([OTGSheetDAO]::accessToken)" }
     }
-    [object] GetMails() {
-        return $this.GetMails(1)
+    [hashtable] ToHashTable([string]$key) {
+        $result = [ordered]@{}
+        foreach ($item in $this.oRows) {
+            if ($item.Keys -contains $key) {
+                $result[$item[$key]] = $item
+            }
+        }
+        return $result
     }
-    [object] GetMails([int]$term) {
-        $date = Get-Date
-        return $this.GetMails($date.addDays(-$term).toString("yyyy/M/d 23:59"), $date.toString("yyyy/M/d 23:59"))
-    }
-    [void] Sort([ScriptBlock] $orderfunc) {
-        $this.items.Sort("[ReceivedTime]")
-    }
-    [void] AddMail([object]$item) {
-        $item | ForEach-Object { $_.Move($this.folder) }
-    }
-    [OlMailTable] GetMailTable([string]$path) {
-        $subfolder = $this.folder
-        $path -split "\\" | select-object -skip 2 | ForEach-Object { $subfolder = $subfolder.folders($_) }
-        return New-Object OLMailTable($subfolder)
-    }
-    [object]Restrict([Object]$keywords) { 
-        $this.items = [OTOutlookDAO]::filterItems($this.items, $keywords)
-        return $this.items
+    [hashtable]ToHashTable() {
+        $key = $this.oHeader[0]
+        return $this.ToHashTable($key)
     }
 }
 
@@ -995,6 +775,588 @@ class ConfluDAO : OTDomDAO {
 }
 
 
+class OTConfig {
+    static [string]$confPath = $null
+    static [string]$confFile = $null
+    static [object]$Settings = [ordered]@{}
+    static [string]$password = $null
+    static [void] initialize() {
+        [OTConfig]::confPath = Join-Path $env:ProgramData 'OfficeTools'
+        New-Item -Path $([OTConfig]::confPath) -ItemType Directory -Force -ErrorAction Stop | Out-Null
+        [OTConfig]::confFile = Join-Path ([OTConfig]::confPath) "settings.json"
+
+        if (Test-Path ([OTConfig]::confFile)) {
+            # JSONから読み込んだPSCustomObjectを、そのまま静的プロパティに代入
+            [OTConfig]::Load()
+        }
+        else {
+            # デフォルト設定をPSCustomObjectとして作成し、静的プロパティに代入
+            [OTConfig]::Settings = [ordered]@{
+                Mattermost  = [ordered]@{url = "https://mattermost.aslead.cloud/api/v4"; pat = "octj7bd18tf37edjc8tyhq1t8r" }
+                Confluence  = [ordered]@{url = "https://sd10.aslead.cloud/wiki/rest/pat/latest/tokens" }
+                Google      = [ordered]@{certPath = $null, $iss = "psgsuite-client@smart-surf-425115-s5.iam.gserviceaccount.com" }
+                Gmail       = [ordered]@{account = $null; passcode = $null }
+                LastUpdated = (Get-Date)
+            }
+            # ファイルに保存
+            [OTConfig]::Save()
+        }
+    }
+    static [void] Load() {
+        [OTConfig]::Settings = Get-Content -Path ([OTConfig]::confFile) -Raw | ConvertFrom-Json -AsHashtable
+        $cred = [OTConfig]::Settings.Credential
+        if ($cred -and $cred.password) {
+            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $cred.password))
+            [OTConfig]::password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+        }
+    }
+    static [void] Save() {
+        [OTConfig]::Settings.LastUpdated = (Get-Date)
+        [OTConfig]::Settings | ConvertTo-Json -Depth 5 | Set-Content -Path ([OTConfig]::confFile)
+    }
+    static [object] GetCred() {
+        $cred = [OTConfig]::Settings.Credential
+        if (($null -eq $cred) -or ([OTConfig]::Settings.LastUpdated -lt (Get-Date).addMonths(-6))) {
+            $cred = [OTConfig]::SetCred()
+        }
+        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString $cred.password))
+        [OTConfig]::password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+        return $cred
+    } 
+    static [object] SetCred() {
+        $cred = @{}
+        $empNo = Read-Host "社員コードは？(ex.x1234)"
+        $_cred = Get-Credential
+        $cred.add("empNo", $empNo)
+        $cred.add("id", $_cred.UserName)
+        $cred.add("password", (ConvertFrom-SecureString -SecureString $_cred.Password))
+        [OTConfig]::Settings.Credential = $cred
+        [OTConfig]::Save()
+        return $cred
+    }  
+    static [string] GetMtmPAT() {
+        $pat = [OTConfig]::Settings.Mattermost.pat
+        if ($null -eq $pat) {
+            $pat = [OTConfig]::SetMtmPAT()
+        }
+        return $pat
+    } 
+    static [string] SetMtmPAT() {
+        $pat = Read-Host "MattermostのPATは？"
+        [OTConfig]::Settings.Mattermost = @{pat = $pat }
+        [OTConfig]::Save()
+        return $pat
+    }
+    static [string] GetCnflToken() {
+        $tokens = [OTConfig]::Settings.Confluence.tokens
+        if ($null -eq $tokens) {
+            $tokens = [OTConfig]::SetCnflToken()
+        }
+        if (
+            ($null -eq $tokens.expiringAt) -or `
+            ([Datetime]($tokens.expiringAt) -lt (Get-Date).AddDays(20))
+        ) {
+            $tokens = [OTConfig]::UpdateCnflToken($tokens.rawToken)
+        }
+        return $tokens
+    } 
+    static [object] UpdateCnflToken([string]$token) {
+        $headers = @{
+            "Authorization" = "Bearer $token"
+            "Content-Type"  = "application/json; charset=UTF-8"
+        }
+        $body = @{
+            name               = "myToken"
+            expirationDuration = 90
+        }
+        $json = ConvertTo-JSON -Compress $body
+        $tokens = Invoke-RestMethod -Uri ([OTConfig]::Settings.Confluence.url) -Body $json -Method "POST" -Headers ($headers)
+        [OTConfig]::Settings.Confluence.tokens = $tokens
+        [OTConfig]::Save()
+        return $tokens
+    }
+    static [object] SetCnflToken() {
+        $base64AuthInfo = [Convert]::ToBase64String( `
+                [Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f `
+                    ([OTConfig]::Settings.Credential.id -replace "cu.nri.co.jp", "nri.co.jp"), `
+                        [OTConfig]::password))`
+        )
+
+        $headers = @{
+            Authorization  = ("Basic {0}" -f $base64AuthInfo)
+            "Content-Type" = "application/json; charset=UTF-8"
+        }   
+        $body = @{
+            name               = "myToken"
+            expirationDuration = 90
+        }
+        $json = ConvertTo-JSON -Compress $body
+        $tokens = Invoke-RestMethod -Uri ([OTConfig]::Settings.Confluence.url) -Body $json -Method "POST" -Headers ($headers)
+        [OTConfig]::Settings.Confluence.tokens = $tokens
+        [OTConfig]::Save()
+        return $tokens
+    }
+    static [object] SetGglCert() {
+        $iss = Read-Host "GoogleのISSアカウントは？（変更しない場合は空）"
+        if ($iss -eq "") {
+            $iss = [OTConfig]::Settings.Google.iss
+        }
+        $filepath = (Read-Host "GoogleのCertFileの場所は？") -replace '"', ''
+        
+        if (Test-Path $filepath) { 
+            $path = (Get-Item $filepath).FullName
+            [OTConfig]::Settings.Google = [ordered]@{certPath = $path; iss = $iss }
+            [OTConfig]::Save()
+            return  [OTConfig]::Settings.Google
+        }
+        else {
+            return "ERROR ($filepath)"
+        }
+    }  
+    static [object] SetGmail() {
+        $account = Read-Host "メールアカウントは？"
+        $passcord = Read-Host "アプリパスコードは？"
+        [OTConfig]::Settings.Gmail = @{account = $account; passcord = $passcord }
+        [OTConfig]::Save()
+        return [OTConfig]::Settings.Gmail
+    }
+}
+
+
+class OTGoogleDAO {
+    static $certPswd = "notasecret"
+
+    OTGoogleDAO() {
+    }
+
+    static [string]GetToken([string]$scope) {
+        $headerJSON = [Ordered]@{
+            alg = "RS256"
+            typ = "JWT"
+        } | ConvertTo-Json -Compress
+        $headerBase64 = ConvertTo-Base64URL -text $headerJSON
+				
+        $iat = [int64]([double]::Parse((get-date -date ([DateTime]::UtcNow) -uformat "%s"), [cultureinfo][system.threading.thread]::currentthread.currentculture))
+        $exp = $iat + 59 * 60
+        $aud = "https://www.googleapis.com/oauth2/v4/token"
+        $claimsJSON = [Ordered]@{
+            iss   = [OTConfig]::Settings.Google.iss
+            scope = [OTGSheetDAO]::scope
+            aud   = $aud
+            exp   = $exp
+            iat   = $iat
+        } | ConvertTo-Json -Compress
+
+        $claimsBase64 = ConvertTo-Base64URL -text $claimsJSON
+		
+        $googleCert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(`
+                [OTConfig]::Settings.Google.certPath, `
+                [OTGoogleDAO]::certPswd, `
+                [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable `
+        )
+        $rsaPrivate = $googleCert.PrivateKey
+        $rsa = New-Object System.Security.Cryptography.RSACryptoServiceProvider
+        $null = $rsa.ImportParameters($rsaPrivate.ExportParameters($true))
+
+        $toSign = [System.Text.Encoding]::UTF8.GetBytes($headerBase64 + "." + $claimsBase64)
+        $signature = ConvertTo-Base64URL -Bytes $rsa.SignData($toSign, "SHA256") ## this needs to be converted back to regular text
+
+        # Build request
+        $jwt = $headerBase64 + "." + $claimsBase64 + "." + $signature
+        $fields = 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + $jwt
+
+        # Fetch token
+        $response = Invoke-RestMethod -Uri "https://www.googleapis.com/oauth2/v4/token" -Method Post -Body $fields -ContentType "application/x-www-form-urlencoded"
+
+        return $response.access_token
+    }
+
+}
+
+
+class ExTable :AbstractTable {
+    [object] $sheet
+    [object] $range
+    [PSCustomObject] $oHeader = [ordered]@{}
+    [PSCustomObject] $oRows = @()
+        
+    ExTable([object]$range) {
+        $this.sheet = $range.WorkSheet
+        $this.range = $range
+        $this.oHeader = $this.GetHeader()
+    }
+    [object] GetHeader() {
+        return $this.getItems($this.range.Row, $this.range.Column, $this.range.Columns.Count)
+    }   
+    [PSCustomObject] getItems($row, $col, $count) {
+        $obj = [ordered]@{}
+        while ($count -gt 0) {
+            $cell = $this.sheet.Cells($row, $col)
+            $text = $cell.Text
+            if ($text -ne "") {
+                $cols = $cell.MergeArea.Columns.Count
+                if ($cols -eq 1) {
+                    # $obj.Add($cell.Text, $col)
+                    $obj[$cell.Text] = $col
+                }
+                else {
+                    $obj2 = $this.getItems($row + 1, $col, $cols)
+                    #$obj.Add($cell.Text, $obj2)
+                    $obj[$cell.Text] = $obj2
+                }
+            }
+            $count --; $col ++
+        }
+        return $obj
+    }
+    [PSCustomObject] GetRows([int[]]$rows) {
+        $this.oRows = @()
+        foreach ($row in $rows) {
+            $this.oRows += ($this.getData($row, $this.oHeader) + @{"_row" = $row })
+        }
+        return $this.oRows
+    }
+    [PSCustomObject] GetRows() {
+        [int]$start = $this.startRow()
+        [int]$end = $this.lastRow()
+        if ($start -gt $end) {
+            return $null
+        }
+        return $this.GetRows(($start..$end))
+    }
+    [PSCustomObject]getData([int]$row, [PSCustomObject]$item) {
+        $obj = [ordered]@{}
+        foreach ($key in $item.Keys) {
+            if ($item.$key -is [int]) {
+                $cell = $this.sheet.Cells($row, $item.$key)
+                if ($cell.Hyperlinks.Count -eq 0) {
+                    $obj.Add($key, $cell.Text)
+                }
+                else {
+                    $obj.Add($key, @{Text = $cell.Text; Address = $cell.HyperLinks[1].Address })
+                }
+            }
+            else {
+                $obj.Add($key, $this.getData($row, $item.$key))
+            }
+        }
+        return $obj
+    }
+    [PSCustomObject] AddRows([PSCustomObject[]]$data) {
+        $lastrow = $this.lastRow() + 1
+        foreach ($record in $data) {
+            $this.setData($lastrow, $this.oHeader, $record)
+        }
+        $this.oROws = $this.GetRows()
+        return $this.oRows
+    }
+    [void]setData([int]$row, [PSCustomObject]$item, [PSCustomObject]$data) {
+        if ($null -ne $data) {
+            foreach ($key in $item.Keys) {
+                if ($item.$key -is [int]) {
+                    $this.sheet.Cells($row, $item.$key) = $data.$key
+                }
+                else {
+                    $this.setData($row, $item.$key, $data.$key)
+                }
+            }
+        }
+    }
+    [PSCustomObject] SearchRows([ScriptBlock] $compfunc) {
+        return ($this.oRows | Where-Object { &$compfunc $_ } )
+    }
+    [PSCustomObject] toObject() {
+        return [PSCustomObject]@{header = $this.oHeader; data = $this.oRows }
+    }
+    [int] startRow() {
+        return $this.range.Row + $this.range.Rows.Count
+    }  
+    [int] lastRow() {
+        $cell = $this.sheet.Cells($this.startRow(), $this.range.Column)
+        $lastrow = switch ($cell.Text) {
+            "" { $this.startRow() - 1 }
+            default { $cell.End( - 4121).row }
+        }
+        return $lastrow
+    }  
+    [boolean] Sort([ScriptBlock] $orderfunc) {
+        $keycol = $this.sheet.Columns.Count
+        
+        foreach ($data in $this.oRows) { $this.sheet.Cells($data._row, $keycol) = &$orderfunc $data }
+
+        $cell1 = $this.sheet.Cells(($this.oRows._row | Select-Object -First 1), $this.range.Column)
+        $cell2 = $this.sheet.Cells(($this.oRows._row | Select-Object -Last 1), $keycol)
+        $drange = $this.sheet.Range($cell1, $cell2)
+        $key = $drange.Columns[$keycol]
+        # $key.ClearContents()
+        return $drange.Sort($key, 1)
+    } 
+}
+
+
+class OTTaskSchedulerDAO {
+    [string]$taskPath = "\マイタスク\"
+    [TsTaskDAO[]]$table
+
+    OtTaskSchedulerDAO($taskPath) {
+        $this.taskPath = $taskPath
+        $this.GetTasks()
+    }
+    OtTaskSchedulerDAO() {
+        $this.GetTasks()
+    }
+    Register ([TsTaskDAO]$task) {
+        Register-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Xml $task.xml.OuterXml `
+            -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password) -Force  
+    }
+    SetTrigger([TsTaskDAO]$task, [ciminstance]$trigger) {
+        Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath -Trigger $trigger  `
+            -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password)  
+    }
+    GetTasks() {
+        $this.table = Get-ScheduledTask -TaskPath $this.taskPath | ForEach-Object { New-Object TsTaskDAO($_.TaskName, $this.taskPath) }
+    }
+    ReRegisterAll() {
+        foreach ($task in $this.table) {
+            Set-ScheduledTask -TaskName $task.taskName -TaskPath $this.taskPath `
+                -User ([OTConfig]::Settings.Credential.id) -Password ([OTConfig]::password)
+        }
+    }
+}
+
+
+class Term {
+    [datetime] $base
+    [datetime] $start
+    [datetime] $end
+    
+    Term([datetime]$_base) {
+        $this.base = $_base
+        $this.start = Get-Date($_base.toString("yyyy/MM/dd"))
+        $this.end = $this.start.addDays(1)
+    }
+    Term([datetime]$st, [datetime]$ed) {
+        $this.base = $st
+        $this.start = $st
+        $this.end = $ed
+    }
+    Term([datetime]$_base, [string]$span) {
+        # span 1:month, 2:half, 3:year
+        $this.base = $_base
+        switch ($span) {
+            "1" {
+                $this.start = Get-Date($_base.toString("yyyy/MM/1"))
+                $this.end = $this.start.addMonths(1)
+            }
+            "2" {
+                $diff = switch ($_base.Month) { { (4 -le $_) -and ($_ -le 9) } { 4 }; default { 10 } } 
+                $this.start = Get-Date($_base.AddMonths($diff - $_base.Month).toString("yyyy/MM/1"))
+                $this.end = $this.start.AddMonths(6)
+            }
+            "3" {
+                $diff = switch ($_base.Month) { { 4 -le $_ } { 4 }; default { -8 } } 
+                $this.start = Get-Date($_base.AddMonths($diff - $_base.Month).toString("yyyy/MM/1"))
+                $this.end = $this.start.AddMonths(12)
+            }
+            default {}
+        } 
+    }
+    [boolean] Contains([datetime]$dt) {
+        return ($this.start -le $dt) -and ($dt -lt $this.end)
+    }
+    [Term] ThisMonth() {
+        return New-Object Term($this.base, 1)
+    }
+    [Term] PrevMonth() {
+        return New-Object Term($this.base.addMonts(-1), 1)
+    }
+    [Term] Half() {
+        return New-Object Term($this.base, 2)
+    }
+    [Term[]] HalfMonths() {
+        $diff = switch ($this.base.Month) { { (4 -le $_) -and ($_ -le 9) } { 4 }; default { 10 } } 
+        $diff -= $this.base.Month
+        return $diff..0 | ForEach-Object { New-Object Term($this.base.addmonths($_), 1) }
+    }
+}
+
+
+class OTOutlookDAO {
+    static [object] $outlook
+    static [object] $namespace
+
+    OTOutlookDAO() {
+        $this.initialize()
+    }
+    [void] initialize() {
+        try {
+            if ($null -ne [OTOutlookDAO]::outlook) {
+                [OTOutlookDAO]::namespace = [OTOutlookDAO]::outlook.GetNamespace("MAPI")
+            }
+            else {
+                throw "New Object"
+            }
+        }
+        catch {
+            [OTOutlookDAO]::outlook = New-Object -ComObject Outlook.Application
+            [OTOutlookDAO]::namespace = [OTOutlookDAO]::outlook.GetNamespace("MAPI")
+        }
+    }
+    [OlApoTable] GetApoTable([string]$receiver) {        
+        $folder = switch ($receiver) {
+            "" {
+                [OTOutlookDAO]::namespace.GetDefaultFolder(9)
+            }
+            default {
+                $rec = [OTOutlookDAO]::namespace.CreateRecipient($receiver)
+                [OTOutlookDAO]::namespace.GetSharedDefaultFolder($rec, 9)           
+            }
+        } 
+        return New-Object OlApoTable($folder)
+    }
+    [object] GetApoTable() {        
+        return $this.GetApoTable($null)
+    }
+    [OlMailTable] GetMailTable() {
+        return New-Object OLMailTable([OTOutlookDAO]::namespace.GetDefaultFolder(6))
+    }
+    [OlMailTable] GetMailTable([string]$path) {
+        $folder = [OTOutlookDAO]::namespace
+        $path -split "\\" | select-object -skip 2 | ForEach-Object { $folder = $folder.folders($_) }
+        return New-Object OLMailTable($folder)
+    }
+    [OlMailTable] GetUnsentMailTable() {
+        return New-Object OLMailTable([OTOutlookDAO]::namespace.GetDefaultFolder(4))
+    }
+    static [string] formatDT ([Object]$dt) {
+        if ($dt -is [datetime]) { $dt = $dt.toString("yyyy/M/d HH:mm") } 
+        return $dt
+    }
+    static [object] filterItems([Object]$items, [Object]$keywords) { 
+        $filter = "@SQL=urn:schemas:httpmail:subject LIKE '" + [string]::Join("' OR urn:schemas:httpmail:subject LIKE '", $keywords) + "'" 
+        return $items.Restrict($filter)
+    }
+    [object] SearchItem([object] $id) {
+        return [OTOutlookDAO]::namespace.GetItemFromID($id)
+    }
+    [object] createMail() {
+        return [OTOutlookDAO]::outlook.CreateItem(0)
+    }
+    static [object] ResolveAddress([string]$name) {
+        if (($name -eq "") -or $null -eq $name) {
+            return $null
+        }
+        if ($name -match "(.{3})　(.{3})") {   
+            $name = ($Matches[1] -replace "　", "") + " " + ($Matches[2] -replace "　", "")
+        }
+        $recip = [OTOutlookDAO]::namespace.CreateRecipient($name)
+        $user = @{氏名 = $name }
+
+        if ($recip.Resolve()) {     
+            $user.氏名 = $recip.Name
+            $user.メール = $recip.AddressEntry.GetExchangeUser().PrimarySmtpAddress
+
+            if ($recip.Name -match "(.+　.+)\((\d+)\)(.+)$") {
+                $user.氏名 = $Matches[1]
+                $user.内線番号 = $Matches[2]
+                $user.所属 = $Matches[3]
+            }
+        }       
+        return $user
+    }
+}
+
+
+class OTGMailDAO:OTGoogleDAO {
+    static $scope = "https://www.googleapis.com/auth/gmail.modify"
+    static $accessToken = $null
+
+    OTGMailDAO() {
+        $this.initialize()
+    }
+    [void] initialize() {
+        [OTGMailDAO]::GetToken()
+    }
+    static [void] GetToken() {
+        [OTGMailDAO]::accessToken = [OTGoogleDAO]::GetToken([OTGMailDAO]::scope)
+    }
+}
+
+
+class OlMailTable:AbstractTable {
+    [object]$folder
+    [object]$items
+    
+    static $selectheader = @(
+        @{label = "受信日時"; expression = { $_.ReceivedTime } },
+        @{label = "送信者"; expression = { $_.Sender.Address } },
+        @{label = "宛先"; expression = { $_.To } },
+        @{label = "CC"; expression = { $_.Cc } },
+        "Subject", "Body", "EntryID"
+    )   
+    OlMailTable([object]$folder) {
+        $this.folder = $folder
+        $this.items = $this.folder.items
+        $this.items.Sort("[ReceivedTime]")
+    }
+    [pscustomobject] toObject() {
+        return [OlMailTable]::toObject($this.items)
+    }
+    static [pscustomobject] toObject([object]$items) {
+        return [pscustomobject]@{
+            header = @("受信日時", "送信者", "宛先", "CC", "Subject", "Body", "EntryID")
+            data   = $items | Select-Object ([OlMailTable]::selectheader)
+        }
+    }
+    [object] Search([pscustomobject]$data, [ScriptBlock] $compfunc) {
+        return $this.items | Where-Object { &$compfunc $_ $data }
+    }
+    [object] GetUnreadMails([string] $startDT, [string] $endDT) {
+        $filter = "[UnRead] =True AND [ReceivedTime] < '$endDT' AND [ReceivedTime] > '$startDT'"
+        $this.items = $this.folder.items       
+        $this.items.IncludeRecurrences = $true       
+        $this.items = $this.folder.items.Restrict($filter)
+        return $this.items
+    }
+    [object] GetUnreadMails() {
+        return $this.GetUnreadMails(1)
+    }
+    [object] GetUnreadMails([int]$term) {
+        $date = Get-Date
+        return $this.GetUnreadMails($date.addDays(-$term).toString("yyyy/M/d 23:59"), $date.toString("yyyy/M/d 23:59"))
+    }
+    [object] GetMails([string] $startDT, [string] $endDT) {
+        $filter = "[ReceivedTime] < '$endDT' AND [ReceivedTime] > '$startDT'"
+        $this.items = $this.folder.items       
+        $this.items.IncludeRecurrences = $true       
+        $this.items = $this.folder.items.Restrict($filter)
+        return $this.items
+    }
+    [object] GetMails() {
+        return $this.GetMails(1)
+    }
+    [object] GetMails([int]$term) {
+        $date = Get-Date
+        return $this.GetMails($date.addDays(-$term).toString("yyyy/M/d 23:59"), $date.toString("yyyy/M/d 23:59"))
+    }
+    [void] Sort([ScriptBlock] $orderfunc) {
+        $this.items.Sort("[ReceivedTime]")
+    }
+    [void] AddMail([object]$item) {
+        $item | ForEach-Object { $_.Move($this.folder) }
+    }
+    [OlMailTable] GetMailTable([string]$path) {
+        $subfolder = $this.folder
+        $path -split "\\" | select-object -skip 2 | ForEach-Object { $subfolder = $subfolder.folders($_) }
+        return New-Object OLMailTable($subfolder)
+    }
+    [object]Restrict([Object]$keywords) { 
+        $this.items = [OTOutlookDAO]::filterItems($this.items, $keywords)
+        return $this.items
+    }
+}
+
+
 class OTGSheetDAO:OTGoogleDAO {
     static $scope = "https://www.googleapis.com/auth/spreadsheets"
     static $accessToken = $null
@@ -1062,367 +1424,6 @@ class OTGSheetDAO:OTGoogleDAO {
         }
         return [string]($colLetters + [string]($range.Row))
     } 
-}
-
-
-class MattermostDAO {
-    static [object] $headers = @{
-        "Authorization" = "Bearer $pat"
-        "Content-Type"  = "application/json; charset=UTF-8"
-    }
-    [string] $base_url
-    [object] $me
-    [object] $users
-    [object] $posts
-    $selectheader = @(
-        @{label = "ID"; expression = { $_.id } } ,
-        @{label = "日付"; expression = { (Get-Date("1970/1/1")).AddMilliseconds($_.create_at ) } },
-        @{label = "投稿者"; expression = { $uid = $_.user_id; ($users | Where-Object { $_.id -eq $uid }).first_name } }
-        @{label = "投稿内容"; expression = { $_.message } }
-    )
-    MattermostDAO([string]$base_url) {
-        [MattermostDAO]::getPAT() | Out-Null
-        $this.base_url = $base_url
-        $this.me = $this.GetMe()
-    }
-    MattermostDAO() {
-        [MattermostDAO]::getPAT() | Out-Null
-    }
-    [Object] Post($channel_id, $message) {
-        $url = $this.base_url + "/posts"
-        $payload = @{
-            "channel_id" = $channel_id
-            "message"    = $message
-        }
-        $json = ConvertTo-JSON -Compress $payload
-        $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "POST" -Body $json
-        return $payload
-    }
-    [Object] GetPosts($channel_id) {
-        $url = $this.base_url + "/channels/" + $channel_id + "/posts"   
-        $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "GET"
-        $this.posts = $response.order | ForEach-Object { $response.posts.$_ } 
-        $this.users = $this.GetUsers(($this.posts.user_id | Select-Object -Unique))
-        return $this.posts
-    }
-    [Object] DeletePost($post_id) {
-        $url = $this.base_url + "/posts/" + $post_id 
-        $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "DEL"
-        return $response
-    }
-    [Object] GetUsers($ids) {
-        $url = $this.base_url + "/users/ids" 
-        $json = ConvertTo-JSON -Compress $ids
-        $response = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "POST" -Body $json
-        return $response
-    }
-    [Object] GetMe() {
-        $url = $this.base_url + "/users/me" 
-        $this.me = Invoke-RestMethod -Uri $url -Headers ([MattermostDAO]::headers) -Method "GET" 
-        return $this.me
-    }
-    static [string] getPAT() {
-        $pat = [OTConfig]::Settings.Mattermost.pat
-        [MattermostDAO]::headers = @{
-            "Authorization" = "Bearer " + $pat
-            "Content-Type"  = "application/json; charset=UTF-8"
-        }
-        return $pat
-    }
-}
-
-
-class GsTable :AbstractTable {
-    [string] $spreadsheetId
-    [string] $sheetname
-    [string] $sheetId
-    [string] $range
-    [object] $oHeader = [ordered]@{}
-    [object] $oRows = @()
-    [object] $topCel
-        
-    GsTable([string]$spreadsheetId, [string]$dataname, [int]$sheetId, [string]$sheetName, [string]$range) {
-        $this.spreadsheetId = $spreadsheetId
-        $this.sheetId = $sheetId
-        $this.sheetName = $sheetName
-        $this.range = $range
-
-        $parts = $this.range -split ":"
-        $this.topCel = [OTGSheetDAO]::toIndex($parts[0])        
-        $this.Load()
-    }
-    [object]Load() {
-        $uri = "https://sheets.googleapis.com/v4/spreadsheets/$($this.spreadSheetID)/values/$($this.sheetname)!$($this.range)"
-        #    $uri += "?valueRenderOption=$valueRenderOption"
-        $result = Invoke-RestMethod -Method GET -Uri $uri -Headers @{"Authorization" = "Bearer $([OTGSheetDAO]::accessToken)" }
-
-        $sheet = $result.values
-        $Rows = $sheet.Count
-        $Columns = $sheet[0].Count
-        $Header = [string[]]$result.values[0]
-        $Data = @()
-
-        foreach ($Row in (1..($Rows - 1))) {
-            $h = [Ordered]@{}
-            foreach ($Column in 0..($Columns - 1)) {
-                if ($sheet[0][$Column].Length -gt 0) {
-                    $Name = $Header[$Column]
-                    if ($sheet[$row].count -gt ($column)) {
-                        $h.$Name = $Sheet[$Row][$Column]
-                    }
-                    else {
-                        $h.$Name = ""
-                    }
-                }
-            }
-            $h._row = $this.topCel.Row + $Row 
-            $Data += ($h)
-        }
-        $this.oHeader = $Header
-        $this.oRows = $Data
-        return $this.oRows
-    }
-    [hashtable[]] GetRows([int[]]$rows) {
-        return $rows | ForEach-Object { $this.oRows[$_] }
-    }
-    [hashtable[]] GetRows() {
-        return $this.oRows
-    }
-    [void]UpdateRow([int]$num, [hashtable]$data) {
-        $row = $this.oRows[$num]
-
-        # 更新データの置き換え
-        foreach ($prop in $data.keys | Where-Object { $_ -ne '_row' }) {
-            if ($row.keys.Contains($prop)) {
-                $row.$($prop.Name) = $prop.Value
-            }
-        }
-        $this.UpdateRow($row)
-    }
-    [void]UpdateRow([hashtable]$row) {
-        #更新範囲取得
-        $this.range -match "^([A-Z]+)\d+:([A-Z]+)\d+$"
-        $rowRange = "$($matches[1])$($row._row):$($matches[2])$($row._row)"
-
-        $method = 'PUT'
-        $contenttype = 'application/json'
-        $valueInputOption = 'USER_ENTERED'
-        $uri = "https://sheets.googleapis.com/v4/spreadsheets/$($this.spreadSheetID)/values/$($this.sheetname)!$rowRange" + "?valueInputOption=$valueInputOption"
-
-        $data = , (@($this.oHeader | ForEach-Object { $row.$_ }))
-        $json = @{ values = $data } | ConvertTo-Json -Depth 3
-
-        #$data = [string[]]$this.oHeader | ForEach-Object { $row.$_ }
-        #        $values = New-Object 'System.Collections.ArrayList'
-        #        $values.Add($data) | Out-Null
-        #        $json = @{values = @($values) } | ConvertTo-Json
-
-        Invoke-RestMethod -Method $method -Uri $uri -Body $json -ContentType $contenttype -Headers @{"Authorization" = "Bearer $([OTGSheetDAO]::accessToken)" }
-    }
-    [void]InsertRow([int]$idx) {
-        $suffix = "$($this.spreadSheetID)" + ":batchUpdate"
-        $uri = "https://sheets.googleapis.com/v4/spreadsheets/$suffix"
-
-        $row = $this.oRows[$idx]._row
-
-        $json = @{requests = @(
-                @{
-                    "insertDimension" = @{
-                        range             = @{sheetId = $this.sheetId; dimension = "ROWS"; startIndex = $row; endIndex = $row + 1 }
-                        inheritFromBefore = $false
-                    }
-                }
-            )
-        } | ConvertTo-Json -depth 5
-
-        Invoke-RestMethod -Method Post -Uri $uri `
-            -Body $json `
-            -ContentType "application/json" `
-            -Headers @{"Authorization" = "Bearer $([OTGSheetDAO]::accessToken)" }
-    }
-    [hashtable] ToHashTable([string]$key) {
-        $result = [ordered]@{}
-        foreach ($item in $this.oRows) {
-            if ($item.Keys -contains $key) {
-                $result[$item[$key]] = $item
-            }
-        }
-        return $result
-    }
-    [hashtable]ToHashTable() {
-        $key = $this.oHeader[0]
-        return $this.ToHashTable($key)
-    }
-}
-
-
-class OlApoTable:AbstractTable {
-    [object]$folder
-    [object]$items
-
-    static $selectheader = @(
-        @{label = "日付"; expression = { $_.Start.toString("M/d(ddd)") } },
-        @{label = "時間"; expression = { $_.Start.toString("HH:mm-") + $_.End.toString("HH:mm") } },
-        "Subject", "Location", "Body", "EntryID"
-    )
-
-    OlApoTable([object]$folder) {
-        $this.folder = $folder
-        $this.items = $this.folder.items       
-        $this.items.IncludeRecurrences = $true       
-        $this.items.Sort("[Start]")
-    }
-    [pscustomobject] toObject() {
-        return [OlApoTable]::toObject($this.items)
-    }
-    static [pscustomobject] toObject([object]$items) {
-        return [pscustomobject]@{
-            header = @("日付", "時間", "Subject", "Location", "Body", "EntryID")
-            data   = $items | Select-Object ([OlApoTable]::selectheader) 
-        }
-    }
-    [object] Search([pscustomobject]$data, [ScriptBlock] $compfunc) {
-        return $this.items | Where-Object { &$compfunc $_ $data }
-    }
-    [object] SearchApos([object] $startDT, [object] $endDT) {
-        $startDT = [OTOutlookDAO]::formatDT($startDT)
-        $endDT = [OTOutlookDAO]::formatDT($endDT)
-        $filter = "[Start] = '$startDT' AND [End] = '$endDT'"
-        return $this.items.Restrict($filter)
-    }
-    [object] GetApos([string] $startDT, [string] $endDT) {
-        $filter = "[Start] < '$endDT' AND [End] > '$startDT'"   
-        $this.items = $this.folder.items       
-        $this.items.IncludeRecurrences = $true       
-        $this.items.Sort("[Start]")
-        $this.items = $this.items.Restrict($filter)
-        return $this.Items
-    }
-    [object] GetApos() {
-        return $this.GetApos(1)
-    }
-    [object] GetApos([int]$term) {
-        $date = Get-Date  
-        return $this.GetApos($date.toString("yyyy/M/d 00:00"), $date.adddays($term).toString("yyyy/M/d 00:00"))
-    }
-    [void] Sort([ScriptBlock] $orderfunc) {
-        $this.items.Sort("[Start]")
-    }
-    [object]CreateApo([pscustomobject] $data) { 
-        $item = $this.items.Add()
-        $item.Start = [OTOutlookDAO]::FormatDT($data."Start")
-        $item.End = [OTOutlookDAO]::formatDT($data."End")
-        return $item
-    }
-    [object]CreateEvent([datetime] $date) { 
-        $item = $this.items.Add()
-        $item.Start = $date.toString("yyy/M/d 00:00")
-        $item.End = $date.addDays(1).toString("yyy/M/d 00:00")
-        $item.AllDayEvent = $true
-        return $item
-    }
-    [object]Restrict([Object]$keywords) { 
-        $this.items = [OTOutlookDAO]::filterItems($this.items, $keywords)
-        return $this.items
-    }
-}
-
-
-class OTPowerpointDAO {
-    static [object] $powerpoint
-    [object] $presen
-
-    OTPowerpointDAO([string]$path) {
-        [OTPowerpointDAO]::initialize()
-        $this.presen = [OTPowerpointDAO]::powerpoint.Presentations.Open($path)
-    }
-    static [void] initialize() {
-        if ($null -eq [OTPowerpointDAO]::powerpoint) {
-            [OTPowerpointDAO]::powerpoint = New-Object -ComObject PowerPoint.Application
-        }
-    }
-    [PpTable] GetTable() {
-        return New-Object PpTable($this.presen)
-    }
-}
-
-
-class OTCalDAO {
-    static [object] $syukujitsu = $null
-    static [void] loadSyukujitsu() {
-        if (!(Test-Path "$PSScriptRoot\data\syukujitsu.csv" -NewerThan (Get-Date).addMonths(-6))) {
-            $url = 'https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv'
-            Invoke-WebRequest -URI $url -OutFile "$PSScriptRoot\data\syukujitsu.csv"
-        } 
-        if ((Get-Host).Version.Major -eq 7) {
-            [OTCalDAO]::syukujitsu = Import-Csv "$PSScriptRoot\data\syukujitsu.csv" -Encoding ANSI
-        }
-        else {
-            [OTCalDAO]::syukujitsu = Import-Csv "$PSScriptRoot\data\syukujitsu.csv" -Encoding Default 
-        }
-    }
-    static [object] getSyukujitsu([datetime]$st, [datetime]$ed) {
-        return [OTCalDAO]::syukujitsu | Where-Object { ($st -lt (Get-Date($_."国民の祝日・休日月日"))) -and ((Get-Date($_."国民の祝日・休日月日")) -lt $ed) }
-    }
-    static [object] getSyukujitsu([Term]$term) {
-        return [OTCalDAO]::getSyukujitsu($term.start, $term.end) 
-    }
-    static [object] getSyukujitsu([string]$st, [string]$ed) {
-        return [OTCalDAO]::getSyukujitsu((Get-Date($st)), (Get-Date($ed)))
-    }
-    static [object] getSyukujitsu([datetime]$st) {
-        return [OTCalDAO]::getSyukujitsu($st, $st.AddYears(1))
-    }
-}
-
-
-class OTExcelDAO {
-    static [object] $excel
-    [object] $book
-    [hashtable] $tables = @{}
-
-    [void]Show() {
-        if (-not [OTExcelDAO]::excel.Visible) {
-            [OTExcelDAO]::excel.Visible = $true
-            if ($this.book.ReadOnly) { $this.book.ChangeFileAccess(2) }
-        } 
-    }
-    [void]Save() {
-        $this.book.Save()
-    }
-    [void]Close() {
-        $this.book.Close()
-    }
-    OTExcelDAO([string]$path, [boolean]$readOnly = $true) {
-        $this.initialize($path, $readOnly)
-    }
-    [void] initialize([string]$path, [boolean]$readOnly) {
-        $path -match "[^\\]+\.xls[m]*"
-        $bookname = $Matches[0]
-        try {
-            if ($null -ne [OTExcelDAO]::excel) {
-                $this.book = [OTExcelDAO]::excel.Workbooks | Where-Object Name -eq $bookname
-                if ($null -eq $this.book ) {
-                    $this.book = [OTExcelDAO]::excel.Workbooks.Open($path, 0, $readOnly)
-                }
-            }
-            else {
-                throw "New Object"
-            }
-        }
-        catch {
-            Get-Process | where-object name -eq "Excel" | Stop-Process
-            [OTExcelDAO]::excel = New-Object -ComObject Excel.Application
-            $this.book = [OTExcelDAO]::excel.Workbooks.Open($path, 0, $readOnly)  
-        }
-    }
-    [Extable] GetTable([object]$parm, [string]$header) {
-        $sheet = $this.book.Worksheets($parm)
-        $range = $sheet.Range($header)
-        $table = New-Object ExTable($range)
-        $this.tables.Add($sheet.Name, $table)
-        return $table
-    }
 }
 
 

@@ -40,7 +40,9 @@
 
     function Generate-FolderBlock {
         param ($structure)
-        $lines = $structure.Folders | ForEach-Object {
+        $lines = @()
+        $lines += '$script:ModuleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path'
+        $lines += $structure.Folders | ForEach-Object {
             '$script:{0}Path = Join-Path $script:ModuleRoot "{0}"' -f $_
         }
         return $lines -join "`r`n"
@@ -107,29 +109,26 @@
 
     function Get-DllPaths {
         param ([string]$libPath)
-        if (-not (Test-Path $libPath)) {
-            return @()
-        }
-        return Get-ChildItem -Path $libPath -Filter *.dll -File -ErrorAction SilentlyContinue |
+        if (-not (Test-Path $libPath)) { return @() }
+        Get-ChildItem -Path $libPath -Filter *.dll -File -ErrorAction SilentlyContinue |
         Sort-Object Name |
-        ForEach-Object { $_.FullName }
+        ForEach-Object { $_.Name }
     }
+
     function Generate-AddTypeBlock {
-        param ($dllPaths)
-        if (-not $dllPaths -or $dllPaths.Count -eq 0) {
-            return ''
-        }
-        return ($dllPaths | ForEach-Object {
-                $fileName = [System.IO.Path]::GetFileName($_)
-                'Add-Type -Path "$script:ModuleRoot\lib\{0}"' -f $fileName
+        param ([string[]]$dllNames)
+        if (-not $dllNames -or $dllNames.Count -eq 0) { return '' }
+        return ($dllNames | ForEach-Object {
+                'Add-Type -Path "$script:ModuleRoot\lib\{0}"' -f $_
             }) -join "`r`n"
     }
+
     function Generate-RequiredAssembliesLine {
-        param ($dllPaths)
-        $quoted = $dllPaths | ForEach-Object {
-            '$script:ModuleRoot\lib\{0}' -f ([System.IO.Path]::GetFileName($_)) | ForEach-Object { "'$_'" }
-        }
-        return $quoted -join ", "
+        param ([string[]]$dllNames)
+        if (-not $dllNames -or $dllNames.Count -eq 0) { return '' }
+        return ($dllNames | ForEach-Object {
+                "'lib\{0}'" -f $_
+            }) -join ", "
     }
 
     # ─────────────────────────────────────────────
@@ -155,23 +154,24 @@
     $classCodeList = Get-ClassInheritanceOrder $classFiles
     $classBlock = $classCodeList -join "`r`n`r`n"
 
-    $publicFuncs = Get-FunctionNames $publicPath
-    $privateFuncs = Get-FunctionNames $privatePath
+    $publicFuncs = @(Get-FunctionNames $publicPath)
+    $privateFuncs = @(Get-FunctionNames $privatePath)
     $dotSourceBlock = Generate-DotSourceBlock $publicFuncs $privateFuncs
     $exportBlock = Generate-ExportBlock $publicFuncs
 
-    $dllPaths = Get-DllPaths $libPath
-    $addTypeBlock = Generate-AddTypeBlock $dllPaths
-    $requiredAssemblies = Generate-RequiredAssembliesLine $dllPaths
+    $dllNames = Get-DllPaths $libPath
+    $addTypeBlock = Generate-AddTypeBlock $dllNames
+    $requiredAssemblies = Generate-RequiredAssembliesLine $dllNames
 
     # 📝 psm1生成（安全な置換）
-    $psm1Content = [Regex]::Replace($psm1Template, '{{FolderPaths}}', { $folderBlock })
-    $psm1Content = [Regex]::Replace($psm1Content, '{{Classes}}', { $classBlock })
-    $psm1Content = [Regex]::Replace($psm1Content, '{{DotSource}}', { $dotSourceBlock })
-    $psm1Content = [Regex]::Replace($psm1Content, '{{AddTypeBlock}}', { $addTypeBlock })
-    $psm1Content = [Regex]::Replace($psm1Content, '{{Export}}', { $exportBlock })
+    $psm1Content = $psm1Template
+    $psm1Content = [Regex]::Replace($psm1Content, '{{FolderPaths}}', {return $folderBlock})
+    $psm1Content = [Regex]::Replace($psm1Content, '{{Classes}}', {return $classBlock})
+    $psm1Content = [Regex]::Replace($psm1Content, '{{DotSource}}', {return $dotSourceBlock})
+    $psm1Content = [Regex]::Replace($psm1Content, '{{AddTypeBlock}}', {return $addTypeBlock})
+    $psm1Content = [Regex]::Replace($psm1Content, '{{Export}}', {return $exportBlock})
 
-    Set-Content -Path $psm1Path -Value $psm1Content
+    Set-Content -Path $psm1Path -Value $psm1Content -Encoding UTF8
     Write-Host "✅ $moduleName.psm1 を生成しました: $psm1Path"
 
     # 📝 psd1生成
@@ -187,6 +187,6 @@
         -replace '{{ExportFunctions}}', $funcsExportLine `
         -replace '{{RequiredAssemblies}}', $requiredAssemblies
 
-    Set-Content -Path $psd1Path -Value $psd1Content
+    Set-Content -Path $psd1Path -Value $psd1Content -Encoding UTF8
     Write-Host "✅ $moduleName.psd1 を生成しました: $psd1Path"
 }

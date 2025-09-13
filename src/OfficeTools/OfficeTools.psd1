@@ -1,7 +1,7 @@
 @{
     RootModule        = 'OfficeTools.psm1'
     ModuleVersion     = '1.0.0'
-    GUID              = 'c4b5a2ee-09e1-436c-a913-1c9d32f334d5'
+    GUID              = '8ca4b865-61e5-45cb-8de0-e1e75c30df83'
     Author            = 'Shuma'
     Description       = 'Auto-generated module manifest.'
 
@@ -10,7 +10,7 @@
     VariablesToExport = @()
     AliasesToExport   = @()
 
-    RequiredAssemblies = @('$ModuleRoot\lib\HtmlAgilityPack.dll', '$ModuleRoot\lib\MailKit.dll', '$ModuleRoot\lib\MimeKit.dll')
+    RequiredAssemblies = @('lib\HtmlAgilityPack.dll', 'lib\MailKit.dll', 'lib\MimeKit.dll')
 
     PrivateData = @{
         PSData = @{
