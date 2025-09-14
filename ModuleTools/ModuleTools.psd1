@@ -1,25 +1,23 @@
-﻿@{
-    # モジュール識別情報
-    RootModule         = 'ModuleTools.psm1'
-    ModuleVersion      = '1.0.0'
-    GUID               = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'  # New-Guid で生成
+@{
+    RootModule        = '{{ModuleName}}.psm1'
+    ModuleVersion     = '1.0.7'
+    GUID              = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+    Author            = '修馬'
+    Description       = 'PowerShell モジュールの分割と統合を支援する開発ツール'
 
-    # 作成者情報
-    Author             = '修馬'
-    CompanyName        = ''
-    Description        = 'PowerShell モジュールの分割と統合を支援する開発ツール'
+    FunctionsToExport = @({{ExportFunctions}})
+    CmdletsToExport   = @()
+    VariablesToExport = @()
+    AliasesToExport   = @()
 
-    # PowerShell要件
-    PowerShellVersion  = '5.1'
+    RequiredAssemblies = @()
 
-
-    # エクスポート対象
-    RequiredAssemblies = @( { { RequiredAssemblies } })
-    FunctionsToExport  = @('Convert-PsmToModule', 'New-Module', 'Get-ClassDependencyTree','Initialize-ModuleFromPsm1')
-    CmdletsToExport    = @()
-    VariablesToExport  = @()
-    AliasesToExport    = @()
-
-    # その他
-    PrivateData        = @{}
+    PrivateData = @{
+        PSData = @{
+            Tags         = @('Automation', 'Generated')
+            LicenseUri   = ''
+            ProjectUri   = ''
+            ReleaseNotes = ''
+        }
+    }
 }
