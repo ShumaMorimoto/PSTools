@@ -15,7 +15,7 @@
 
     # エクスポート対象
     RequiredAssemblies = @( { { RequiredAssemblies } })
-    FunctionsToExport  = @('Split-Module', 'Build-Module', 'Get-ClassDependencyTree')
+    FunctionsToExport  = @('Convert-PsmToModule', 'New-Module', 'Get-ClassDependencyTree')
     CmdletsToExport    = @()
     VariablesToExport  = @()
     AliasesToExport    = @()

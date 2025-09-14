@@ -1,10 +1,9 @@
-﻿# モジュールルート（このファイルの場所）
-$script:ModuleToolsRoot = $PSScriptRoot
-$script:TemplateRoot     = Join-Path $script:ModuleToolsRoot 'Templates'
+﻿# モジュールルートの定義（psm1の絶対パスから）
+$script:ModuleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# dot-source public functions
-Get-ChildItem -Path "$PSScriptRoot/Public" -Filter '*.ps1' | ForEach-Object {
-    . $_.FullName
-}
+# 関数読み込み
+Get-ChildItem "$PSScriptRoot\Private\*.ps1" | ForEach-Object { . $_.FullName }
+Get-ChildItem "$PSScriptRoot\Public\*.ps1"  | ForEach-Object { . $_.FullName }
 
-Export-ModuleMember -Function Split-Module, Build-Module, Get-ClassDependencyTree
+# 初期化（設定パスの構築も含む）
+Enable-ModuleSettings
