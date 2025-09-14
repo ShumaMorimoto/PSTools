@@ -1,0 +1,3 @@
+GetRows() {
+        return $this.oRows
+    }

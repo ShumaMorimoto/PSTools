@@ -1,4 +1,4 @@
-﻿#モジュールルートの設定
+#モジュールルートの設定
 $script:ModuleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # ─── DLL 読み込み ───
@@ -9,7 +9,7 @@ if (Test-Path "$PSScriptRoot\lib") {
 }
 
 # ─── クラス定義 ───
-#{{Classes}}
+
 
 # ─── 関数読み込み ───
 foreach ($folder in @('Common', 'Extensions', 'Private', 'Public')) {

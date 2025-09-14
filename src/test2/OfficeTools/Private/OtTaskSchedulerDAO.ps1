@@ -1,0 +1,3 @@
+OtTaskSchedulerDAO() {
+        $this.GetTasks()
+    }
