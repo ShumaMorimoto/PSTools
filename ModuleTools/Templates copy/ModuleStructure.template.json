@@ -1,0 +1,14 @@
+﻿{
+  "Folders": [
+    "config",
+    "lib",
+    "Common",
+    "Extensions",
+    "Classes",
+    "Private",
+    "Public",
+    "node",
+    "data",
+    "Templates"
+  ]
+}

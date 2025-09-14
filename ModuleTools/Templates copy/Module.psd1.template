@@ -1,0 +1,23 @@
+﻿@{
+    RootModule        = '{{ModuleName}}.psm1'
+    ModuleVersion     = '{{ModuleVersion}}'
+    GUID              = '{{GUID}}'
+    Author            = '{{Author}}'
+    Description       = '{{Description}}'
+
+    FunctionsToExport = @({{ExportFunctions}})
+    CmdletsToExport   = @()
+    VariablesToExport = @()
+    AliasesToExport   = @()
+
+    RequiredAssemblies = @({{RequiredAssemblies}})
+
+    PrivateData = @{
+        PSData = @{
+            Tags         = @('Automation', 'Generated')
+            LicenseUri   = ''
+            ProjectUri   = ''
+            ReleaseNotes = ''
+        }
+    }
+}

@@ -1,0 +1,17 @@
+﻿{
+  "Mattermost": {
+    "url": "https://example.com/api",
+    "pat": ""
+  },
+  "Confluence": {
+    "url": ""
+  },
+  "Google": {
+    "certPath": "",
+    "iss": ""
+  },
+  "Gmail": {
+    "account": "",
+    "passcord": ""
+  }
+}
