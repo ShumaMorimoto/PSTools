@@ -1,0 +1,169 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="RouteOptimizer" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <trkseg>
+      <trkpt lat="35.360178" lon="137.439259">
+        <name>岩村町</name>
+      </trkpt>
+      <trkpt lat="35.273996" lon="137.373826">
+        <name>明智町横通</name>
+      </trkpt>
+      <trkpt lat="35.276662" lon="137.343942">
+        <name>明智町阿妻</name>
+      </trkpt>
+      <trkpt lat="35.29562" lon="137.361482">
+        <name>明智町大田</name>
+      </trkpt>
+      <trkpt lat="35.306072" lon="137.343298">
+        <name>明智町吉良見</name>
+      </trkpt>
+      <trkpt lat="35.315553" lon="137.370852">
+        <name>明智町大泉</name>
+      </trkpt>
+      <trkpt lat="35.324441" lon="137.38527">
+        <name>明智町野志</name>
+      </trkpt>
+      <trkpt lat="35.33737" lon="137.374719">
+        <name>山岡町釜屋</name>
+      </trkpt>
+      <trkpt lat="35.328123" lon="137.35508">
+        <name>山岡町原</name>
+      </trkpt>
+      <trkpt lat="35.347293" lon="137.324772">
+        <name>山岡町田代</name>
+      </trkpt>
+      <trkpt lat="35.402753" lon="137.35691">
+        <name>三郷町佐々良木</name>
+      </trkpt>
+      <trkpt lat="35.448337" lon="137.387154">
+        <name>長島町中野</name>
+      </trkpt>
+      <trkpt lat="35.450199" lon="137.409065">
+        <name>長島町中野一丁目</name>
+      </trkpt>
+      <trkpt lat="35.448422" lon="137.41025">
+        <name>長島町中野二丁目</name>
+      </trkpt>
+      <trkpt lat="35.4492674" lon="137.412703">
+        <name>恵那市</name>
+      </trkpt>
+      <trkpt lat="35.449613" lon="137.413612">
+        <name>長島町正家一丁目</name>
+      </trkpt>
+      <trkpt lat="35.448295" lon="137.41494">
+        <name>長島町正家二丁目</name>
+      </trkpt>
+      <trkpt lat="35.446857" lon="137.410503">
+        <name>長島町中野三丁目</name>
+      </trkpt>
+      <trkpt lat="35.432338" lon="137.400234">
+        <name>長島町永田</name>
+      </trkpt>
+      <trkpt lat="35.41487" lon="137.385604">
+        <name>三郷町野井</name>
+      </trkpt>
+      <trkpt lat="35.378518" lon="137.385697">
+        <name>山岡町久保原</name>
+      </trkpt>
+      <trkpt lat="35.356125" lon="137.383864">
+        <name>山岡町上手向</name>
+      </trkpt>
+      <trkpt lat="35.353425" lon="137.356003">
+        <name>山岡町下手向</name>
+      </trkpt>
+      <trkpt lat="35.3812" lon="137.352993">
+        <name>三郷町椋実</name>
+      </trkpt>
+      <trkpt lat="35.425414" lon="137.344585">
+        <name>武並町新竹折</name>
+      </trkpt>
+      <trkpt lat="35.433353" lon="137.361421">
+        <name>武並町竹折</name>
+      </trkpt>
+      <trkpt lat="35.461638" lon="137.364627">
+        <name>長島町久須見</name>
+      </trkpt>
+      <trkpt lat="35.49241" lon="137.37555">
+        <name>笠置町毛呂窪</name>
+      </trkpt>
+      <trkpt lat="35.491962" lon="137.350587">
+        <name>笠置町姫栗</name>
+      </trkpt>
+      <trkpt lat="35.485141" lon="137.325874">
+        <name>笠置町河合</name>
+      </trkpt>
+      <trkpt lat="35.520461" lon="137.313362">
+        <name>中野方町</name>
+      </trkpt>
+      <trkpt lat="35.47727" lon="137.282924">
+        <name>飯地町</name>
+      </trkpt>
+      <trkpt lat="35.457887" lon="137.319757">
+        <name>武並町藤</name>
+      </trkpt>
+      <trkpt lat="35.305539" lon="137.433447">
+        <name>明智町東方</name>
+      </trkpt>
+      <trkpt lat="35.297059" lon="137.470696">
+        <name>上矢作町漆原</name>
+      </trkpt>
+      <trkpt lat="35.3186141" lon="137.5020011">
+        <name>飯田洞</name>
+      </trkpt>
+      <trkpt lat="35.338911" lon="137.534019">
+        <name>上矢作町</name>
+      </trkpt>
+      <trkpt lat="35.3266547" lon="137.5878185">
+        <name>海</name>
+      </trkpt>
+      <trkpt lat="35.272271" lon="137.507365">
+        <name>上矢作町小田子</name>
+      </trkpt>
+      <trkpt lat="35.270958" lon="137.478992">
+        <name>上矢作町下</name>
+      </trkpt>
+      <trkpt lat="35.261422" lon="137.422895">
+        <name>串原</name>
+      </trkpt>
+      <trkpt lat="35.298233" lon="137.395775">
+        <name>明智町</name>
+      </trkpt>
+      <trkpt lat="35.320406" lon="137.413602">
+        <name>明智町杉野</name>
+      </trkpt>
+      <trkpt lat="35.339989" lon="137.403617">
+        <name>山岡町田沢</name>
+      </trkpt>
+      <trkpt lat="35.34734" lon="137.415602">
+        <name>山岡町馬場山田</name>
+      </trkpt>
+      <trkpt lat="35.391759" lon="137.422479">
+        <name>岩村町飯羽間</name>
+      </trkpt>
+      <trkpt lat="35.419874" lon="137.411275">
+        <name>長島町鍋山</name>
+      </trkpt>
+      <trkpt lat="35.432949" lon="137.415627">
+        <name>長島町正家</name>
+      </trkpt>
+      <trkpt lat="35.447428" lon="137.415572">
+        <name>長島町正家三丁目</name>
+      </trkpt>
+      <trkpt lat="35.465488" lon="137.412522">
+        <name>大井町</name>
+      </trkpt>
+      <trkpt lat="35.438343" lon="137.462145">
+        <name>東野</name>
+      </trkpt>
+      <trkpt lat="35.4117887" lon="137.4319227">
+        <name>浮き島</name>
+      </trkpt>
+      <trkpt lat="35.370624" lon="137.45694">
+        <name>岩村町富田</name>
+      </trkpt>
+      <trkpt lat="35.360178" lon="137.439259">
+        <name>岩村町</name>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

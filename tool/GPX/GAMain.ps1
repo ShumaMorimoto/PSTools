@@ -1,7 +1,7 @@
 ﻿Import-Module $PSScriptRoot\RouteOptimizer.psm1
 
-$filename = "C:\Users\shuma\Downloads\甲府茶屋.kml"
-$newfilename =   "H:\tool\tmp\optimized.gpx"
+$filename = "D:\tool\Repository\PSTools\tool\GPX\都市\石川県_金沢市_towns.gpx"
+$newfilename =   "D:\tool\tmp\optimized.gpx"
 
 $places = @()
 $item = Get-Item $filename
@@ -17,8 +17,9 @@ if ($item.Extension -ieq ".kml") {
 }
 
 # 最適化
-#$bestRoute = Optimize-Route -Places $places -PopulationSize 100 -Generations 200
-$bestRoute = Optimize-Route2 -Places $places -PopulationSize 50 -Generations 100 -FitnessFunction ${function:Get-Fitness}
+#$bestRoute = Optimize-Route2 -Places $places -PopulationSize 50 -Generations 100 -FitnessFunction ${function:Get-Fitness}
+
+$bestRoute = Optimize-Route -Places $places -PopulationSize 100 -Generations 1000
 
 # GPX出力
 Export-GpxRoute -Route $bestRoute -OutputPath $newFullPath

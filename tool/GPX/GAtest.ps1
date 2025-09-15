@@ -1,7 +1,7 @@
 ﻿Import-Module $PSScriptRoot\RouteOptimizer.psm1
 
-$filename = "C:\Program Files (x86)\iMyFone\iMyFone AnyTo\AnyTo Route\茶屋\大阪茶屋.gpx"
-$newfilename =   "H:\tool\tmp\optimized.gpx"
+$filename = "D:\tool\Repository\PSTools\tool\GPX\都市\岐阜県_恵那市_towns.gpx"
+$newfilename =   "D:\tool\tmp\optimized.gpx"
 
 $places = @()
 $item = Get-Item $filename
@@ -17,7 +17,7 @@ if ($item.Extension -ieq ".kml") {
 }
 
 # 最適化
-#$bestRoute = Optimize-Route -Places $places -PopulationSize 50 -Generations 100
+$bestRoute = Optimize-Route -Places $places -PopulationSize 100 -Generations 10
 
 
 #Start-RouteAnimation -Places $places -Generations 200
