@@ -5,7 +5,7 @@
     Author            = '{{Author}}'
     Description       = '{{Description}}'
 
-    FunctionsToExport = @({{ExportFunctions}})
+    FunctionsToExport = @({{FunctionsToExport}})
     CmdletsToExport   = @()
     VariablesToExport = @()
     AliasesToExport   = @()

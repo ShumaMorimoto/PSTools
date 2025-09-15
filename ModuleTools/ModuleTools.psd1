@@ -1,11 +1,11 @@
 @{
-    RootModule        = '{{ModuleName}}.psm1'
-    ModuleVersion     = '1.0.7'
-    GUID              = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
-    Author            = '修馬'
-    Description       = 'PowerShell モジュールの分割と統合を支援する開発ツール'
+    RootModule        = 'ModuleTools.psm1'
+    ModuleVersion     = '1.0.0'
+    GUID              = '3d1991ee-de15-44b7-b3c4-128b37046ba8'
+    Author            = ''
+    Description       = ''
 
-    FunctionsToExport = @({{ExportFunctions}})
+    FunctionsToExport = @('Build-ModuleRelease', 'Get-ClassInheritanceOrder', 'Initialize-ModuleFromPsm1')
     CmdletsToExport   = @()
     VariablesToExport = @()
     AliasesToExport   = @()

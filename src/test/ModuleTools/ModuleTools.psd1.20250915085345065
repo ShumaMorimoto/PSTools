@@ -1,11 +1,11 @@
 @{
-    RootModule        = 'ModuleTools.psm1'
-    ModuleVersion     = '1.0.4'
+    RootModule        = '{{ModuleName}}.psm1'
+    ModuleVersion     = '1.0.1'
     GUID              = '3d1991ee-de15-44b7-b3c4-128b37046ba8'
     Author            = ''
     Description       = ''
 
-    FunctionsToExport = @('Build-ModuleRelease', 'Get-ClassInheritanceOrder', 'Initialize-ModuleFromPsm1')
+    FunctionsToExport = @({{ExportFunctions}})
     CmdletsToExport   = @()
     VariablesToExport = @()
     AliasesToExport   = @()

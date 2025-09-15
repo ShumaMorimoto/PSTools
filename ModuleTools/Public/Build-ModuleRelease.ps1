@@ -61,6 +61,7 @@
     $functionsToExport = $functionsToExport -join ', '
 
     $psd1Content = $psd1Template `
+        -replace '{{ModuleName}}', $moduleName `
         -replace '{{ModuleVersion}}', $newVersion `
         -replace '{{Author}}', $author `
         -replace '{{Description}}', $description `
