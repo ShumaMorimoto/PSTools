@@ -113,7 +113,7 @@ $overpassQuery = @"
 [out:json];
 is_in($lat,$lon)->.a;
 rel(pivot.a)["boundary"="administrative"]["admin_level"~"^[6-8]$"];
-out ids;
+out body;
 "@
 
 $relationResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $overpassQuery
