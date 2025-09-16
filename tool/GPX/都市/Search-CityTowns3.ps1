@@ -30,9 +30,11 @@ Write-Host "🔍 Nominatimで地名検索中: $keyword"
 
 $nominatimParams = @{
     q              = $keyword
-    format         = "json"
+    countrycodes   = 'jp'
+    format         = 'json'
     addressdetails = 1
-    limit          = 10  # 最大10件まで取得
+    featuretype    = 'city'
+    limit          = 100  # 最大10件まで取得
 }
 
 try {
@@ -42,6 +44,8 @@ catch {
     Write-Error "Nominatim APIへのアクセス中にエラーが発生しました: $($_.Exception.Message)"
     exit
 }
+
+$nominatimResult = $nominatimResult | Where-Object { $_.addresstype -in @("city", "town", "village", "suburb") }
 
 if (-not $nominatimResult) {
     Write-Error "地名が見つかりませんでした: '$keyword'"
