@@ -138,25 +138,35 @@ Write-Host "🌐 area ID: $areaId"
 # ================================
 Write-Host "`n📋 町字一覧取得中..."
 
+#$townQuery = @"
+#[out:json][timeout:25];
+#area($areaId)->.target;
+#(
+#  node(area.target)["place"="neighbourhood"];
+#  way(area.target)["place"="neighbourhood"];
+#  relation(area.target)["place"="neighbourhood"];
+#);
+#out body;
+#"@
+
 $townQuery = @"
-[out:json][timeout:25];
-area($areaId)->.target;
-(
-  node(area.target)["place"="neighbourhood"];
-  way(area.target)["place"="neighbourhood"];
-  relation(area.target)["place"="neighbourhood"];
-);
+[out:json];
+area($areaId)->.searchArea;
+node(area.searchArea)["place"];
 out body;
 "@
 
+
 $townResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $townQuery
 $towns = $townResult.elements | Where-Object { $_.tags.name } | Sort-Object { $_.tags.name }
+
+$towns = $towns | Where-Object{$_.tags.place -notin @("city", "town", "village", "suburb")}
 
 if ($towns) {
     $towns | ForEach-Object {
         $townLat = if ($_.lat) { $_.lat } else { $_.center.lat }
         $townLon = if ($_.lon) { $_.lon } else { $_.center.lon }
-        Write-Host " $($_.tags.name)  📍`($townLat, $townLon`)"
+        Write-Host " 📍$($_.tags.name)  `($townLat, $townLon`)"
     }
     Write-Host "`n✅ 取得した町字数: $($towns.Count)" -ForegroundColor Green
 }

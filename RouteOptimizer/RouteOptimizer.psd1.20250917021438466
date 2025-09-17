@@ -1,11 +1,11 @@
 @{
-    RootModule        = 'ModuleTools.psm1'
+    RootModule        = 'RouteOptimizer.psm1'
     ModuleVersion     = '1.0.0'
-    GUID              = '3d1991ee-de15-44b7-b3c4-128b37046ba8'
+    GUID              = '9d7ee62e-61c3-498b-ae57-fd1fd8eab36b'
     Author            = ''
     Description       = ''
 
-    FunctionsToExport = @('Build-ModuleRelease', 'Get-ClassInheritanceOrder', 'Initialize-ModuleFromPsm1')
+    FunctionsToExport = @('Optimize-Route', 'Optimize-Route2', 'Start-RouteAnimation')
     CmdletsToExport   = @()
     VariablesToExport = @()
     AliasesToExport   = @()
