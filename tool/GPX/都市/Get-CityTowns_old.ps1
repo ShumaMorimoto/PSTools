@@ -1,5 +1,4 @@
 ﻿function Get-CityTowns {
-    [CmdletBinding()]    
     <#
     .SYNOPSIS
         指定された地名キーワードに基づいて、その地域の町字一覧を取得します。
@@ -19,7 +18,7 @@
     $nominatimUrl = "https://nominatim.openstreetmap.org/search"
     $overpassUrl = "https://overpass-api.de/api/interpreter"
 
-    Write-Verbose "🔍 地名検索中: $Keyword"
+    Write-Host "🔍 地名検索中: $Keyword"
 
     $nominatimParams = @{
         q              = $Keyword
@@ -33,24 +32,24 @@
     try {
         $nominatimResult = Invoke-RestMethod -Uri $nominatimUrl -Method Get -Body $nominatimParams -ErrorAction Stop
     } catch {
-        Write-Error "❌ Nominatim APIへのアクセス失敗: $($_.Exception.Message)"
+        Write-Error "❌ Nominatim APIへのアクセス中にエラーが発生しました: $($_.Exception.Message)"
         return
     }
 
     $nominatimResult = $nominatimResult | Where-Object { $_.addresstype -in @("city", "town", "village", "suburb") }
 
     if (-not $nominatimResult) {
-        Write-Warning "⚠️ 地名が見つかりませんでした: '$Keyword'"
+        Write-Error "⚠️ 地名が見つかりませんでした: '$Keyword'"
         return
     }
 
     $targetLocation = $null
 
-    if ($nominatimResult.Count -eq 1) {
+    if (@($nominatimResult).Count -eq 1) {
         $targetLocation = $nominatimResult[0]
-        Write-Verbose "✅ 候補が1件見つかりました: $($targetLocation.display_name)"
+        Write-Host "✅ 候補が1件見つかりました: $($targetLocation.display_name)"
     } else {
-        Write-Host "🗂️ 複数候補あり。番号を選択してください："
+        Write-Host "🗂️ 複数の候補が見つかりました。番号を選択してください："
         for ($i = 0; $i -lt $nominatimResult.Count; $i++) {
             Write-Host (" {0,2}: {1}" -f ($i + 1), $nominatimResult[$i].display_name)
         }
@@ -58,7 +57,7 @@
         while ($true) {
             $input = Read-Host "🔢 番号を入力 (1-$($nominatimResult.Count))、または 'q' で終了"
             if ($input -eq 'q') {
-                Write-Warning "🚪 処理を中断しました。"
+                Write-Host "🚪 処理を中断しました。"
                 return
             }
             if ($input -match '^\d+$' -and [int]$input -ge 1 -and [int]$input -le $nominatimResult.Count) {
@@ -74,8 +73,10 @@
     $lon = $targetLocation.lon
     $displayName = $targetLocation.display_name
 
-    Write-Verbose "`n📍 選択された候補: $displayName"
-    Write-Verbose "🌍 座標: $lat, $lon"
+    Write-Host "`n📍 選択された候補: $displayName"
+    Write-Host "🌍 座標: $lat, $lon"
+
+    Write-Host "`n📡 Overpassで自治体relation ID取得中..."
 
     $overpassQuery = @"
 [out:json];
@@ -84,24 +85,20 @@ rel(pivot.a)["boundary"="administrative"]["admin_level"~"^[6-8]$"];
 out body;
 "@
 
-    try {
-        $relationResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $overpassQuery -ErrorAction Stop
-    } catch {
-        Write-Error "❌ Overpass APIへのアクセス失敗: $($_.Exception.Message)"
-        return
-    }
-
+    $relationResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $overpassQuery
     $relation = $relationResult.elements | Sort-Object { [int]$_.tags.admin_level } -Descending | Select-Object -First 1
     $relationId = $relation.id
 
     if (-not $relationId) {
-        Write-Warning "❌ relation IDが取得できませんでした。"
+        Write-Error "❌ relation IDが取得できませんでした。"
         return
     }
 
     $areaId = 3600000000 + $relationId
-    Write-Verbose "🆔 relation ID: $relationId"
-    Write-Verbose "🌐 area ID: $areaId"
+    Write-Host "🆔 relation ID: $relationId"
+    Write-Host "🌐 area ID: $areaId"
+
+    Write-Host "`n📋 町字一覧取得中..."
 
     $townQuery = @"
 [out:json];
@@ -110,13 +107,7 @@ node(area.searchArea)["place"];
 out body;
 "@
 
-    try {
-        $townResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $townQuery -ErrorAction Stop
-    } catch {
-        Write-Error "❌ 町字一覧取得中にエラー: $($_.Exception.Message)"
-        return
-    }
-
+    $townResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $townQuery
     $towns = $townResult.elements | Where-Object { $_.tags.name } | Sort-Object { $_.tags.name }
     $towns = $towns | Where-Object { $_.tags.place -notin @("city", "town", "village", "suburb") }
 
@@ -128,7 +119,7 @@ out body;
         }
         Write-Host "`n✅ 取得した町字数: $($towns.Count)" -ForegroundColor Green
     } else {
-        Write-Warning "ℹ️ このエリアには 'neighbourhood' として登録されている町字が見つかりませんでした。"
+        Write-Host "ℹ️ このエリアには 'neighbourhood' として登録されている町字が見つかりませんでした。"
     }
 
     return $towns

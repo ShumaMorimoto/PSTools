@@ -1,11 +1,11 @@
 @{
     RootModule        = 'RouteOptimizer.psm1'
-    ModuleVersion     = '1.0.3'
+    ModuleVersion     = '1.0.1'
     GUID              = '9d7ee62e-61c3-498b-ae57-fd1fd8eab36b'
     Author            = ''
     Description       = ''
 
-    FunctionsToExport = @('ConvertFrom-Gpx', 'ConvertTo-Gpx', 'Get-CityTowns', 'Optimize-Route', 'Optimize-Route2', 'Start-RouteAnimation')
+    FunctionsToExport = @('Optimize-Route', 'Optimize-Route2', 'Start-RouteAnimation')
     CmdletsToExport   = @()
     VariablesToExport = @()
     AliasesToExport   = @()
