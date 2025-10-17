@@ -56,7 +56,8 @@ Public Sub CreateGanttChartFromClipboard()
     Dim durationMonths As Long, startOffsetMonths As Long
     Dim boxWidth As Double, currentX As Double, currentY As Double
     Dim lastRect As RectInfo, isOverlapping As Boolean
-    Dim barShape As shape, textShape As shape, itemGroup As shape, groupShape As shape
+    ' ★変更: textShape と itemGroup は不要になったため削除
+    Dim barShape As shape, groupShape As shape
 
     ' --- 描画位置の基準セルを決定 ---
     If typeName(Selection) <> "Range" Then
@@ -88,11 +89,9 @@ Public Sub CreateGanttChartFromClipboard()
         Exit Sub
     End If
     
-    ' 改行コードを統一(LF)して行に分割
     clipboardText = Replace(clipboardText, vbCrLf, vbLf)
     lines = Split(clipboardText, vbLf)
     
-    ' 最終行が空行の場合は除外
     If UBound(lines) >= 0 Then
         If lines(UBound(lines)) = "" Then ReDim Preserve lines(0 To UBound(lines) - 1)
     End If
@@ -102,11 +101,9 @@ Public Sub CreateGanttChartFromClipboard()
         Exit Sub
     End If
     
-    ' データを行と列に分割して2次元配列dataArrayを作成
     Dim numRows As Long, numCols As Long
     numRows = UBound(lines) + 1
     
-    ' 1行目の列数に合わせて配列を定義
     numCols = UBound(Split(lines(0), vbTab)) + 1
     If numCols < 4 Then
         MsgBox "データには少なくとも4列（工程名, 種別, 開始日, 終了日）が必要です。", vbExclamation
@@ -124,14 +121,13 @@ Public Sub CreateGanttChartFromClipboard()
     Next i
     
     ' --- 描画座標を決定 ---
-    ' アクティブセルの右隣から描画を開始
     drawStartX = ActiveCell.Left + ActiveCell.Width + CHART_RIGHT_MARGIN
     drawStartY = ActiveCell.Top
     
     ' --- 基準日（最も早い開始日）の計算 ---
     minDate = #12/31/9999#
     For i = 1 To UBound(dataArray, 1)
-        If UBound(dataArray, 2) >= 3 Then ' 配列の列数が3以上あることを確認
+        If UBound(dataArray, 2) >= 3 Then
             If dataArray(i, 3) <> "" And CStr(dataArray(i, 2)) <> "マイルストーン" Then
                 d = ConvertYYMMToDate(CStr(dataArray(i, 3)))
                 If d < minDate Then minDate = d
@@ -151,14 +147,13 @@ Public Sub CreateGanttChartFromClipboard()
     
     ' --- 各データ行をループして図形を描画 ---
     For i = 1 To UBound(dataArray, 1)
-        ' 配列の範囲外アクセスを防ぐ
         If UBound(dataArray, 2) >= 4 Then
             processName = CStr(dataArray(i, 1))
             procType = CStr(dataArray(i, 2))
             startStr = CStr(dataArray(i, 3))
             endStr = CStr(dataArray(i, 4))
         Else
-            GoTo NextLoop ' データが4列未満の行はスキップ
+            GoTo NextLoop
         End If
         
         If procType = "マイルストーン" Then
@@ -172,7 +167,6 @@ Public Sub CreateGanttChartFromClipboard()
                 milestoneX_end = drawStartX + ((offsetMonths + 1.5) * UNIT_WIDTH)
                 
                 Set milestoneTextBox = chartSheet.Shapes.AddTextbox(msoTextOrientationHorizontal, 0, milestoneY, 100, BOX_HEIGHT)
-                ' ★削除: 個別のPlacement設定は不要
                 With milestoneTextBox
                     .TextFrame2.TextRange.Text = processName & "('" & Format(milestoneDate, "yy/mm") & ")▲"
                     .TextFrame2.AutoSize = msoAutoSizeShapeToFitText
@@ -186,6 +180,7 @@ Public Sub CreateGanttChartFromClipboard()
                 End With
             End If
         ElseIf startStr <> "" And endStr <> "" Then
+            ' ★★★ ここからが大きな変更点 ★★★
             startDate = ConvertYYMMToDate(startStr)
             endDate = ConvertYYMMToDate(endStr)
             
@@ -195,7 +190,6 @@ Public Sub CreateGanttChartFromClipboard()
             boxWidth = durationMonths * UNIT_WIDTH
             currentX = drawStartX + (startOffsetMonths * UNIT_WIDTH)
             
-            ' Y座標の決定 (重複チェック)
             currentY = drawStartY
             If rectCount > 0 Then
                 lastRect = drawnRects(rectCount)
@@ -207,21 +201,16 @@ Public Sub CreateGanttChartFromClipboard()
                 End If
             End If
             
+            ' 長方形シェイプを作成し、スタイルとテキストをまとめて設定
             Set barShape = chartSheet.Shapes.AddShape(msoShapeRectangle, currentX, currentY, boxWidth, BOX_HEIGHT)
-            ' ★削除: 個別のPlacement設定は不要
-            barShape.Fill.ForeColor.RGB = GetColor(procType)
-            barShape.line.Visible = msoTrue
+            With barShape
+                ' シェイプのスタイル設定
+                .Fill.ForeColor.RGB = GetColor(procType)
+                .line.Visible = msoTrue
 
-            Set textShape = chartSheet.Shapes.AddTextbox(msoTextOrientationHorizontal, currentX, currentY, boxWidth, BOX_HEIGHT)
-            ' ★削除: 個別のPlacement設定は不要
-            With textShape
-                .Fill.Visible = msoFalse
-                .line.Visible = msoFalse
-                
-                ' テキスト幅の測定
+                ' テキスト幅の測定（配置決定のため）
                 Dim textActualWidth As Double
                 Dim dummyTextBox As shape
-                
                 Set dummyTextBox = chartSheet.Shapes.AddTextbox(msoTextOrientationHorizontal, -1000, -1000, 10, 10)
                 With dummyTextBox
                     .TextFrame2.WordWrap = msoFalse
@@ -231,24 +220,24 @@ Public Sub CreateGanttChartFromClipboard()
                     .Delete
                 End With
 
+                ' シェイプ内のテキストフレームを編集
                 With .TextFrame2
                     .TextRange.Text = processName
                     .TextRange.Font.Fill.ForeColor.RGB = RGB(0, 0, 0)
-                    .VerticalAnchor = msoAnchorMiddle
-                    .AutoSize = msoAutoSizeNone
-                    .WordWrap = msoFalse
+                    .VerticalAnchor = msoAnchorMiddle ' 上下中央揃え
+                    .AutoSize = msoAutoSizeNone      ' シェイプのサイズは固定
+                    .WordWrap = msoFalse             ' テキストを折り返さない
 
+                    ' テキストの長さに応じて左右の配置を決定
                     If textActualWidth > boxWidth Then
-                        .TextRange.ParagraphFormat.Alignment = msoAlignLeft
+                        .TextRange.ParagraphFormat.Alignment = msoAlignLeft ' はみ出す場合は左揃え
                     Else
-                        .TextRange.ParagraphFormat.Alignment = msoAlignCenter
+                        .TextRange.ParagraphFormat.Alignment = msoAlignCenter ' 収まる場合は中央揃え
                     End If
                 End With
             End With
-
-            ' バーとテキストをグループ化
-            Set itemGroup = chartSheet.Shapes.Range(Array(barShape.Name, textShape.Name)).Group
             
+            ' 描画済み矩形情報を更新
             rectCount = rectCount + 1
             ReDim Preserve drawnRects(1 To rectCount)
             drawnRects(rectCount).X = currentX
@@ -256,9 +245,10 @@ Public Sub CreateGanttChartFromClipboard()
             drawnRects(rectCount).Width = boxWidth
             drawnRects(rectCount).Height = BOX_HEIGHT
             
+            ' ★変更: グループ化するシェイプ名として barShape の名前を直接格納
             shapeCount = shapeCount + 1
             ReDim Preserve shapeNames(1 To shapeCount)
-            shapeNames(shapeCount) = itemGroup.Name
+            shapeNames(shapeCount) = barShape.Name
         End If
 NextLoop:
     Next i
@@ -266,7 +256,7 @@ NextLoop:
     ' --- 描画したすべての図形をグループ化 ---
     If shapeCount > 0 Then
         Set groupShape = chartSheet.Shapes.Range(shapeNames).Group
-        groupShape.Placement = xlFreeFloating ' ★追加: 最終的なグループオブジェクトにプロパティを設定
+        groupShape.Placement = xlFreeFloating
         
         ' グループ名を一意にするため、日付と時刻をサフィックスとして追加
         groupShape.Name = "GanttChartGroup_" & Format(Now, "yyyymmdd_hhmmss")
@@ -279,7 +269,7 @@ NextLoop:
     
 End Sub
 
-' --- 補助関数 (元のコードから変更なし) ---
+' --- 補助関数 (ご提示のコードから変更なし) ---
 Private Function ConvertYYMMToDate(ByVal dateStr As String) As Date
     Dim parts() As String
     Dim yearVal As Long, monthVal As Long
