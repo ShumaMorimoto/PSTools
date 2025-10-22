@@ -13,9 +13,9 @@ function Get-DistanceKm {
     $dLat = [math]::PI / 180 * ($lat2 - $lat1)
     $dLon = [math]::PI / 180 * ($lon2 - $lon1)
     $a = [math]::Pow([math]::Sin($dLat / 2), 2) +
-         [math]::Cos([math]::PI / 180 * $lat1) *
-         [math]::Cos([math]::PI / 180 * $lat2) *
-         [math]::Pow([math]::Sin($dLon / 2), 2)
+    [math]::Cos([math]::PI / 180 * $lat1) *
+    [math]::Cos([math]::PI / 180 * $lat2) *
+    [math]::Pow([math]::Sin($dLon / 2), 2)
     $c = 2 * [math]::Atan2([math]::Sqrt($a), [math]::Sqrt(1 - $a))
     return $R * $c
 }
@@ -31,13 +31,14 @@ $trkpts = $gpx.gpx.trk.trkseg.trkpt
 # 全体距離を計算
 $totalDistance = 0.0
 for ($i = 0; $i -lt $trkpts.Count - 1; $i++) {
-    $totalDistance += Get-DistanceKm $trkpts[$i].lat $trkpts[$i].lon $trkpts[$i+1].lat $trkpts[$i+1].lon
+    $totalDistance += Get-DistanceKm $trkpts[$i].lat $trkpts[$i].lon $trkpts[$i + 1].lat $trkpts[$i + 1].lon
 }
 
 # 分割距離の決定
 if ($Count -gt 0) {
     $targetDistance = $totalDistance / $Count
-} else {
+}
+else {
     $targetDistance = $Distance
 }
 
@@ -100,7 +101,8 @@ foreach ($segment in $segments) {
     $trk.AppendChild($trkseg) | Out-Null
     $gpxNode.AppendChild($trk) | Out-Null
 
-    $filename = "{0}-{1:D2}.gpx" -f $baseName, $segmentIndex
+    $outputDir = [System.IO.Path]::GetDirectoryName($InputFile)
+    $filename = [System.IO.Path]::Combine($outputDir, ("{0}-{1:D2}.gpx" -f $baseName, $segmentIndex))
     $xml.Save($filename)
 
     $distanceRounded = [math]::Round($segment.Distance, 2)
