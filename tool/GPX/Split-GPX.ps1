@@ -73,33 +73,8 @@ $baseName = [System.IO.Path]::GetFileNameWithoutExtension($InputFile)
 $segmentIndex = 1
 
 foreach ($segment in $segments) {
-    $xml = New-Object System.Xml.XmlDocument
-    $decl = $xml.CreateXmlDeclaration("1.0", "UTF-8", $null)
-    $xml.AppendChild($decl) | Out-Null
-
-    $gpxNode = $xml.CreateElement("gpx")
-    $gpxNode.SetAttribute("version", "1.1")
-    $gpxNode.SetAttribute("creator", "PowerShellSplitter")
-    $gpxNode.SetAttribute("xmlns", "http://www.topografix.com/GPX/1/1")
-    $xml.AppendChild($gpxNode) | Out-Null
-
-    $trk = $xml.CreateElement("trk")
-    $trkseg = $xml.CreateElement("trkseg")
-
-    foreach ($pt in $segment.Points) {
-        $trkpt = $xml.CreateElement("trkpt")
-        $trkpt.SetAttribute("lat", $pt.lat)
-        $trkpt.SetAttribute("lon", $pt.lon)
-
-        $name = $xml.CreateElement("name")
-        $name.InnerText = "trkpt"
-        $trkpt.AppendChild($name) | Out-Null
-
-        $trkseg.AppendChild($trkpt) | Out-Null
-    }
-
-    $trk.AppendChild($trkseg) | Out-Null
-    $gpxNode.AppendChild($trk) | Out-Null
+    $trkptNodes = $segment.Points
+    $xml = New-GpxFromTrkpt -TrkptNodes $trkptNodes -TrackName "Segment $segmentIndex"
 
     $outputDir = [System.IO.Path]::GetDirectoryName($InputFile)
     $filename = [System.IO.Path]::Combine($outputDir, ("{0}-{1:D2}.gpx" -f $baseName, $segmentIndex))

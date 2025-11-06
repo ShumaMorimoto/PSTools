@@ -11,8 +11,8 @@
     $coords = $Places | ForEach-Object {
         [PSCustomObject]@{
             Element = $_
-            Lat = [double]$_.lat
-            Lon = [double]$_.lon
+            Lat     = [double]$_.lat
+            Lon     = [double]$_.lon
         }
     }
 
@@ -34,9 +34,9 @@
         $latAvg = ($pts.Lat | Measure-Object -Average).Average
         $lonAvg = ($pts.Lon | Measure-Object -Average).Average
         [PSCustomObject]@{
-            Key = $_.Key
-            Lat = $latAvg
-            Lon = $lonAvg
+            Key    = $_.Key
+            Lat    = $latAvg
+            Lon    = $lonAvg
             Points = $pts
         }
     }
@@ -58,9 +58,15 @@
 
     # ⑤ クラスタ内ルート最適化（入口→出口）
     function Optimize-Cluster ($pts, $start = $null) {
-        if (-not $start) { $start = $pts[0] }
+        # 起点を決定し、並び替え対象を構築
+        if (-not $start) {
+            $start = $pts[0]
+        }
+        $targets = @($start) + $pts
+
+        # 最適化ルート構築
         $route = @($start)
-        $remaining = $pts | Where-Object { $_ -ne $start }
+        $remaining = $targets[1..($targets.Count - 1)]
 
         while ($remaining.Count -gt 0) {
             $last = $route[-1]
@@ -73,15 +79,19 @@
             $remaining = $remaining | Where-Object { $_ -ne $next }
         }
 
-        return $route
+        # 起点（先頭）を除いて返す
+        return $route[1..($route.Count - 1)]
     }
 
     # ⑥ 全体ルート構築
     $finalRoute = @()
+
     for ($i = 0; $i -lt $ordered.Count; $i++) {
         $cluster = $ordered[$i]
-        $start = if ($i -eq 0) { $cluster.Points[0] } else { $finalRoute[-1] }
+        $start = if ($i -eq 0) { $null } else { $finalRoute[-1] }
+
         $optimized = Optimize-Cluster $cluster.Points $start
+
         $finalRoute += $optimized
     }
 

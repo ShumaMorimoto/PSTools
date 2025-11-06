@@ -19,7 +19,7 @@ if (-not $towns) {
 }
 
 # ② GA最適化
-$route = Optimize-Route $towns
+$route = Optimize-Route3 $towns
 
 # ③ GPXオブジェクトを生成
 $gpxXml = $route | ConvertTo-Gpx -TrackName $TrackName
