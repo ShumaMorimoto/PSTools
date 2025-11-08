@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="PowerShell ConvertTo-Gpx" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <time>2025-11-07T00:09:20Z</time>
+  </metadata>
+  <trk>
+    <name>
+    </name>
+    <trkseg>
+      <trkpt lat="35.1698475" lon="137.7115775" muitiRoute="1">
+        <name>下黒川</name>
+      </trkpt>
+      <trkpt lat="35.1698475" lon="137.7115775" muitiRoute="1">
+        <name>下黒川</name>
+      </trkpt>
+      <trkpt lat="35.1510882" lon="137.7488221" muitiRoute="1">
+        <name>古真立</name>
+      </trkpt>
+      <trkpt lat="35.191197" lon="137.7436583" muitiRoute="1">
+        <name>三沢</name>
+      </trkpt>
+      <trkpt lat="35.1481251" lon="137.6955318" muitiRoute="1">
+        <name>上黒川</name>
+      </trkpt>
+      <trkpt lat="35.2003329" lon="137.6793994" muitiRoute="1">
+        <name>坂宇場</name>
+      </trkpt>
+      <trkpt lat="35.1941167" lon="137.8076613" muitiRoute="1">
+        <name>富山</name>
+      </trkpt>
+      <trkpt lat="35.1912409" lon="137.8101826" muitiRoute="1">
+        <name>中野甲</name>
+      </trkpt>
+      <trkpt lat="35.189119" lon="137.8142488" muitiRoute="1">
+        <name>川上</name>
+      </trkpt>
+      <trkpt lat="35.1890927" lon="137.8064918" muitiRoute="1">
+        <name>大谷下</name>
+      </trkpt>
+      <trkpt lat="35.1902238" lon="137.8040779" muitiRoute="1">
+        <name>市原</name>
+      </trkpt>
+      <trkpt lat="35.1923457" lon="137.8077364" muitiRoute="1">
+        <name>大谷</name>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

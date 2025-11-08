@@ -20,11 +20,12 @@
         $StartLocation = $Places[0]
         $targets = $Places[1..($Places.Count - 1)]
         $prependStart = $true
-        Write-Host "[INFO] 始点未指定 → Places[0] を始点に設定: $($StartLocation.id)"
-    } else {
+        #       Write-Host "[INFO] 始点未指定 → Places[0] を始点に設定: $($StartLocation.id)"
+    }
+    else {
         $targets = $Places
         $prependStart = $false
-        Write-Host "[INFO] 始点指定あり: $($StartLocation.id)"
+        #        Write-Host "[INFO] 始点指定あり: $($StartLocation.id)"
     }
 
     if ($targets.Count -eq 0) {
@@ -47,7 +48,7 @@
 
         $elite = $population[0]
         $eliteDistance = Get-TotalDistance $elite -StartLocation $StartLocation -RouteMode $RouteMode
-#        Write-Host "世代 $gen - 最短距離: $([math]::Round($eliteDistance, 2)) km"
+        #        Write-Host "世代 $gen - 最短距離: $([math]::Round($eliteDistance, 2)) km"
     }
 
     $best = $population[0]
@@ -56,7 +57,7 @@
     $routeIds = $routeText | ForEach-Object { $_.id }
 
     Write-Host "[RESULT] 最適距離: $([math]::Round($bestDistance, 2)) km"
-    Write-Host "[RESULT] 最適経路: $($routeIds -join ' → ')"
+    #    Write-Host "[RESULT] 最適経路: $($routeIds -join ' → ')"
 
     return $routeText
 }
@@ -127,44 +128,21 @@ function Optimize-AreaRoute {
     )
 
     # ① グリッドクラスタリング
-    $clusters = @{}
-    foreach ($pt in $Places) {
-        $latKey = [math]::Floor([double]$pt.lat / $GridSize)
-        $lonKey = [math]::Floor([double]$pt.lon / $GridSize)
-        $key = "$latKey,$lonKey"
-        if (-not $clusters.ContainsKey($key)) {
-            $clusters[$key] = @()
-        }
-        $clusters[$key] += $pt
-    }
+    $clusters = Group-Towns $Places
 
     # ② クラスタ重心算出
-    $centroids = $clusters.GetEnumerator() | ForEach-Object {
-        $pts = $_.Value
-        $latAvg = ($pts | ForEach-Object { [double]$_.lat } | Measure-Object -Average).Average
-        $lonAvg = ($pts | ForEach-Object { [double]$_.lon } | Measure-Object -Average).Average
+    $centroids = foreach ($cluster in $clusters) {
+        $latAvg = ($cluster | ForEach-Object { [double]$_.lat } | Measure-Object -Average).Average
+        $lonAvg = ($cluster | ForEach-Object { [double]$_.lon } | Measure-Object -Average).Average
         [PSCustomObject]@{
-            Key    = $_.Key
             Lat    = $latAvg
             Lon    = $lonAvg
-            Points = $pts
+            Points = $cluster
         }
     }
 
     # ③ クラスタ順序決定（Nearest Neighbor）
-    $ordered = @($centroids[0])
-    $remaining = $centroids[1..($centroids.Count - 1)]
-
-    while ($remaining.Count -gt 0) {
-        $last = $ordered[-1]
-        $next = $remaining | Sort-Object {
-            $dx = $_.Lat - $last.Lat
-            $dy = $_.Lon - $last.Lon
-            [math]::Sqrt($dx * $dx + $dy * $dy)
-        } | Select-Object -First 1
-        $ordered += $next
-        $remaining = $remaining | Where-Object { $_ -ne $next }
-    }
+    $ordered = Optimize-Route4 $centroids
 
     # ④ クラスタ内ルート最適化（ベース関数使用）
     $finalRoute = @($ordered[0].Points[0])

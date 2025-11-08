@@ -1,47 +1,58 @@
-function Optimize-Route {
+﻿function Optimize-Route {
     param (
         [array]$Places,
+        [object]$StartLocation = $null,
+        [string]$RouteMode = "Open",
         [int]$PopulationSize = 50,
-        [int]$Generations = 100,
-        [ScriptBlock]$OnGeneration = $null  # ← コールバック
+        [int]$Generations = 100
     )
 
+    # 拠点数ログ
+    Write-Host "[INFO] 拠点数: $($Places.Count)"
+
+    if ($Places.Count -eq 1) {
+        Write-Host "[INFO] 拠点が1つのみのため最適化をスキップ"
+        return $Places
+    }
+
+    # 始点処理
+    if (-not $StartLocation) {
+        $StartLocation = $Places[0]
+        $targets = $Places[1..($Places.Count - 1)]
+        $prependStart = $true
+    }
+    else {
+        $targets = $Places
+        $prependStart = $false
+    }
+
+    if ($targets.Count -eq 0) {
+        Write-Host "[WARN] 訪問対象が存在しないため最適化をスキップ"
+        return @($StartLocation)
+    }
+
+    # 初期個体生成
     $population = @()
     for ($i = 0; $i -lt $PopulationSize; $i++) {
-        $population += , (Get-RandomRoute $Places)
+        $individual = $targets | Sort-Object { Get-Random }
+        $population += , $individual
     }
 
     for ($gen = 0; $gen -lt $Generations; $gen++) {
-        $population = $population | Sort-Object { Get-TotalDistance $_ }
-        $best = $population[0]
-
-        if (-not $best -or $best.Count -lt 2) {
-            Write-Warning "⚠️ 世代 $gen で異常な個体が検出されました。"
-            break
-        }
-        $distance = Get-TotalDistance $best
-
-        # コールバック呼び出し
-        if ($OnGeneration) {
-            & $OnGeneration $gen $best $distance
-        }
-        else {
-            Write-Host "世代 $gen - 最短距離: $([math]::Round($distance, 2)) km"
-            #        Write-Host "ルート: " + ($best | ForEach-Object { $_.Name }) -join " → "
-            #        Write-Host ""
+        # 評価
+        $population = $population | Sort-Object {
+            Get-TotalDistance $_ -StartLocation $StartLocation -RouteMode $RouteMode
         }
 
-        $newPopulation = @()
-        $newPopulation += , $best
-
-        while ($newPopulation.Count -lt $PopulationSize) {
-            $parent = $population[(Get-Random -Minimum 0 -Maximum 10)]
-            $child = Mutate $parent
-            if ($child.Count -eq $Places.Count) {
-                $newPopulation += , $child
-            }
-        }
-        $population = $newPopulation
+        $elite = $population[0]
     }
-    return $best
+
+    $best = $population[0]
+    $bestDistance = Get-TotalDistance $best -StartLocation $StartLocation -RouteMode $RouteMode
+    $routeText = $prependStart ? @($StartLocation) + $best : $best
+    $routeIds = $routeText | ForEach-Object { $_.id }
+
+    Write-Host "[RESULT] 最適距離: $([math]::Round($bestDistance, 2)) km"
+
+    return $routeText
 }

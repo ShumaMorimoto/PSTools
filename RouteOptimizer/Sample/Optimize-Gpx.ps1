@@ -9,33 +9,29 @@ param (
 )
 
 # ① GPX読み込み
-$xml = [xml](Get-Content $InputGpxPath)
-$ns = @{ gpx = "http://www.topografix.com/GPX/1/1" }
+[xml] $gpx = Get-Content $InputGpxPath
 
-# ② TrackName取得
-$trackName = $xml.gpx.trk.name
-if (-not $trackName) {
-    $trackName = "Optimized Track"
-    Write-Warning "⚠️ TrackNameが見つかりません。デフォルト名を使用します。"
+# ② 拠点取得
+$trkpts = $gpx.gpx.trk.trkseg.trkpt
+
+# 並び替え
+$optimized = Optimize-AreaRoute -Places $trkpts
+
+# 再構築
+$trkseg = $gpx.gpx.trk.trkseg
+$trkseg.RemoveAll()
+foreach ($pt in $optimized) {
+    $trkseg.AppendChild($gpx.ImportNode($pt, $true)) | Out-Null
 }
 
-# ③ <trkpt> ノード抽出
-$trkpts = $xml.SelectNodes("//gpx:trkpt", $ns)
-if (-not $trkpts -or $trkpts.Count -eq 0) {
-    Write-Error "❌ GPXファイルにトラックポイントが見つかりません。"
-    return
-}
+# 統計情報追加
+$gpx = Add-GpxStats -GpxXml $gpx
 
-# ④ 最適化実行（XmlElementのまま渡す）
-$optimized = Optimize-Route -Places $trkpts
-
-# ⑤ ConvertTo-Gpx にそのまま渡す（変換なし）
-$gpxXml = $optimized | ConvertTo-Gpx -TrackName $trackName
-
-# ⑥ 保存
+# 保存
 try {
-    $gpxXml.Save($OutputGpxPath)
+    $gpx.Save($OutputGpxPath)
     Write-Host "✅ 最適化GPXファイルを保存しました: $OutputGpxPath" -ForegroundColor Green
-} catch {
+}
+catch {
     Write-Error "❌ GPXファイル保存に失敗: $($_.Exception.Message)"
 }

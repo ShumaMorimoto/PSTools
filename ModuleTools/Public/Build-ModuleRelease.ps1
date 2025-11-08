@@ -58,17 +58,20 @@
             "'$([System.IO.Path]::GetFileNameWithoutExtension($_.Name))'"
         }
     }
-    $functionsToExport = $functionsToExport -join ', '
 
-    $psd1Content = $psd1Template `
-        -replace '{{ModuleName}}', $moduleName `
-        -replace '{{ModuleVersion}}', $newVersion `
-        -replace '{{Author}}', $author `
-        -replace '{{Description}}', $description `
-        -replace '{{GUID}}', $guid `
-        -replace '{{RequiredAssemblies}}', ($requiredAssemblies -join ', ') `
-        -replace '{{FunctionsToExport}}', $functionsToExport
+    # 改行付きで整形（インデント含む）
+    $functionsToExportBlock = "@(`n    " + ($functionsToExport -join ",`n    ") + "`n)"
+    
+$psd1Content = $psd1Template `
+    -replace '{{ModuleName}}', $moduleName `
+    -replace '{{ModuleVersion}}', $newVersion `
+    -replace '{{Author}}', $author `
+    -replace '{{Description}}', $description `
+    -replace '{{GUID}}', $guid `
+    -replace '{{RequiredAssemblies}}', ($requiredAssemblies -join ', ') `
+    -replace '{{FunctionsToExport}}', $functionsToExportBlock
 
+    
     Backup-IfExists $psd1Path
     Set-Content $psd1Path -Value $psd1Content -Encoding UTF8
 

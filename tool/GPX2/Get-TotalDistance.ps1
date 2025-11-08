@@ -1,7 +1,7 @@
 ﻿function Get-TotalDistance {
     param (
         [array]$Route,
-        [string]$StartLocation,
+        [object]$StartLocation,
         [string]$RouteMode = "Open"
     )
 
@@ -9,12 +9,13 @@
     if ($RouteMode -eq "Open") {
         $total += Get-Distance $StartLocation $Route[0]
         for ($i = 0; $i -lt $Route.Count - 1; $i++) {
-            $total += Get-Distance $Route[$i] $Route[$i+1]
+            $total += Get-Distance $Route[$i] $Route[$i + 1]
         }
-    } elseif ($RouteMode -eq "Circle") {
+    }
+    elseif ($RouteMode -eq "Circle") {
         $total += Get-Distance $StartLocation $Route[0]
         for ($i = 0; $i -lt $Route.Count - 1; $i++) {
-            $total += Get-Distance $Route[$i] $Route[$i+1]
+            $total += Get-Distance $Route[$i] $Route[$i + 1]
         }
         $total += Get-Distance $Route[-1] $StartLocation
     }
