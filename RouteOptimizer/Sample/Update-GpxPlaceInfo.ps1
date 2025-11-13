@@ -1,4 +1,6 @@
-﻿function Update-GpxPlaceInfo {
+﻿using module RouteOptimizer
+
+function Update-GpxPlaceInfo {
     param (
         [Parameter(Mandatory)]
         [string]$GpxPath,

@@ -1,8 +1,8 @@
 ﻿function Group-Places {
     param (
         [Parameter(Mandatory)] [array]$Towns,
-        [double]$MaxDistanceKm = 1.0,
-        [int]$MaxGroupSize = 20
+        [double]$MaxDistanceKm = 5.0,
+        [int]$MaxGroupSize = 50
     )
 
     $unassigned = $Towns.Clone()
@@ -29,8 +29,8 @@
         }
 
         Write-Host "Group $groupIndex size: $($group.Count)"
-        $grouped += ,$group
-        $unassigned = $unassigned | Where-Object { $group -notcontains $_ }
+        $grouped += , $group
+        $unassigned = @($unassigned | Where-Object { $group -notcontains $_ })
         $groupIndex++
     }
 

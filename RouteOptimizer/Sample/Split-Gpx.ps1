@@ -1,4 +1,6 @@
-﻿param (
+﻿using module RouteOptimizer
+
+param (
     [Parameter(Mandatory)]
     [string]$InputFile,
 

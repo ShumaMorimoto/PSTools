@@ -19,6 +19,11 @@
     $pointCount = $trkpts.Count
     $trkNode = $GpxXml.gpx.trk
 
+    # ログ出力
+    Write-Host "統計情報を追加します:"
+    Write-Host ("  - 総距離: {0:F2} km" -f $totalDistance)
+    Write-Host "  - トラックポイント数: $pointCount"
+
     # 既存の <extensions> を探すか新規作成
     $extNode = $trkNode.extensions
     if (-not $extNode) {
