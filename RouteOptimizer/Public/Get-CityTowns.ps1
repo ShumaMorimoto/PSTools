@@ -32,7 +32,8 @@
 
     try {
         $nominatimResult = Invoke-RestMethod -Uri $nominatimUrl -Method Get -Body $nominatimParams -ErrorAction Stop
-    } catch {
+    }
+    catch {
         Write-Error "❌ Nominatim APIへのアクセス失敗: $($_.Exception.Message)"
         return
     }
@@ -49,7 +50,8 @@
     if ($nominatimResult.Count -eq 1) {
         $targetLocation = $nominatimResult[0]
         Write-Verbose "✅ 候補が1件見つかりました: $($targetLocation.display_name)"
-    } else {
+    }
+    else {
         Write-Host "🗂️ 複数候補あり。番号を選択してください："
         for ($i = 0; $i -lt $nominatimResult.Count; $i++) {
             Write-Host (" {0,2}: {1}" -f ($i + 1), $nominatimResult[$i].display_name)
@@ -64,7 +66,8 @@
             if ($input -match '^\d+$' -and [int]$input -ge 1 -and [int]$input -le $nominatimResult.Count) {
                 $targetLocation = $nominatimResult[[int]$input - 1]
                 break
-            } else {
+            }
+            else {
                 Write-Warning "⚠️ 無効な入力です。1〜$($nominatimResult.Count) の番号を入力してください。"
             }
         }
@@ -86,7 +89,8 @@ out body;
 
     try {
         $relationResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $overpassQuery -ErrorAction Stop
-    } catch {
+    }
+    catch {
         Write-Error "❌ Overpass APIへのアクセス失敗: $($_.Exception.Message)"
         return
     }
@@ -112,7 +116,8 @@ out body;
 
     try {
         $townResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $townQuery -ErrorAction Stop
-    } catch {
+    }
+    catch {
         Write-Error "❌ 町字一覧取得中にエラー: $($_.Exception.Message)"
         return
     }
@@ -127,7 +132,8 @@ out body;
             Write-Host "📍 $($town.tags.name)  ($lat, $lon)"
         }
         Write-Host "`n✅ 取得した町字数: $($towns.Count)" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Warning "ℹ️ このエリアには 'neighbourhood' として登録されている町字が見つかりませんでした。"
     }
 
