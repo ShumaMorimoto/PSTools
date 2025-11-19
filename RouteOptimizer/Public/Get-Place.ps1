@@ -1,101 +1,78 @@
-﻿function Group-Places {
+﻿function Get-Place {
+    [CmdletBinding()]
     param (
-        [Parameter(Mandatory)] [array]$Towns,
-        [double]$MaxDistanceKm = 5.0,
-        [int]$MaxGroupSize = 50
+        [Parameter(ValueFromPipeline = $true, Mandatory = $true)]
+        [object]$InputObject
     )
 
-    if ($Towns.Count -eq 0) { return @() }
-
-    # --- サブ関数: バケット幅を距離から度に換算 ---
-    function Get-BucketSteps {
-        param([array]$Towns, [double]$MaxDistanceKm)
-        $latStep = $MaxDistanceKm / 111.0
-        $latRef = ($Towns | Measure-Object Lat -Average).Average
-        $cosLat = [math]::Cos($latRef * [math]::PI / 180.0)
-        if ([math]::Abs($cosLat) -lt 1e-6) { $cosLat = 1e-6 }
-        $lonStep = $MaxDistanceKm / (111.0 * $cosLat)
-        return @{ LatStep = $latStep; LonStep = $lonStep }
+    begin {
+        $headers = @{ "User-Agent" = "PowerShell-ReverseGeocoding" }
+        $doc = New-Object System.Xml.XmlDocument
     }
 
-    # --- サブ関数: サイズ超過時の再帰分割（必ず2要素返す） ---
-    function Split-GroupRecursively {
-        param(
-            [array]$Towns,
-            [int]$MaxGroupSize
-        )
+    process {
+        # lat/lon抽出（trkptノード or 任意オブジェクト対応）
+        $lat = $InputObject.lat ?? $InputObject.Latitude
+        $lon = $InputObject.lon ?? $InputObject.Longitude
 
-        if ($Towns.Count -le $MaxGroupSize) {
-            return @($Towns, $null)   # 必ず2要素返す
+        if (-not ($lat -and $lon)) {
+            Write-Warning "緯度経度が見つかりません: $($InputObject | Out-String)"
+            return
         }
 
-        $minLat = ($Towns | Measure-Object Lat -Minimum).Minimum
-        $maxLat = ($Towns | Measure-Object Lat -Maximum).Maximum
-        $minLon = ($Towns | Measure-Object Lon -Minimum).Minimum
-        $maxLon = ($Towns | Measure-Object Lon -Maximum).Maximum
+        $uri = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json&addressdetails=1"
 
-        $latMid = ($minLat + $maxLat) / 2
-        $lonMid = ($minLon + $maxLon) / 2
+        try {
+            $response = Invoke-RestMethod -Uri $uri -Headers $headers -ErrorAction Stop
+            $addr = $response.address
+            $display = $response.display_name
+            $townArea = $addr.road ?? $addr.suburb ?? $addr.neighbourhood ?? $addr.city ?? 'Unknown'
 
-        $nw = $Towns | Where-Object { $_.Lat -ge $latMid -and $_.Lon -lt $lonMid }
-        $ne = $Towns | Where-Object { $_.Lat -ge $latMid -and $_.Lon -ge $lonMid }
-        $sw = $Towns | Where-Object { $_.Lat -lt $latMid -and $_.Lon -lt $lonMid }
-        $se = $Towns | Where-Object { $_.Lat -lt $latMid -and $_.Lon -ge $lonMid }
+            # 入力がtrkptノードならコピーして使う
+            if ($InputObject -is [System.Xml.XmlElement] -and $InputObject.Name -eq "trkpt") {
+                $trkpt = $doc.ImportNode($InputObject, $true)
 
-        $result = @()
-        foreach ($subset in @($nw,$ne,$sw,$se)) {
-            if ($subset.Count -gt 0) {
-                $childGroups = Split-GroupRecursively -Towns $subset -MaxGroupSize $MaxGroupSize
-                $result += $childGroups
-            }
-        }
-        return $result
-    }
-
-    # --- 本体処理 ---
-    $steps = Get-BucketSteps -Towns $Towns -MaxDistanceKm $MaxDistanceKm
-    $latStep = $steps.LatStep
-    $lonStep = $steps.LonStep
-
-    $minLat = ($Towns | Measure-Object Lat -Minimum).Minimum
-    $maxLat = ($Towns | Measure-Object Lat -Maximum).Maximum
-    $minLon = ($Towns | Measure-Object Lon -Minimum).Minimum
-    $maxLon = ($Towns | Measure-Object Lon -Maximum).Maximum
-
-    $groups = @()
-    $groupIdx = 1
-    $bucketIdx = 1
-
-    for ($lat = $minLat; $lat -le $maxLat; $lat += $latStep) {
-        for ($lon = $minLon; $lon -le $maxLon; $lon += $lonStep) {
-            $bucket = $Towns | Where-Object {
-                $_.Lat -ge $lat -and $_.Lat -lt ($lat + $latStep) -and
-                $_.Lon -ge $lon -and $_.Lon -lt ($lon + $lonStep)
-            }
-            if ($bucket.Count -gt 0) {
-                if ($bucket.Count -gt $MaxGroupSize) {
-                    $splitGroups = Split-GroupRecursively -Towns $bucket -MaxGroupSize $MaxGroupSize
-                    $splitGroups = $splitGroups | Where-Object { $_ }   # $null 除外
-
-                    foreach ($sg in $splitGroups) {
-                        Write-Host "Group $($groupIdx) size: $($sg.Count)"
-                        $groups += ,$sg
-                        $groupIdx++
+                # name, desc, extensions をすべて削除
+                foreach ($tag in @("name", "desc", "extensions")) {
+                    $nodes = $trkpt.SelectNodes($tag)
+                    foreach ($node in $nodes) {
+                        $trkpt.RemoveChild($node) | Out-Null
                     }
                 }
-                else {
-                    Write-Host "Group $($groupIdx) size: $($bucket.Count)"
-                    $groups += @($bucket, $null)   # 常に2要素返す
-                    $groupIdx++
+            }
+            else {
+                # 新規trkptノードを作成
+                $trkpt = $doc.CreateElement("trkpt")
+                $trkpt.SetAttribute("lat", $lat.ToString())
+                $trkpt.SetAttribute("lon", $lon.ToString())
+            }
+
+            # nameノード
+            $nameNode = $doc.CreateElement("name")
+            $nameNode.InnerText = $townArea
+            $trkpt.AppendChild($nameNode) | Out-Null
+
+            # descノード
+            $descNode = $doc.CreateElement("desc")
+            $descNode.InnerText = $display
+            $trkpt.AppendChild($descNode) | Out-Null
+
+            # extensionsノード
+            $extNode = $doc.CreateElement("extensions")
+            foreach ($key in $addr.PSObject.Properties.Name) {
+                $val = $addr.$key
+                if ($val) {
+                    $child = $doc.CreateElement($key)
+                    $child.InnerText = $val
+                    $extNode.AppendChild($child) | Out-Null
                 }
             }
-            $bucketIdx++
+            $trkpt.AppendChild($extNode) | Out-Null
+
+            return $trkpt
+        }
+        catch {
+            Write-Warning "[$lat,$lon] 逆ジオコーディング失敗: $($_.Exception.Message)"
         }
     }
-
-    # 最後に $null を除外
-    $groups = $groups | Where-Object { $_ }
-
-    Write-Host "Total groups formed: $($groups.Count)"
-    return $groups
 }

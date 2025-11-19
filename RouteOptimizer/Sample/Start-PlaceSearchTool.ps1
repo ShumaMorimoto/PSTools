@@ -1,6 +1,6 @@
 ﻿using module RouteOptimizer
 
-$FilePath = "D:\tool\log\SearchPlaceLog.xml"
+$FilePath = "D:\tool\log\SearchPlaceLog.gpx"
 function Start-PlaceSearchTool {
     function Write-PlaceLog {
         [CmdletBinding()]

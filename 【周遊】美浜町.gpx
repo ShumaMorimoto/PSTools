@@ -1,0 +1,159 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="PowerShell ConvertTo-Gpx" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <time>2025-11-16T09:35:29Z</time>
+  </metadata>
+  <trk>
+    <name>
+    </name>
+    <trkseg>
+      <trkpt lat="35.5313052" lon="135.9812833" muitiRoute="1">
+        <name>松屋</name>
+      </trkpt>
+      <trkpt lat="35.5313052" lon="135.9812833" muitiRoute="1">
+        <name>松屋</name>
+      </trkpt>
+      <trkpt lat="35.5261496" lon="135.9956436" muitiRoute="1">
+        <name>粟柄</name>
+      </trkpt>
+      <trkpt lat="35.5585774" lon="135.9781829" muitiRoute="1">
+        <name>新庄</name>
+      </trkpt>
+      <trkpt lat="35.5617323" lon="135.97439" muitiRoute="1">
+        <name>馬場</name>
+      </trkpt>
+      <trkpt lat="35.564099" lon="135.9750446" muitiRoute="1">
+        <name>田代</name>
+      </trkpt>
+      <trkpt lat="35.5616173" lon="135.9710659" muitiRoute="1">
+        <name>岸名</name>
+      </trkpt>
+      <trkpt lat="35.5673734" lon="135.9759491" muitiRoute="1">
+        <name>寄積</name>
+      </trkpt>
+      <trkpt lat="35.5729765" lon="135.9768662" muitiRoute="1">
+        <name>三方郡</name>
+      </trkpt>
+      <trkpt lat="35.570847" lon="135.961194" muitiRoute="1">
+        <name>雲谷</name>
+      </trkpt>
+      <trkpt lat="35.5819858" lon="135.9619315" muitiRoute="1">
+        <name>寄戸</name>
+      </trkpt>
+      <trkpt lat="35.5882419" lon="135.9604895" muitiRoute="1">
+        <name>五十谷</name>
+      </trkpt>
+      <trkpt lat="35.591258" lon="135.957487" muitiRoute="1">
+        <name>安江</name>
+      </trkpt>
+      <trkpt lat="35.5953433" lon="135.9591239" muitiRoute="1">
+        <name>宮代</name>
+      </trkpt>
+      <trkpt lat="35.60087" lon="135.959182" muitiRoute="1">
+        <name>麻生</name>
+      </trkpt>
+      <trkpt lat="35.5824807" lon="135.977185" muitiRoute="1">
+        <name>奥</name>
+      </trkpt>
+      <trkpt lat="35.5843346" lon="135.9530202" muitiRoute="1">
+        <name>佐野</name>
+      </trkpt>
+      <trkpt lat="35.5946391" lon="135.943675" muitiRoute="1">
+        <name>興道寺</name>
+      </trkpt>
+      <trkpt lat="35.597929" lon="135.9504971" muitiRoute="1">
+        <name>中寺</name>
+      </trkpt>
+      <trkpt lat="35.6021559" lon="135.9442615" muitiRoute="1">
+        <name>南市</name>
+      </trkpt>
+      <trkpt lat="35.6058929" lon="135.9446679" muitiRoute="1">
+        <name>河原市</name>
+      </trkpt>
+      <trkpt lat="35.6026891" lon="135.937059" muitiRoute="1">
+        <name>郷市</name>
+      </trkpt>
+      <trkpt lat="35.5979846" lon="135.9267788" muitiRoute="1">
+        <name>金山</name>
+      </trkpt>
+      <trkpt lat="35.5928276" lon="135.9291215" muitiRoute="1">
+        <name>別所</name>
+      </trkpt>
+      <trkpt lat="35.617875" lon="135.9032032" muitiRoute="1">
+        <name>早瀬</name>
+      </trkpt>
+      <trkpt lat="35.6142286" lon="135.8969278" muitiRoute="1">
+        <name>笹田</name>
+      </trkpt>
+      <trkpt lat="35.6123386" lon="135.8906572" muitiRoute="1">
+        <name>日向</name>
+      </trkpt>
+      <trkpt lat="35.6065785" lon="135.9140341" muitiRoute="1">
+        <name>久々子</name>
+      </trkpt>
+      <trkpt lat="35.592748" lon="135.918235" muitiRoute="1">
+        <name>大藪</name>
+      </trkpt>
+      <trkpt lat="35.5877864" lon="135.9142644" muitiRoute="1">
+        <name>気山</name>
+      </trkpt>
+      <trkpt lat="35.6100215" lon="135.9291977" muitiRoute="1">
+        <name>松原</name>
+      </trkpt>
+      <trkpt lat="35.6087732" lon="135.9375816" muitiRoute="1">
+        <name>洪水山</name>
+      </trkpt>
+      <trkpt lat="35.6096671" lon="135.9472094" muitiRoute="1">
+        <name>栄</name>
+      </trkpt>
+      <trkpt lat="35.6082378" lon="135.954099" muitiRoute="1">
+        <name>佐柿</name>
+      </trkpt>
+      <trkpt lat="35.6107107" lon="135.9492589" muitiRoute="1">
+        <name>木野</name>
+      </trkpt>
+      <trkpt lat="35.6163377" lon="135.9435473" muitiRoute="1">
+        <name>和田</name>
+      </trkpt>
+      <trkpt lat="35.6203632" lon="135.9635993" muitiRoute="1">
+        <name>坂尻</name>
+      </trkpt>
+      <trkpt lat="35.619524" lon="135.9753475" muitiRoute="1">
+        <name>山上</name>
+      </trkpt>
+      <trkpt lat="35.6154287" lon="135.9853215" muitiRoute="1">
+        <name>太田</name>
+      </trkpt>
+      <trkpt lat="35.6320167" lon="135.9837912" muitiRoute="1">
+        <name>佐田</name>
+      </trkpt>
+      <trkpt lat="35.639347" lon="135.9927808" muitiRoute="1">
+        <name>北田</name>
+      </trkpt>
+      <trkpt lat="35.634344" lon="135.9871813" muitiRoute="1">
+        <name>けやき台</name>
+      </trkpt>
+      <trkpt lat="35.6570066" lon="135.9773935" muitiRoute="1">
+        <name>菅浜</name>
+      </trkpt>
+      <trkpt lat="35.6949988" lon="135.9766828" muitiRoute="1">
+        <name>竹波</name>
+      </trkpt>
+      <trkpt lat="35.7102054" lon="135.9730267" muitiRoute="1">
+        <name>田ノ口</name>
+      </trkpt>
+      <trkpt lat="35.7131516" lon="135.9723821" muitiRoute="1">
+        <name>丹生</name>
+      </trkpt>
+      <trkpt lat="35.712115" lon="135.9666207" muitiRoute="1">
+        <name>奥ノ浦</name>
+      </trkpt>
+    </trkseg>
+    <extensions>
+      <stats>
+        <totalDistanceKm>56.45</totalDistanceKm>
+        <pointCount>47</pointCount>
+      </stats>
+    </extensions>
+  </trk>
+</gpx>

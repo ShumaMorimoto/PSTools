@@ -24,6 +24,9 @@ $route = Optimize-AreaRoute $towns
 # ③ GPXオブジェクトを生成
 $gpxXml = $route | ConvertTo-Gpx -TrackName $TrackName
 
+# 統計情報追加
+$gpxXml = Add-GpxStats -GpxXml $gpxXml
+
 # ④ ファイルに保存
 try {
     $gpxXml.Save($OutputPath)

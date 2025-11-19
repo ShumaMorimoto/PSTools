@@ -1,0 +1,142 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="PowerShell ConvertTo-Gpx" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <time>2025-11-17T16:34:55Z</time>
+  </metadata>
+  <trk>
+    <name>
+    </name>
+    <trkseg>
+      <trkpt lat="35.316359" lon="136.683099" muitiRoute="1">
+        <name>福寿町平方四丁目</name>
+      </trkpt>
+      <trkpt lat="35.318049" lon="136.685042" muitiRoute="1">
+        <name>福寿町千代田一丁目</name>
+      </trkpt>
+      <trkpt lat="35.3191434" lon="136.6847545" muitiRoute="1">
+        <name>福寿町千代田二丁目</name>
+      </trkpt>
+      <trkpt lat="35.318899" lon="136.68383" muitiRoute="1">
+        <name>福寿町千代田</name>
+      </trkpt>
+      <trkpt lat="35.3194498" lon="136.6830862" muitiRoute="1">
+        <name>福寿町千代田三丁目</name>
+      </trkpt>
+      <trkpt lat="35.3210562" lon="136.6834348" muitiRoute="1">
+        <name>福寿町本郷二丁目</name>
+      </trkpt>
+      <trkpt lat="35.3209599" lon="136.6850871" muitiRoute="1">
+        <name>福寿町本郷一丁目</name>
+      </trkpt>
+      <trkpt lat="35.31843" lon="136.686803" muitiRoute="1">
+        <name>福寿町浅平二丁目</name>
+      </trkpt>
+      <trkpt lat="35.317521" lon="136.68752" muitiRoute="1">
+        <name>福寿町浅平一丁目</name>
+      </trkpt>
+      <trkpt lat="35.316264" lon="136.687601" muitiRoute="1">
+        <name>舟橋町宮北一丁目</name>
+      </trkpt>
+      <trkpt lat="35.316079" lon="136.688856" muitiRoute="1">
+        <name>舟橋町宮北六丁目</name>
+      </trkpt>
+      <trkpt lat="35.315984" lon="136.691279" muitiRoute="1">
+        <name>舟橋町宮北五丁目</name>
+      </trkpt>
+      <trkpt lat="35.317229" lon="136.691166" muitiRoute="1">
+        <name>舟橋町宮北四丁目</name>
+      </trkpt>
+      <trkpt lat="35.317526" lon="136.692575" muitiRoute="1">
+        <name>舟橋町宮北三丁目</name>
+      </trkpt>
+      <trkpt lat="35.317978" lon="136.689782" muitiRoute="1">
+        <name>舟橋町宮北二丁目</name>
+      </trkpt>
+      <trkpt lat="35.320521" lon="136.689856" muitiRoute="1">
+        <name>福寿町浅平四丁目</name>
+      </trkpt>
+      <trkpt lat="35.322188" lon="136.690954" muitiRoute="1">
+        <name>福寿町浅平</name>
+      </trkpt>
+      <trkpt lat="35.321828" lon="136.692495" muitiRoute="1">
+        <name>福寿町浅平五丁目</name>
+      </trkpt>
+      <trkpt lat="35.320279" lon="136.692835" muitiRoute="1">
+        <name>福寿町浅平三丁目</name>
+      </trkpt>
+      <trkpt lat="35.326675" lon="136.68724" muitiRoute="1">
+        <name>福寿町本郷</name>
+      </trkpt>
+      <trkpt lat="35.318144" lon="136.681146" muitiRoute="1">
+        <name>福寿町平方八丁目</name>
+      </trkpt>
+      <trkpt lat="35.3139761" lon="136.6937238" muitiRoute="1">
+        <name>江吉良町江西二丁目</name>
+      </trkpt>
+      <trkpt lat="35.3123893" lon="136.6957569" muitiRoute="1">
+        <name>江吉良町江中二丁目</name>
+      </trkpt>
+      <trkpt lat="35.3119253" lon="136.6970229" muitiRoute="1">
+        <name>江吉良町江南一丁目</name>
+      </trkpt>
+      <trkpt lat="35.3114854" lon="136.6970739" muitiRoute="1">
+        <name>江吉良町江南二丁目</name>
+      </trkpt>
+      <trkpt lat="35.311063" lon="136.6942602" muitiRoute="1">
+        <name>江吉良町江中三丁目</name>
+      </trkpt>
+      <trkpt lat="35.309846" lon="136.6941261" muitiRoute="1">
+        <name>江吉良町江中四丁目</name>
+      </trkpt>
+      <trkpt lat="35.3084583" lon="136.6936701" muitiRoute="1">
+        <name>江吉良町江中五丁目</name>
+      </trkpt>
+      <trkpt lat="35.31127" lon="136.700899" muitiRoute="1">
+        <name>江吉良町</name>
+      </trkpt>
+      <trkpt lat="35.304908" lon="136.700822" muitiRoute="1">
+        <name>上中町長間</name>
+      </trkpt>
+      <trkpt lat="35.308147" lon="136.7127" muitiRoute="1">
+        <name>竹鼻町蜂尻</name>
+      </trkpt>
+      <trkpt lat="35.315842" lon="136.716897" muitiRoute="1">
+        <name>竹鼻町飯柄</name>
+      </trkpt>
+      <trkpt lat="35.317248" lon="136.724772" muitiRoute="1">
+        <name>正木町新井</name>
+      </trkpt>
+      <trkpt lat="35.326836" lon="136.717767" muitiRoute="1">
+        <name>正木町曲利</name>
+      </trkpt>
+      <trkpt lat="35.330834" lon="136.716183" muitiRoute="1">
+        <name>小熊町足近新田</name>
+      </trkpt>
+      <trkpt lat="35.328958" lon="136.710961" muitiRoute="1">
+        <name>新生町三丁目</name>
+      </trkpt>
+      <trkpt lat="35.33025" lon="136.710403" muitiRoute="1">
+        <name>足近町南之川</name>
+      </trkpt>
+      <trkpt lat="35.329468" lon="136.707746" muitiRoute="1">
+        <name>新生町二丁目</name>
+      </trkpt>
+      <trkpt lat="35.330008" lon="136.705921" muitiRoute="1">
+        <name>新生町一丁目</name>
+      </trkpt>
+      <trkpt lat="35.330537" lon="136.703939" muitiRoute="1">
+        <name>竹鼻町神楽</name>
+      </trkpt>
+      <trkpt lat="35.328634" lon="136.700924" muitiRoute="1">
+        <name>竹鼻町丸の内五丁目</name>
+      </trkpt>
+    </trkseg>
+    <extensions>
+      <stats xmlns="">
+        <totalDistanceKm>14.93</totalDistanceKm>
+        <pointCount>41</pointCount>
+      </stats>
+    </extensions>
+    <name xmlns="">Segment 3</name>
+  </trk>
+</gpx>

@@ -5,7 +5,7 @@ param (
     [string]$InputFile,
 
     [double]$DistanceKm = 0.0,
-    [int]$PointLimit = 50
+    [int]$PointLimit = 40
 )
 
 if (-not (Test-Path $InputFile)) {

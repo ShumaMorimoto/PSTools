@@ -42,7 +42,7 @@ function Group-Places2 {
         )
 
         if ($Towns.Count -le $MaxGroupSize) {
-            return @($Towns, $null)   # 必ず2要素返す
+            return @(,$Towns)
         }
 
         $minLat = ($Towns | Measure-Object Lat -Minimum).Minimum
@@ -61,7 +61,7 @@ function Group-Places2 {
         $result = @()
         foreach ($subset in @($nw,$ne,$sw,$se)) {
             if ($subset.Count -gt 0) {
-                $childGroups = Split-GroupRecursively -Towns $subset -MaxGroupSize $MaxGroupSize
+                $childGroups = @(Split-GroupRecursively -Towns $subset -MaxGroupSize $MaxGroupSize)
                 $result += $childGroups
             }
         }
@@ -91,7 +91,7 @@ function Group-Places2 {
             if ($bucket.Count -gt 0) {
                 if ($bucket.Count -gt $MaxGroupSize) {
                     $splitGroups = Split-GroupRecursively -Towns $bucket -MaxGroupSize $MaxGroupSize
-                    $splitGroups = $splitGroups | Where-Object { $_ }   # $null 除外
+#                    $splitGroups = $splitGroups | Where-Object { $_ }   # $null 除外
 
                     foreach ($sg in $splitGroups) {
                         Write-Host "Group $($groupIdx) size: $($sg.Count)"
@@ -101,7 +101,8 @@ function Group-Places2 {
                 }
                 else {
                     Write-Host "Group $($groupIdx) size: $($bucket.Count)"
-                    $groups += @($bucket, $null)   # 常に2要素返す
+#                    $groups += @($bucket, $null)   # 常に2要素返す
+                    $groups += @(,$bucket)   # 常に2要素返す
                     $groupIdx++
                 }
             }
@@ -110,7 +111,7 @@ function Group-Places2 {
     }
 
     # 最後に $null を除外
-    $groups = $groups | Where-Object { $_ }
+ #   $groups = $groups | Where-Object { $_ }
 
     Write-Host "Total groups formed: $($groups.Count)"
     return $groups

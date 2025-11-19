@@ -1,38 +1,38 @@
 ﻿using module RouteOptimizer
 
-function Update-GpxPlaceInfo {
-    param (
-        [Parameter(Mandatory)]
-        [string]$GpxPath,
+param (
+    [Parameter(Mandatory = $true)]
+    [string]$InputGpxPath,
 
-        [Parameter()]
-        [string]$OutputPath = "$GpxPath.updated.gpx"
-    )
+    [Parameter()]
+    [string]$OutputGpxPath = "$($InputGpxPath -replace '\.gpx$', '.updated.gpx')"
+)
 
-    # GPX読み込み
-    $xml = [xml](Get-Content $GpxPath -Raw)
-    $trkpts = $xml.gpx.trk.trkseg.trkpt
+# ① GPX読み込み
+[xml] $gpx = Get-Content $InputGpxPath
 
-    foreach ($trkpt in $trkpts) {
-        $lat = [double]$trkpt.lat
-        $lon = [double]$trkpt.lon
+# ② 拠点取得
+$trkpts = $gpx.gpx.trk.trkseg.trkpt
 
-        Write-Host "🔄 $lat,$lon を更新中..." -ForegroundColor Cyan
-        $newNode = Get-Place -Latitude $lat -Longitude $lon
-        if ($newNode) {
-            # 既存ノードを置き換え
-            $trkpt.RemoveAll()  # 子要素削除
-            $trkpt.SetAttribute("lat", $lat.ToString())
-            $trkpt.SetAttribute("lon", $lon.ToString())
+# 並び替え
 
-            foreach ($child in $newNode.ChildNodes) {
-                $imported = $xml.ImportNode($child, $true)
-                $trkpt.AppendChild($imported) | Out-Null
-            }
-        }
-    }
+$newtrkpts = ($trkpts | Get-Place)
 
-    # 保存
-    $xml.Save($OutputPath)
-    Write-Host "✅ 更新完了: $OutputPath" -ForegroundColor Green
+# 再構築
+$trkseg = $gpx.gpx.trk.trkseg
+$trkseg.RemoveAll()
+foreach ($pt in $newtrkpts) {
+    $trkseg.AppendChild($gpx.ImportNode($pt, $true)) | Out-Null
+}
+
+# 統計情報追加
+$gpx = Add-GpxStats -GpxXml $gpx
+
+# 保存
+try {
+    $gpx.Save($OutputGpxPath)
+    Write-Host "✅ 拠点情報更新GPXファイルを保存しました: $OutputGpxPath" -ForegroundColor Green
+}
+catch {
+    Write-Error "❌ GPXファイル保存に失敗: $($_.Exception.Message)"
 }

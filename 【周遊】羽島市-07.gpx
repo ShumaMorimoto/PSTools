@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="PowerShell ConvertTo-Gpx" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <time>2025-11-17T16:34:55Z</time>
+  </metadata>
+  <trk>
+    <name>
+    </name>
+    <trkseg>
+      <trkpt lat="35.341361" lon="136.735812" muitiRoute="1">
+        <name>正木町森一丁目</name>
+      </trkpt>
+      <trkpt lat="35.342661" lon="136.733932" muitiRoute="1">
+        <name>正木町須賀赤松</name>
+      </trkpt>
+      <trkpt lat="35.338663" lon="136.732658" muitiRoute="1">
+        <name>正木町森九丁目</name>
+      </trkpt>
+      <trkpt lat="35.337473" lon="136.734708" muitiRoute="1">
+        <name>正木町森十丁目</name>
+      </trkpt>
+      <trkpt lat="35.338566" lon="136.735445" muitiRoute="1">
+        <name>正木町森八丁目</name>
+      </trkpt>
+      <trkpt lat="35.336181" lon="136.734273" muitiRoute="1">
+        <name>正木町森十三丁目</name>
+      </trkpt>
+      <trkpt lat="35.335268" lon="136.733911" muitiRoute="1">
+        <name>正木町森十四丁目</name>
+      </trkpt>
+      <trkpt lat="35.333862" lon="136.733866" muitiRoute="1">
+        <name>正木町森十六丁目</name>
+      </trkpt>
+      <trkpt lat="35.332957" lon="136.732343" muitiRoute="1">
+        <name>正木町坂丸二丁目</name>
+      </trkpt>
+      <trkpt lat="35.335112" lon="136.732109" muitiRoute="1">
+        <name>正木町坂丸一丁目</name>
+      </trkpt>
+      <trkpt lat="35.336077" lon="136.729187" muitiRoute="1">
+        <name>正木町須賀本村</name>
+      </trkpt>
+      <trkpt lat="35.339639" lon="136.729559" muitiRoute="1">
+        <name>正木町須賀小松</name>
+      </trkpt>
+      <trkpt lat="35.331456" lon="136.73206" muitiRoute="1">
+        <name>正木町坂丸三丁目</name>
+      </trkpt>
+      <trkpt lat="35.3308" lon="136.734146" muitiRoute="1">
+        <name>正木町坂丸五丁目</name>
+      </trkpt>
+      <trkpt lat="35.331315" lon="136.735901" muitiRoute="1">
+        <name>正木町大浦新田八丁目</name>
+      </trkpt>
+      <trkpt lat="35.329676" lon="136.735665" muitiRoute="1">
+        <name>正木町大浦新田九丁目</name>
+      </trkpt>
+      <trkpt lat="35.331135" lon="136.739404" muitiRoute="1">
+        <name>正木町大浦新田六丁目</name>
+      </trkpt>
+      <trkpt lat="35.330033" lon="136.738157" muitiRoute="1">
+        <name>正木町大浦新田七丁目</name>
+      </trkpt>
+      <trkpt lat="35.3289" lon="136.737523" muitiRoute="1">
+        <name>正木町大浦新田十丁目</name>
+      </trkpt>
+      <trkpt lat="35.329455" lon="136.732577" muitiRoute="1">
+        <name>正木町坂丸六丁目</name>
+      </trkpt>
+      <trkpt lat="35.329612" lon="136.731438" muitiRoute="1">
+        <name>正木町坂丸四丁目</name>
+      </trkpt>
+      <trkpt lat="35.322937" lon="136.731319" muitiRoute="1">
+        <name>正木町大浦</name>
+      </trkpt>
+      <trkpt lat="35.307122" lon="136.727641" muitiRoute="1">
+        <name>正木町三ツ柳</name>
+      </trkpt>
+    </trkseg>
+    <extensions>
+      <stats xmlns="">
+        <totalDistanceKm>7.96</totalDistanceKm>
+        <pointCount>23</pointCount>
+      </stats>
+    </extensions>
+    <name xmlns="">Segment 7</name>
+  </trk>
+</gpx>

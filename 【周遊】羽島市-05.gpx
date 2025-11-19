@@ -1,0 +1,142 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="PowerShell ConvertTo-Gpx" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <time>2025-11-17T16:34:55Z</time>
+  </metadata>
+  <trk>
+    <name>
+    </name>
+    <trkseg>
+      <trkpt lat="35.331716" lon="136.695178" muitiRoute="1">
+        <name>福寿町間島四丁目</name>
+      </trkpt>
+      <trkpt lat="35.338996" lon="136.69889" muitiRoute="1">
+        <name>小熊町内粟野</name>
+      </trkpt>
+      <trkpt lat="35.339677" lon="136.696667" muitiRoute="1">
+        <name>小熊町内粟野四丁目</name>
+      </trkpt>
+      <trkpt lat="35.3398" lon="136.695503" muitiRoute="1">
+        <name>小熊町内粟野三丁目</name>
+      </trkpt>
+      <trkpt lat="35.339909" lon="136.694346" muitiRoute="1">
+        <name>小熊町内粟野二丁目</name>
+      </trkpt>
+      <trkpt lat="35.341852" lon="136.694646" muitiRoute="1">
+        <name>小熊町外粟野二丁目</name>
+      </trkpt>
+      <trkpt lat="35.342093" lon="136.695869" muitiRoute="1">
+        <name>小熊町外粟野三丁目</name>
+      </trkpt>
+      <trkpt lat="35.342038" lon="136.69706" muitiRoute="1">
+        <name>小熊町外粟野四丁目</name>
+      </trkpt>
+      <trkpt lat="35.345568" lon="136.703631" muitiRoute="1">
+        <name>小熊町三丁目</name>
+      </trkpt>
+      <trkpt lat="35.350263" lon="136.69995" muitiRoute="1">
+        <name>小熊町二丁目</name>
+      </trkpt>
+      <trkpt lat="35.353518" lon="136.701316" muitiRoute="1">
+        <name>小熊町一丁目</name>
+      </trkpt>
+      <trkpt lat="35.352544" lon="136.705117" muitiRoute="1">
+        <name>小熊町東小熊</name>
+      </trkpt>
+      <trkpt lat="35.350763" lon="136.712134" muitiRoute="1">
+        <name>小熊町相田</name>
+      </trkpt>
+      <trkpt lat="35.351556" lon="136.715044" muitiRoute="1">
+        <name>足近町坂井</name>
+      </trkpt>
+      <trkpt lat="35.353108" lon="136.718394" muitiRoute="1">
+        <name>足近町直道</name>
+      </trkpt>
+      <trkpt lat="35.348572" lon="136.72057" muitiRoute="1">
+        <name>足近町二丁目</name>
+      </trkpt>
+      <trkpt lat="35.344458" lon="136.71686" muitiRoute="1">
+        <name>足近町三丁目</name>
+      </trkpt>
+      <trkpt lat="35.338985" lon="136.715349" muitiRoute="1">
+        <name>足近町四丁目</name>
+      </trkpt>
+      <trkpt lat="35.335569" lon="136.719283" muitiRoute="1">
+        <name>足近町小荒井</name>
+      </trkpt>
+      <trkpt lat="35.335912" lon="136.721515" muitiRoute="1">
+        <name>足近町小荒井二丁目</name>
+      </trkpt>
+      <trkpt lat="35.334745" lon="136.723428" muitiRoute="1">
+        <name>正木町須賀</name>
+      </trkpt>
+      <trkpt lat="35.337721" lon="136.723563" muitiRoute="1">
+        <name>足近町小荒井一丁目</name>
+      </trkpt>
+      <trkpt lat="35.339061" lon="136.721694" muitiRoute="1">
+        <name>足近町七丁目</name>
+      </trkpt>
+      <trkpt lat="35.342677" lon="136.724959" muitiRoute="1">
+        <name>足近町南宿</name>
+      </trkpt>
+      <trkpt lat="35.333235" lon="136.718729" muitiRoute="1">
+        <name>足近町小荒井三丁目</name>
+      </trkpt>
+      <trkpt lat="35.333359" lon="136.713201" muitiRoute="1">
+        <name>足近町五丁目</name>
+      </trkpt>
+      <trkpt lat="35.331752" lon="136.724064" muitiRoute="1">
+        <name>正木町不破一色</name>
+      </trkpt>
+      <trkpt lat="35.331935" lon="136.692366" muitiRoute="1">
+        <name>福寿町間島一丁目</name>
+      </trkpt>
+      <trkpt lat="35.333795" lon="136.693223" muitiRoute="1">
+        <name>福寿町間島二丁目</name>
+      </trkpt>
+      <trkpt lat="35.334896" lon="136.690448" muitiRoute="1">
+        <name>福寿町間島</name>
+      </trkpt>
+      <trkpt lat="35.337461" lon="136.692539" muitiRoute="1">
+        <name>小熊町天王一丁目</name>
+      </trkpt>
+      <trkpt lat="35.340033" lon="136.69137" muitiRoute="1">
+        <name>小熊町内粟野一丁目</name>
+      </trkpt>
+      <trkpt lat="35.342277" lon="136.69146" muitiRoute="1">
+        <name>小熊町外粟野一丁目</name>
+      </trkpt>
+      <trkpt lat="35.343896" lon="136.692263" muitiRoute="1">
+        <name>小熊町外粟野</name>
+      </trkpt>
+      <trkpt lat="35.350345" lon="136.691923" muitiRoute="1">
+        <name>小熊町西小熊</name>
+      </trkpt>
+      <trkpt lat="35.348724" lon="136.72701" muitiRoute="1">
+        <name>足近町六丁目</name>
+      </trkpt>
+      <trkpt lat="35.352431" lon="136.727176" muitiRoute="1">
+        <name>足近町一丁目</name>
+      </trkpt>
+      <trkpt lat="35.355134" lon="136.731735" muitiRoute="1">
+        <name>足近町北宿一丁目</name>
+      </trkpt>
+      <trkpt lat="35.353442" lon="136.733065" muitiRoute="1">
+        <name>足近町北宿二丁目</name>
+      </trkpt>
+      <trkpt lat="35.351158" lon="136.733406" muitiRoute="1">
+        <name>足近町北宿三丁目</name>
+      </trkpt>
+      <trkpt lat="35.351376" lon="136.731374" muitiRoute="1">
+        <name>足近町北宿</name>
+      </trkpt>
+    </trkseg>
+    <extensions>
+      <stats xmlns="">
+        <totalDistanceKm>21.51</totalDistanceKm>
+        <pointCount>41</pointCount>
+      </stats>
+    </extensions>
+    <name xmlns="">Segment 5</name>
+  </trk>
+</gpx>

@@ -18,7 +18,7 @@
 
 
     # ① グリッドクラスタリング
-    $clusters = Group-Places $Places -MaxDistanceKm $DistanceKm -MaxGroupSize $PointLimit
+    $clusters = @(Group-Places $Places -MaxDistanceKm $DistanceKm -MaxGroupSize $PointLimit)
 
     # ② クラスタ重心算出
     $centroids = foreach ($cluster in $clusters) {

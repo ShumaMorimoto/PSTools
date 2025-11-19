@@ -1,0 +1,807 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="PowerShell ConvertTo-Gpx" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <time>2025-11-17T16:34:55Z</time>
+  </metadata>
+  <trk>
+    <name>
+    </name>
+    <trkseg>
+      <trkpt lat="35.25834" lon="136.681079" muitiRoute="1">
+        <name>桑原町午南</name>
+      </trkpt>
+      <trkpt lat="35.25834" lon="136.681079" muitiRoute="1">
+        <name>桑原町午南</name>
+      </trkpt>
+      <trkpt lat="35.256726" lon="136.687033" muitiRoute="1">
+        <name>桑原町前野</name>
+      </trkpt>
+      <trkpt lat="35.258367" lon="136.673669" muitiRoute="1">
+        <name>桑原町大須五丁目</name>
+      </trkpt>
+      <trkpt lat="35.260566" lon="136.674285" muitiRoute="1">
+        <name>桑原町大須四丁目</name>
+      </trkpt>
+      <trkpt lat="35.262631" lon="136.675114" muitiRoute="1">
+        <name>桑原町大須三丁目</name>
+      </trkpt>
+      <trkpt lat="35.264664" lon="136.676138" muitiRoute="1">
+        <name>桑原町大須二丁目</name>
+      </trkpt>
+      <trkpt lat="35.268309" lon="136.676937" muitiRoute="1">
+        <name>桑原町大須一丁目</name>
+      </trkpt>
+      <trkpt lat="35.267149" lon="136.679574" muitiRoute="1">
+        <name>桑原町平太一丁目</name>
+      </trkpt>
+      <trkpt lat="35.263672" lon="136.671233" muitiRoute="1">
+        <name>桑原町大須</name>
+      </trkpt>
+      <trkpt lat="35.262081" lon="136.662654" muitiRoute="1">
+        <name>桑原町西小薮一丁目</name>
+      </trkpt>
+      <trkpt lat="35.257433" lon="136.660496" muitiRoute="1">
+        <name>桑原町西小薮二丁目</name>
+      </trkpt>
+      <trkpt lat="35.253632" lon="136.66108" muitiRoute="1">
+        <name>桑原町西小薮三丁目</name>
+      </trkpt>
+      <trkpt lat="35.25041" lon="136.67431" muitiRoute="1">
+        <name>桑原町小藪</name>
+      </trkpt>
+      <trkpt lat="35.271024" lon="136.692144" muitiRoute="1">
+        <name>桑原町八神</name>
+      </trkpt>
+      <trkpt lat="35.278907" lon="136.680868" muitiRoute="1">
+        <name>桑原町東方</name>
+      </trkpt>
+      <trkpt lat="35.287475" lon="136.68324" muitiRoute="1">
+        <name>下中町市之枝</name>
+      </trkpt>
+      <trkpt lat="35.286704" lon="136.686224" muitiRoute="1">
+        <name>下中町市之枝六丁目</name>
+      </trkpt>
+      <trkpt lat="35.286728" lon="136.689373" muitiRoute="1">
+        <name>下中町市之枝五丁目</name>
+      </trkpt>
+      <trkpt lat="35.290256" lon="136.692291" muitiRoute="1">
+        <name>下中町市之枝四丁目</name>
+      </trkpt>
+      <trkpt lat="35.292165" lon="136.687985" muitiRoute="1">
+        <name>上中町午北</name>
+      </trkpt>
+      <trkpt lat="35.297384" lon="136.678151" muitiRoute="1">
+        <name>堀津町</name>
+      </trkpt>
+      <trkpt lat="35.30191" lon="136.688662" muitiRoute="1">
+        <name>上中町千束</name>
+      </trkpt>
+      <trkpt lat="35.295158" lon="136.696928" muitiRoute="1">
+        <name>上中町沖</name>
+      </trkpt>
+      <trkpt lat="35.289028" lon="136.695523" muitiRoute="1">
+        <name>下中町市之枝二丁目</name>
+      </trkpt>
+      <trkpt lat="35.286345" lon="136.694373" muitiRoute="1">
+        <name>下中町市之枝三丁目</name>
+      </trkpt>
+      <trkpt lat="35.287215" lon="136.69958" muitiRoute="1">
+        <name>下中町市之枝一丁目</name>
+      </trkpt>
+      <trkpt lat="35.288236" lon="136.706963" muitiRoute="1">
+        <name>下中町城屋敷</name>
+      </trkpt>
+      <trkpt lat="35.292614" lon="136.718184" muitiRoute="1">
+        <name>下中町加賀野井</name>
+      </trkpt>
+      <trkpt lat="35.303249" lon="136.719612" muitiRoute="1">
+        <name>竹鼻町駒塚</name>
+      </trkpt>
+      <trkpt lat="35.299808" lon="136.712707" muitiRoute="1">
+        <name>上中町一色</name>
+      </trkpt>
+      <trkpt lat="35.30045" lon="136.701487" muitiRoute="1">
+        <name>上中町中</name>
+      </trkpt>
+      <trkpt lat="35.278876" lon="136.698375" muitiRoute="1">
+        <name>下中町石田</name>
+      </trkpt>
+      <trkpt lat="35.30878" lon="136.68865" muitiRoute="1">
+        <name>江吉良町江中七丁目</name>
+      </trkpt>
+      <trkpt lat="35.310233" lon="136.687446" muitiRoute="1">
+        <name>舟橋町四丁目</name>
+      </trkpt>
+      <trkpt lat="35.309814" lon="136.685197" muitiRoute="1">
+        <name>舟橋町本町五丁目</name>
+      </trkpt>
+      <trkpt lat="35.311084" lon="136.685345" muitiRoute="1">
+        <name>舟橋町本町四丁目</name>
+      </trkpt>
+      <trkpt lat="35.312694" lon="136.686419" muitiRoute="1">
+        <name>舟橋町二丁目</name>
+      </trkpt>
+      <trkpt lat="35.313613" lon="136.685531" muitiRoute="1">
+        <name>舟橋町一丁目</name>
+      </trkpt>
+      <trkpt lat="35.314474" lon="136.685078" muitiRoute="1">
+        <name>舟橋町本町一丁目</name>
+      </trkpt>
+      <trkpt lat="35.314971" lon="136.684903" muitiRoute="1">
+        <name>福寿町平方一丁目</name>
+      </trkpt>
+      <trkpt lat="35.315568" lon="136.683745" muitiRoute="1">
+        <name>福寿町平方二丁目</name>
+      </trkpt>
+      <trkpt lat="35.314541" lon="136.682799" muitiRoute="1">
+        <name>福寿町平方三丁目</name>
+      </trkpt>
+      <trkpt lat="35.315045" lon="136.681399" muitiRoute="1">
+        <name>福寿町平方五丁目</name>
+      </trkpt>
+      <trkpt lat="35.312865" lon="136.682609" muitiRoute="1">
+        <name>舟橋町出須賀一丁目</name>
+      </trkpt>
+      <trkpt lat="35.312661" lon="136.684094" muitiRoute="1">
+        <name>舟橋町本町二丁目</name>
+      </trkpt>
+      <trkpt lat="35.310524" lon="136.683149" muitiRoute="1">
+        <name>舟橋町出須賀二丁目</name>
+      </trkpt>
+      <trkpt lat="35.312235" lon="136.688652" muitiRoute="1">
+        <name>舟橋町三丁目</name>
+      </trkpt>
+      <trkpt lat="35.313062" lon="136.690538" muitiRoute="1">
+        <name>舟橋町七丁目</name>
+      </trkpt>
+      <trkpt lat="35.314451" lon="136.691416" muitiRoute="1">
+        <name>舟橋町宮北八丁目</name>
+      </trkpt>
+      <trkpt lat="35.315397" lon="136.692763" muitiRoute="1">
+        <name>江吉良町江西一丁目</name>
+      </trkpt>
+      <trkpt lat="35.315287" lon="136.689737" muitiRoute="1">
+        <name>舟橋町宮北七丁目</name>
+      </trkpt>
+      <trkpt lat="35.31458" lon="136.688298" muitiRoute="1">
+        <name>舟橋町八丁目</name>
+      </trkpt>
+      <trkpt lat="35.311577" lon="136.691771" muitiRoute="1">
+        <name>舟橋町六丁目</name>
+      </trkpt>
+      <trkpt lat="35.310379" lon="136.690544" muitiRoute="1">
+        <name>舟橋町五丁目</name>
+      </trkpt>
+      <trkpt lat="35.309674" lon="136.691403" muitiRoute="1">
+        <name>江吉良町江中六丁目</name>
+      </trkpt>
+      <trkpt lat="35.3122214" lon="136.6935398" muitiRoute="1">
+        <name>江吉良町江中一丁目</name>
+      </trkpt>
+      <trkpt lat="35.3129686" lon="136.6933419" muitiRoute="1">
+        <name>江吉良町江西三丁目</name>
+      </trkpt>
+      <trkpt lat="35.31176" lon="136.680558" muitiRoute="1">
+        <name>舟橋町出須賀三丁目</name>
+      </trkpt>
+      <trkpt lat="35.313197" lon="136.68031" muitiRoute="1">
+        <name>福寿町平方十二丁目</name>
+      </trkpt>
+      <trkpt lat="35.312332" lon="136.678294" muitiRoute="1">
+        <name>福寿町平方十三丁目</name>
+      </trkpt>
+      <trkpt lat="35.310367" lon="136.679401" muitiRoute="1">
+        <name>舟橋町出須賀四丁目</name>
+      </trkpt>
+      <trkpt lat="35.308291" lon="136.678356" muitiRoute="1">
+        <name>堀津町須賀北二丁目</name>
+      </trkpt>
+      <trkpt lat="35.307952" lon="136.680597" muitiRoute="1">
+        <name>堀津町須賀北一丁目</name>
+      </trkpt>
+      <trkpt lat="35.305756" lon="136.678924" muitiRoute="1">
+        <name>堀津町東山</name>
+      </trkpt>
+      <trkpt lat="35.304694" lon="136.676008" muitiRoute="1">
+        <name>堀津町前谷</name>
+      </trkpt>
+      <trkpt lat="35.305373" lon="136.673492" muitiRoute="1">
+        <name>堀津町須賀南一丁目</name>
+      </trkpt>
+      <trkpt lat="35.308723" lon="136.672337" muitiRoute="1">
+        <name>堀津町中屋敷</name>
+      </trkpt>
+      <trkpt lat="35.308546" lon="136.67543" muitiRoute="1">
+        <name>堀津町須賀中</name>
+      </trkpt>
+      <trkpt lat="35.311396" lon="136.675049" muitiRoute="1">
+        <name>堀津町横手一丁目</name>
+      </trkpt>
+      <trkpt lat="35.311548" lon="136.672628" muitiRoute="1">
+        <name>堀津町横手二丁目</name>
+      </trkpt>
+      <trkpt lat="35.311635" lon="136.668002" muitiRoute="1">
+        <name>堀津町横手三丁目</name>
+      </trkpt>
+      <trkpt lat="35.308445" lon="136.667842" muitiRoute="1">
+        <name>堀津町須賀西</name>
+      </trkpt>
+      <trkpt lat="35.304901" lon="136.66874" muitiRoute="1">
+        <name>堀津町須賀南二丁目</name>
+      </trkpt>
+      <trkpt lat="35.314879" lon="136.678696" muitiRoute="1">
+        <name>福寿町平方十一丁目</name>
+      </trkpt>
+      <trkpt lat="35.317308" lon="136.679322" muitiRoute="1">
+        <name>福寿町平方十丁目</name>
+      </trkpt>
+      <trkpt lat="35.319182" lon="136.680003" muitiRoute="1">
+        <name>福寿町平方九丁目</name>
+      </trkpt>
+      <trkpt lat="35.317172" lon="136.672928" muitiRoute="1">
+        <name>福寿町平方</name>
+      </trkpt>
+      <trkpt lat="35.315861" lon="136.680773" muitiRoute="1">
+        <name>福寿町平方七丁目</name>
+      </trkpt>
+      <trkpt lat="35.317218" lon="136.68222" muitiRoute="1">
+        <name>福寿町平方六丁目</name>
+      </trkpt>
+      <trkpt lat="35.316359" lon="136.683099" muitiRoute="1">
+        <name>福寿町平方四丁目</name>
+      </trkpt>
+      <trkpt lat="35.318049" lon="136.685042" muitiRoute="1">
+        <name>福寿町千代田一丁目</name>
+      </trkpt>
+      <trkpt lat="35.3191434" lon="136.6847545" muitiRoute="1">
+        <name>福寿町千代田二丁目</name>
+      </trkpt>
+      <trkpt lat="35.318899" lon="136.68383" muitiRoute="1">
+        <name>福寿町千代田</name>
+      </trkpt>
+      <trkpt lat="35.3194498" lon="136.6830862" muitiRoute="1">
+        <name>福寿町千代田三丁目</name>
+      </trkpt>
+      <trkpt lat="35.3210562" lon="136.6834348" muitiRoute="1">
+        <name>福寿町本郷二丁目</name>
+      </trkpt>
+      <trkpt lat="35.3209599" lon="136.6850871" muitiRoute="1">
+        <name>福寿町本郷一丁目</name>
+      </trkpt>
+      <trkpt lat="35.31843" lon="136.686803" muitiRoute="1">
+        <name>福寿町浅平二丁目</name>
+      </trkpt>
+      <trkpt lat="35.317521" lon="136.68752" muitiRoute="1">
+        <name>福寿町浅平一丁目</name>
+      </trkpt>
+      <trkpt lat="35.316264" lon="136.687601" muitiRoute="1">
+        <name>舟橋町宮北一丁目</name>
+      </trkpt>
+      <trkpt lat="35.316079" lon="136.688856" muitiRoute="1">
+        <name>舟橋町宮北六丁目</name>
+      </trkpt>
+      <trkpt lat="35.315984" lon="136.691279" muitiRoute="1">
+        <name>舟橋町宮北五丁目</name>
+      </trkpt>
+      <trkpt lat="35.317229" lon="136.691166" muitiRoute="1">
+        <name>舟橋町宮北四丁目</name>
+      </trkpt>
+      <trkpt lat="35.317526" lon="136.692575" muitiRoute="1">
+        <name>舟橋町宮北三丁目</name>
+      </trkpt>
+      <trkpt lat="35.317978" lon="136.689782" muitiRoute="1">
+        <name>舟橋町宮北二丁目</name>
+      </trkpt>
+      <trkpt lat="35.320521" lon="136.689856" muitiRoute="1">
+        <name>福寿町浅平四丁目</name>
+      </trkpt>
+      <trkpt lat="35.322188" lon="136.690954" muitiRoute="1">
+        <name>福寿町浅平</name>
+      </trkpt>
+      <trkpt lat="35.321828" lon="136.692495" muitiRoute="1">
+        <name>福寿町浅平五丁目</name>
+      </trkpt>
+      <trkpt lat="35.320279" lon="136.692835" muitiRoute="1">
+        <name>福寿町浅平三丁目</name>
+      </trkpt>
+      <trkpt lat="35.326675" lon="136.68724" muitiRoute="1">
+        <name>福寿町本郷</name>
+      </trkpt>
+      <trkpt lat="35.318144" lon="136.681146" muitiRoute="1">
+        <name>福寿町平方八丁目</name>
+      </trkpt>
+      <trkpt lat="35.3139761" lon="136.6937238" muitiRoute="1">
+        <name>江吉良町江西二丁目</name>
+      </trkpt>
+      <trkpt lat="35.3123893" lon="136.6957569" muitiRoute="1">
+        <name>江吉良町江中二丁目</name>
+      </trkpt>
+      <trkpt lat="35.3119253" lon="136.6970229" muitiRoute="1">
+        <name>江吉良町江南一丁目</name>
+      </trkpt>
+      <trkpt lat="35.3114854" lon="136.6970739" muitiRoute="1">
+        <name>江吉良町江南二丁目</name>
+      </trkpt>
+      <trkpt lat="35.311063" lon="136.6942602" muitiRoute="1">
+        <name>江吉良町江中三丁目</name>
+      </trkpt>
+      <trkpt lat="35.309846" lon="136.6941261" muitiRoute="1">
+        <name>江吉良町江中四丁目</name>
+      </trkpt>
+      <trkpt lat="35.3084583" lon="136.6936701" muitiRoute="1">
+        <name>江吉良町江中五丁目</name>
+      </trkpt>
+      <trkpt lat="35.31127" lon="136.700899" muitiRoute="1">
+        <name>江吉良町</name>
+      </trkpt>
+      <trkpt lat="35.304908" lon="136.700822" muitiRoute="1">
+        <name>上中町長間</name>
+      </trkpt>
+      <trkpt lat="35.308147" lon="136.7127" muitiRoute="1">
+        <name>竹鼻町蜂尻</name>
+      </trkpt>
+      <trkpt lat="35.315842" lon="136.716897" muitiRoute="1">
+        <name>竹鼻町飯柄</name>
+      </trkpt>
+      <trkpt lat="35.317248" lon="136.724772" muitiRoute="1">
+        <name>正木町新井</name>
+      </trkpt>
+      <trkpt lat="35.326836" lon="136.717767" muitiRoute="1">
+        <name>正木町曲利</name>
+      </trkpt>
+      <trkpt lat="35.330834" lon="136.716183" muitiRoute="1">
+        <name>小熊町足近新田</name>
+      </trkpt>
+      <trkpt lat="35.328958" lon="136.710961" muitiRoute="1">
+        <name>新生町三丁目</name>
+      </trkpt>
+      <trkpt lat="35.33025" lon="136.710403" muitiRoute="1">
+        <name>足近町南之川</name>
+      </trkpt>
+      <trkpt lat="35.329468" lon="136.707746" muitiRoute="1">
+        <name>新生町二丁目</name>
+      </trkpt>
+      <trkpt lat="35.330008" lon="136.705921" muitiRoute="1">
+        <name>新生町一丁目</name>
+      </trkpt>
+      <trkpt lat="35.330537" lon="136.703939" muitiRoute="1">
+        <name>竹鼻町神楽</name>
+      </trkpt>
+      <trkpt lat="35.328634" lon="136.700924" muitiRoute="1">
+        <name>竹鼻町丸の内五丁目</name>
+      </trkpt>
+      <trkpt lat="35.327193" lon="136.699435" muitiRoute="1">
+        <name>竹鼻町丸の内四丁目</name>
+      </trkpt>
+      <trkpt lat="35.32626" lon="136.697863" muitiRoute="1">
+        <name>竹鼻町丸の内三丁目</name>
+      </trkpt>
+      <trkpt lat="35.324839" lon="136.698325" muitiRoute="1">
+        <name>竹鼻町丸の内二丁目</name>
+      </trkpt>
+      <trkpt lat="35.324057" lon="136.696056" muitiRoute="1">
+        <name>竹鼻町丸の内一丁目</name>
+      </trkpt>
+      <trkpt lat="35.324306" lon="136.693807" muitiRoute="1">
+        <name>竹鼻町丸の内七丁目</name>
+      </trkpt>
+      <trkpt lat="35.32565" lon="136.694215" muitiRoute="1">
+        <name>竹鼻町丸の内八丁目</name>
+      </trkpt>
+      <trkpt lat="35.327132" lon="136.694337" muitiRoute="1">
+        <name>竹鼻町丸の内九丁目</name>
+      </trkpt>
+      <trkpt lat="35.328366" lon="136.694545" muitiRoute="1">
+        <name>竹鼻町丸の内十丁目</name>
+      </trkpt>
+      <trkpt lat="35.329847" lon="136.695061" muitiRoute="1">
+        <name>竹鼻町丸の内十一丁目</name>
+      </trkpt>
+      <trkpt lat="35.328681" lon="136.697296" muitiRoute="1">
+        <name>竹鼻町丸の内六丁目</name>
+      </trkpt>
+      <trkpt lat="35.331464" lon="136.697148" muitiRoute="1">
+        <name>福寿町間島七丁目</name>
+      </trkpt>
+      <trkpt lat="35.324505" lon="136.702122" muitiRoute="1">
+        <name>竹鼻町</name>
+      </trkpt>
+      <trkpt lat="35.321161" lon="136.695356" muitiRoute="1">
+        <name>竹鼻町錦町</name>
+      </trkpt>
+      <trkpt lat="35.321969" lon="136.693954" muitiRoute="1">
+        <name>竹鼻町西野町</name>
+      </trkpt>
+      <trkpt lat="35.317979" lon="136.697473" muitiRoute="1">
+        <name>舟橋町</name>
+      </trkpt>
+      <trkpt lat="35.319575" lon="136.70946" muitiRoute="1">
+        <name>竹鼻町狐穴</name>
+      </trkpt>
+      <trkpt lat="35.33175" lon="136.703379" muitiRoute="1">
+        <name>小熊町島新道</name>
+      </trkpt>
+      <trkpt lat="35.332325" lon="136.702609" muitiRoute="1">
+        <name>小熊町島前</name>
+      </trkpt>
+      <trkpt lat="35.333704" lon="136.704101" muitiRoute="1">
+        <name>小熊町島</name>
+      </trkpt>
+      <trkpt lat="35.333676" lon="136.705911" muitiRoute="1">
+        <name>小熊町島二丁目</name>
+      </trkpt>
+      <trkpt lat="35.332741" lon="136.707772" muitiRoute="1">
+        <name>小熊町島一丁目</name>
+      </trkpt>
+      <trkpt lat="35.334586" lon="136.709626" muitiRoute="1">
+        <name>小熊町島五丁目</name>
+      </trkpt>
+      <trkpt lat="35.335282" lon="136.707896" muitiRoute="1">
+        <name>小熊町島三丁目</name>
+      </trkpt>
+      <trkpt lat="35.336388" lon="136.70953" muitiRoute="1">
+        <name>小熊町島四丁目</name>
+      </trkpt>
+      <trkpt lat="35.338406" lon="136.706878" muitiRoute="1">
+        <name>小熊町江頭</name>
+      </trkpt>
+      <trkpt lat="35.339954" lon="136.705419" muitiRoute="1">
+        <name>小熊町四丁目</name>
+      </trkpt>
+      <trkpt lat="35.335485" lon="136.703132" muitiRoute="1">
+        <name>小熊町五丁目</name>
+      </trkpt>
+      <trkpt lat="35.33545" lon="136.701429" muitiRoute="1">
+        <name>小熊町川口</name>
+      </trkpt>
+      <trkpt lat="35.334955" lon="136.700617" muitiRoute="1">
+        <name>小熊町川口前</name>
+      </trkpt>
+      <trkpt lat="35.335216" lon="136.698712" muitiRoute="1">
+        <name>福寿町間島六丁目</name>
+      </trkpt>
+      <trkpt lat="35.336884" lon="136.699455" muitiRoute="1">
+        <name>小熊町川口一丁目</name>
+      </trkpt>
+      <trkpt lat="35.337549" lon="136.697403" muitiRoute="1">
+        <name>小熊町天王</name>
+      </trkpt>
+      <trkpt lat="35.337898" lon="136.696427" muitiRoute="1">
+        <name>小熊町天王四丁目</name>
+      </trkpt>
+      <trkpt lat="35.337706" lon="136.695194" muitiRoute="1">
+        <name>小熊町天王三丁目</name>
+      </trkpt>
+      <trkpt lat="35.337432" lon="136.693975" muitiRoute="1">
+        <name>小熊町天王二丁目</name>
+      </trkpt>
+      <trkpt lat="35.336243" lon="136.696259" muitiRoute="1">
+        <name>福寿町間島三丁目</name>
+      </trkpt>
+      <trkpt lat="35.333945" lon="136.696033" muitiRoute="1">
+        <name>福寿町間島五丁目</name>
+      </trkpt>
+      <trkpt lat="35.33363" lon="136.697678" muitiRoute="1">
+        <name>福寿町間島八丁目</name>
+      </trkpt>
+      <trkpt lat="35.331771" lon="136.699091" muitiRoute="1">
+        <name>福寿町間島九丁目</name>
+      </trkpt>
+      <trkpt lat="35.331716" lon="136.695178" muitiRoute="1">
+        <name>福寿町間島四丁目</name>
+      </trkpt>
+      <trkpt lat="35.338996" lon="136.69889" muitiRoute="1">
+        <name>小熊町内粟野</name>
+      </trkpt>
+      <trkpt lat="35.339677" lon="136.696667" muitiRoute="1">
+        <name>小熊町内粟野四丁目</name>
+      </trkpt>
+      <trkpt lat="35.3398" lon="136.695503" muitiRoute="1">
+        <name>小熊町内粟野三丁目</name>
+      </trkpt>
+      <trkpt lat="35.339909" lon="136.694346" muitiRoute="1">
+        <name>小熊町内粟野二丁目</name>
+      </trkpt>
+      <trkpt lat="35.341852" lon="136.694646" muitiRoute="1">
+        <name>小熊町外粟野二丁目</name>
+      </trkpt>
+      <trkpt lat="35.342093" lon="136.695869" muitiRoute="1">
+        <name>小熊町外粟野三丁目</name>
+      </trkpt>
+      <trkpt lat="35.342038" lon="136.69706" muitiRoute="1">
+        <name>小熊町外粟野四丁目</name>
+      </trkpt>
+      <trkpt lat="35.345568" lon="136.703631" muitiRoute="1">
+        <name>小熊町三丁目</name>
+      </trkpt>
+      <trkpt lat="35.350263" lon="136.69995" muitiRoute="1">
+        <name>小熊町二丁目</name>
+      </trkpt>
+      <trkpt lat="35.353518" lon="136.701316" muitiRoute="1">
+        <name>小熊町一丁目</name>
+      </trkpt>
+      <trkpt lat="35.352544" lon="136.705117" muitiRoute="1">
+        <name>小熊町東小熊</name>
+      </trkpt>
+      <trkpt lat="35.350763" lon="136.712134" muitiRoute="1">
+        <name>小熊町相田</name>
+      </trkpt>
+      <trkpt lat="35.351556" lon="136.715044" muitiRoute="1">
+        <name>足近町坂井</name>
+      </trkpt>
+      <trkpt lat="35.353108" lon="136.718394" muitiRoute="1">
+        <name>足近町直道</name>
+      </trkpt>
+      <trkpt lat="35.348572" lon="136.72057" muitiRoute="1">
+        <name>足近町二丁目</name>
+      </trkpt>
+      <trkpt lat="35.344458" lon="136.71686" muitiRoute="1">
+        <name>足近町三丁目</name>
+      </trkpt>
+      <trkpt lat="35.338985" lon="136.715349" muitiRoute="1">
+        <name>足近町四丁目</name>
+      </trkpt>
+      <trkpt lat="35.335569" lon="136.719283" muitiRoute="1">
+        <name>足近町小荒井</name>
+      </trkpt>
+      <trkpt lat="35.335912" lon="136.721515" muitiRoute="1">
+        <name>足近町小荒井二丁目</name>
+      </trkpt>
+      <trkpt lat="35.334745" lon="136.723428" muitiRoute="1">
+        <name>正木町須賀</name>
+      </trkpt>
+      <trkpt lat="35.337721" lon="136.723563" muitiRoute="1">
+        <name>足近町小荒井一丁目</name>
+      </trkpt>
+      <trkpt lat="35.339061" lon="136.721694" muitiRoute="1">
+        <name>足近町七丁目</name>
+      </trkpt>
+      <trkpt lat="35.342677" lon="136.724959" muitiRoute="1">
+        <name>足近町南宿</name>
+      </trkpt>
+      <trkpt lat="35.333235" lon="136.718729" muitiRoute="1">
+        <name>足近町小荒井三丁目</name>
+      </trkpt>
+      <trkpt lat="35.333359" lon="136.713201" muitiRoute="1">
+        <name>足近町五丁目</name>
+      </trkpt>
+      <trkpt lat="35.331752" lon="136.724064" muitiRoute="1">
+        <name>正木町不破一色</name>
+      </trkpt>
+      <trkpt lat="35.331935" lon="136.692366" muitiRoute="1">
+        <name>福寿町間島一丁目</name>
+      </trkpt>
+      <trkpt lat="35.333795" lon="136.693223" muitiRoute="1">
+        <name>福寿町間島二丁目</name>
+      </trkpt>
+      <trkpt lat="35.334896" lon="136.690448" muitiRoute="1">
+        <name>福寿町間島</name>
+      </trkpt>
+      <trkpt lat="35.337461" lon="136.692539" muitiRoute="1">
+        <name>小熊町天王一丁目</name>
+      </trkpt>
+      <trkpt lat="35.340033" lon="136.69137" muitiRoute="1">
+        <name>小熊町内粟野一丁目</name>
+      </trkpt>
+      <trkpt lat="35.342277" lon="136.69146" muitiRoute="1">
+        <name>小熊町外粟野一丁目</name>
+      </trkpt>
+      <trkpt lat="35.343896" lon="136.692263" muitiRoute="1">
+        <name>小熊町外粟野</name>
+      </trkpt>
+      <trkpt lat="35.350345" lon="136.691923" muitiRoute="1">
+        <name>小熊町西小熊</name>
+      </trkpt>
+      <trkpt lat="35.348724" lon="136.72701" muitiRoute="1">
+        <name>足近町六丁目</name>
+      </trkpt>
+      <trkpt lat="35.352431" lon="136.727176" muitiRoute="1">
+        <name>足近町一丁目</name>
+      </trkpt>
+      <trkpt lat="35.355134" lon="136.731735" muitiRoute="1">
+        <name>足近町北宿一丁目</name>
+      </trkpt>
+      <trkpt lat="35.353442" lon="136.733065" muitiRoute="1">
+        <name>足近町北宿二丁目</name>
+      </trkpt>
+      <trkpt lat="35.351158" lon="136.733406" muitiRoute="1">
+        <name>足近町北宿三丁目</name>
+      </trkpt>
+      <trkpt lat="35.351376" lon="136.731374" muitiRoute="1">
+        <name>足近町北宿</name>
+      </trkpt>
+      <trkpt lat="35.344185" lon="136.730186" muitiRoute="1">
+        <name>足近町市場</name>
+      </trkpt>
+      <trkpt lat="35.344428" lon="136.740172" muitiRoute="1">
+        <name>正木町須賀池端</name>
+      </trkpt>
+      <trkpt lat="35.344748" lon="136.745615" muitiRoute="1">
+        <name>正木町南及一丁目</name>
+      </trkpt>
+      <trkpt lat="35.344761" lon="136.749192" muitiRoute="1">
+        <name>正木町南及五丁目</name>
+      </trkpt>
+      <trkpt lat="35.342069" lon="136.747895" muitiRoute="1">
+        <name>正木町南及六丁目</name>
+      </trkpt>
+      <trkpt lat="35.341182" lon="136.744929" muitiRoute="1">
+        <name>正木町南及七丁目</name>
+      </trkpt>
+      <trkpt lat="35.342834" lon="136.744467" muitiRoute="1">
+        <name>正木町南及二丁目</name>
+      </trkpt>
+      <trkpt lat="35.343507" lon="136.742743" muitiRoute="1">
+        <name>正木町南及三丁目</name>
+      </trkpt>
+      <trkpt lat="35.3416" lon="136.742111" muitiRoute="1">
+        <name>正木町南及四丁目</name>
+      </trkpt>
+      <trkpt lat="35.340605" lon="136.740403" muitiRoute="1">
+        <name>正木町上大浦二丁目</name>
+      </trkpt>
+      <trkpt lat="35.341987" lon="136.739284" muitiRoute="1">
+        <name>正木町上大浦一丁目</name>
+      </trkpt>
+      <trkpt lat="35.339696" lon="136.738568" muitiRoute="1">
+        <name>正木町上大浦三丁目</name>
+      </trkpt>
+      <trkpt lat="35.338202" lon="136.73998" muitiRoute="1">
+        <name>正木町森六丁目</name>
+      </trkpt>
+      <trkpt lat="35.336216" lon="136.740037" muitiRoute="1">
+        <name>正木町森新田一丁目</name>
+      </trkpt>
+      <trkpt lat="35.335357" lon="136.739514" muitiRoute="1">
+        <name>正木町森新田二丁目</name>
+      </trkpt>
+      <trkpt lat="35.334377" lon="136.740132" muitiRoute="1">
+        <name>正木町森新田三丁目</name>
+      </trkpt>
+      <trkpt lat="35.334006" lon="136.740728" muitiRoute="1">
+        <name>正木町上大浦七丁目</name>
+      </trkpt>
+      <trkpt lat="35.33358" lon="136.741218" muitiRoute="1">
+        <name>正木町森新田四丁目</name>
+      </trkpt>
+      <trkpt lat="35.332216" lon="136.741068" muitiRoute="1">
+        <name>正木町森新田五丁目</name>
+      </trkpt>
+      <trkpt lat="35.332469" lon="136.739782" muitiRoute="1">
+        <name>正木町大浦新田三丁目</name>
+      </trkpt>
+      <trkpt lat="35.333913" lon="136.738691" muitiRoute="1">
+        <name>正木町大浦新田一丁目</name>
+      </trkpt>
+      <trkpt lat="35.335772" lon="136.742176" muitiRoute="1">
+        <name>正木町上大浦六丁目</name>
+      </trkpt>
+      <trkpt lat="35.337345" lon="136.74309" muitiRoute="1">
+        <name>正木町上大浦五丁目</name>
+      </trkpt>
+      <trkpt lat="35.338459" lon="136.743577" muitiRoute="1">
+        <name>正木町上大浦四丁目</name>
+      </trkpt>
+      <trkpt lat="35.339539" lon="136.743563" muitiRoute="1">
+        <name>正木町南及九丁目</name>
+      </trkpt>
+      <trkpt lat="35.33939" lon="136.746878" muitiRoute="1">
+        <name>正木町南及八丁目</name>
+      </trkpt>
+      <trkpt lat="35.335491" lon="136.745612" muitiRoute="1">
+        <name>正木町光法寺一丁目</name>
+      </trkpt>
+      <trkpt lat="35.333773" lon="136.744268" muitiRoute="1">
+        <name>正木町光法寺二丁目</name>
+      </trkpt>
+      <trkpt lat="35.333383" lon="136.737929" muitiRoute="1">
+        <name>正木町大浦新田二丁目</name>
+      </trkpt>
+      <trkpt lat="35.332443" lon="136.736568" muitiRoute="1">
+        <name>正木町大浦新田四丁目</name>
+      </trkpt>
+      <trkpt lat="35.331921" lon="136.737952" muitiRoute="1">
+        <name>正木町大浦新田五丁目</name>
+      </trkpt>
+      <trkpt lat="35.334085" lon="136.73633" muitiRoute="1">
+        <name>正木町森十五丁目</name>
+      </trkpt>
+      <trkpt lat="35.335527" lon="136.737179" muitiRoute="1">
+        <name>正木町森十二丁目</name>
+      </trkpt>
+      <trkpt lat="35.336434" lon="136.737725" muitiRoute="1">
+        <name>正木町森十一丁目</name>
+      </trkpt>
+      <trkpt lat="35.337557" lon="136.738085" muitiRoute="1">
+        <name>正木町森七丁目</name>
+      </trkpt>
+      <trkpt lat="35.33875" lon="136.738067" muitiRoute="1">
+        <name>正木町森五丁目</name>
+      </trkpt>
+      <trkpt lat="35.339885" lon="136.73656" muitiRoute="1">
+        <name>正木町森四丁目</name>
+      </trkpt>
+      <trkpt lat="35.339773" lon="136.734895" muitiRoute="1">
+        <name>正木町森三丁目</name>
+      </trkpt>
+      <trkpt lat="35.340722" lon="136.734856" muitiRoute="1">
+        <name>正木町森二丁目</name>
+      </trkpt>
+      <trkpt lat="35.341361" lon="136.735812" muitiRoute="1">
+        <name>正木町森一丁目</name>
+      </trkpt>
+      <trkpt lat="35.342661" lon="136.733932" muitiRoute="1">
+        <name>正木町須賀赤松</name>
+      </trkpt>
+      <trkpt lat="35.338663" lon="136.732658" muitiRoute="1">
+        <name>正木町森九丁目</name>
+      </trkpt>
+      <trkpt lat="35.337473" lon="136.734708" muitiRoute="1">
+        <name>正木町森十丁目</name>
+      </trkpt>
+      <trkpt lat="35.338566" lon="136.735445" muitiRoute="1">
+        <name>正木町森八丁目</name>
+      </trkpt>
+      <trkpt lat="35.336181" lon="136.734273" muitiRoute="1">
+        <name>正木町森十三丁目</name>
+      </trkpt>
+      <trkpt lat="35.335268" lon="136.733911" muitiRoute="1">
+        <name>正木町森十四丁目</name>
+      </trkpt>
+      <trkpt lat="35.333862" lon="136.733866" muitiRoute="1">
+        <name>正木町森十六丁目</name>
+      </trkpt>
+      <trkpt lat="35.332957" lon="136.732343" muitiRoute="1">
+        <name>正木町坂丸二丁目</name>
+      </trkpt>
+      <trkpt lat="35.335112" lon="136.732109" muitiRoute="1">
+        <name>正木町坂丸一丁目</name>
+      </trkpt>
+      <trkpt lat="35.336077" lon="136.729187" muitiRoute="1">
+        <name>正木町須賀本村</name>
+      </trkpt>
+      <trkpt lat="35.339639" lon="136.729559" muitiRoute="1">
+        <name>正木町須賀小松</name>
+      </trkpt>
+      <trkpt lat="35.331456" lon="136.73206" muitiRoute="1">
+        <name>正木町坂丸三丁目</name>
+      </trkpt>
+      <trkpt lat="35.3308" lon="136.734146" muitiRoute="1">
+        <name>正木町坂丸五丁目</name>
+      </trkpt>
+      <trkpt lat="35.331315" lon="136.735901" muitiRoute="1">
+        <name>正木町大浦新田八丁目</name>
+      </trkpt>
+      <trkpt lat="35.329676" lon="136.735665" muitiRoute="1">
+        <name>正木町大浦新田九丁目</name>
+      </trkpt>
+      <trkpt lat="35.331135" lon="136.739404" muitiRoute="1">
+        <name>正木町大浦新田六丁目</name>
+      </trkpt>
+      <trkpt lat="35.330033" lon="136.738157" muitiRoute="1">
+        <name>正木町大浦新田七丁目</name>
+      </trkpt>
+      <trkpt lat="35.3289" lon="136.737523" muitiRoute="1">
+        <name>正木町大浦新田十丁目</name>
+      </trkpt>
+      <trkpt lat="35.329455" lon="136.732577" muitiRoute="1">
+        <name>正木町坂丸六丁目</name>
+      </trkpt>
+      <trkpt lat="35.329612" lon="136.731438" muitiRoute="1">
+        <name>正木町坂丸四丁目</name>
+      </trkpt>
+      <trkpt lat="35.322937" lon="136.731319" muitiRoute="1">
+        <name>正木町大浦</name>
+      </trkpt>
+      <trkpt lat="35.307122" lon="136.727641" muitiRoute="1">
+        <name>正木町三ツ柳</name>
+      </trkpt>
+    </trkseg>
+    <extensions>
+      <stats>
+        <totalDistanceKm>108.76</totalDistanceKm>
+        <pointCount>263</pointCount>
+      </stats>
+    </extensions>
+  </trk>
+</gpx>

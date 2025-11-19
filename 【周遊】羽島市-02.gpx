@@ -1,0 +1,142 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="PowerShell ConvertTo-Gpx" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <time>2025-11-17T16:34:55Z</time>
+  </metadata>
+  <trk>
+    <name>
+    </name>
+    <trkseg>
+      <trkpt lat="35.314971" lon="136.684903" muitiRoute="1">
+        <name>福寿町平方一丁目</name>
+      </trkpt>
+      <trkpt lat="35.315568" lon="136.683745" muitiRoute="1">
+        <name>福寿町平方二丁目</name>
+      </trkpt>
+      <trkpt lat="35.314541" lon="136.682799" muitiRoute="1">
+        <name>福寿町平方三丁目</name>
+      </trkpt>
+      <trkpt lat="35.315045" lon="136.681399" muitiRoute="1">
+        <name>福寿町平方五丁目</name>
+      </trkpt>
+      <trkpt lat="35.312865" lon="136.682609" muitiRoute="1">
+        <name>舟橋町出須賀一丁目</name>
+      </trkpt>
+      <trkpt lat="35.312661" lon="136.684094" muitiRoute="1">
+        <name>舟橋町本町二丁目</name>
+      </trkpt>
+      <trkpt lat="35.310524" lon="136.683149" muitiRoute="1">
+        <name>舟橋町出須賀二丁目</name>
+      </trkpt>
+      <trkpt lat="35.312235" lon="136.688652" muitiRoute="1">
+        <name>舟橋町三丁目</name>
+      </trkpt>
+      <trkpt lat="35.313062" lon="136.690538" muitiRoute="1">
+        <name>舟橋町七丁目</name>
+      </trkpt>
+      <trkpt lat="35.314451" lon="136.691416" muitiRoute="1">
+        <name>舟橋町宮北八丁目</name>
+      </trkpt>
+      <trkpt lat="35.315397" lon="136.692763" muitiRoute="1">
+        <name>江吉良町江西一丁目</name>
+      </trkpt>
+      <trkpt lat="35.315287" lon="136.689737" muitiRoute="1">
+        <name>舟橋町宮北七丁目</name>
+      </trkpt>
+      <trkpt lat="35.31458" lon="136.688298" muitiRoute="1">
+        <name>舟橋町八丁目</name>
+      </trkpt>
+      <trkpt lat="35.311577" lon="136.691771" muitiRoute="1">
+        <name>舟橋町六丁目</name>
+      </trkpt>
+      <trkpt lat="35.310379" lon="136.690544" muitiRoute="1">
+        <name>舟橋町五丁目</name>
+      </trkpt>
+      <trkpt lat="35.309674" lon="136.691403" muitiRoute="1">
+        <name>江吉良町江中六丁目</name>
+      </trkpt>
+      <trkpt lat="35.3122214" lon="136.6935398" muitiRoute="1">
+        <name>江吉良町江中一丁目</name>
+      </trkpt>
+      <trkpt lat="35.3129686" lon="136.6933419" muitiRoute="1">
+        <name>江吉良町江西三丁目</name>
+      </trkpt>
+      <trkpt lat="35.31176" lon="136.680558" muitiRoute="1">
+        <name>舟橋町出須賀三丁目</name>
+      </trkpt>
+      <trkpt lat="35.313197" lon="136.68031" muitiRoute="1">
+        <name>福寿町平方十二丁目</name>
+      </trkpt>
+      <trkpt lat="35.312332" lon="136.678294" muitiRoute="1">
+        <name>福寿町平方十三丁目</name>
+      </trkpt>
+      <trkpt lat="35.310367" lon="136.679401" muitiRoute="1">
+        <name>舟橋町出須賀四丁目</name>
+      </trkpt>
+      <trkpt lat="35.308291" lon="136.678356" muitiRoute="1">
+        <name>堀津町須賀北二丁目</name>
+      </trkpt>
+      <trkpt lat="35.307952" lon="136.680597" muitiRoute="1">
+        <name>堀津町須賀北一丁目</name>
+      </trkpt>
+      <trkpt lat="35.305756" lon="136.678924" muitiRoute="1">
+        <name>堀津町東山</name>
+      </trkpt>
+      <trkpt lat="35.304694" lon="136.676008" muitiRoute="1">
+        <name>堀津町前谷</name>
+      </trkpt>
+      <trkpt lat="35.305373" lon="136.673492" muitiRoute="1">
+        <name>堀津町須賀南一丁目</name>
+      </trkpt>
+      <trkpt lat="35.308723" lon="136.672337" muitiRoute="1">
+        <name>堀津町中屋敷</name>
+      </trkpt>
+      <trkpt lat="35.308546" lon="136.67543" muitiRoute="1">
+        <name>堀津町須賀中</name>
+      </trkpt>
+      <trkpt lat="35.311396" lon="136.675049" muitiRoute="1">
+        <name>堀津町横手一丁目</name>
+      </trkpt>
+      <trkpt lat="35.311548" lon="136.672628" muitiRoute="1">
+        <name>堀津町横手二丁目</name>
+      </trkpt>
+      <trkpt lat="35.311635" lon="136.668002" muitiRoute="1">
+        <name>堀津町横手三丁目</name>
+      </trkpt>
+      <trkpt lat="35.308445" lon="136.667842" muitiRoute="1">
+        <name>堀津町須賀西</name>
+      </trkpt>
+      <trkpt lat="35.304901" lon="136.66874" muitiRoute="1">
+        <name>堀津町須賀南二丁目</name>
+      </trkpt>
+      <trkpt lat="35.314879" lon="136.678696" muitiRoute="1">
+        <name>福寿町平方十一丁目</name>
+      </trkpt>
+      <trkpt lat="35.317308" lon="136.679322" muitiRoute="1">
+        <name>福寿町平方十丁目</name>
+      </trkpt>
+      <trkpt lat="35.319182" lon="136.680003" muitiRoute="1">
+        <name>福寿町平方九丁目</name>
+      </trkpt>
+      <trkpt lat="35.317172" lon="136.672928" muitiRoute="1">
+        <name>福寿町平方</name>
+      </trkpt>
+      <trkpt lat="35.315861" lon="136.680773" muitiRoute="1">
+        <name>福寿町平方七丁目</name>
+      </trkpt>
+      <trkpt lat="35.317218" lon="136.68222" muitiRoute="1">
+        <name>福寿町平方六丁目</name>
+      </trkpt>
+      <trkpt lat="35.316359" lon="136.683099" muitiRoute="1">
+        <name>福寿町平方四丁目</name>
+      </trkpt>
+    </trkseg>
+    <extensions>
+      <stats xmlns="">
+        <totalDistanceKm>12.81</totalDistanceKm>
+        <pointCount>41</pointCount>
+      </stats>
+    </extensions>
+    <name xmlns="">Segment 2</name>
+  </trk>
+</gpx>

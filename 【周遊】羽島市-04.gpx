@@ -1,0 +1,142 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="PowerShell ConvertTo-Gpx" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <time>2025-11-17T16:34:55Z</time>
+  </metadata>
+  <trk>
+    <name>
+    </name>
+    <trkseg>
+      <trkpt lat="35.328634" lon="136.700924" muitiRoute="1">
+        <name>竹鼻町丸の内五丁目</name>
+      </trkpt>
+      <trkpt lat="35.327193" lon="136.699435" muitiRoute="1">
+        <name>竹鼻町丸の内四丁目</name>
+      </trkpt>
+      <trkpt lat="35.32626" lon="136.697863" muitiRoute="1">
+        <name>竹鼻町丸の内三丁目</name>
+      </trkpt>
+      <trkpt lat="35.324839" lon="136.698325" muitiRoute="1">
+        <name>竹鼻町丸の内二丁目</name>
+      </trkpt>
+      <trkpt lat="35.324057" lon="136.696056" muitiRoute="1">
+        <name>竹鼻町丸の内一丁目</name>
+      </trkpt>
+      <trkpt lat="35.324306" lon="136.693807" muitiRoute="1">
+        <name>竹鼻町丸の内七丁目</name>
+      </trkpt>
+      <trkpt lat="35.32565" lon="136.694215" muitiRoute="1">
+        <name>竹鼻町丸の内八丁目</name>
+      </trkpt>
+      <trkpt lat="35.327132" lon="136.694337" muitiRoute="1">
+        <name>竹鼻町丸の内九丁目</name>
+      </trkpt>
+      <trkpt lat="35.328366" lon="136.694545" muitiRoute="1">
+        <name>竹鼻町丸の内十丁目</name>
+      </trkpt>
+      <trkpt lat="35.329847" lon="136.695061" muitiRoute="1">
+        <name>竹鼻町丸の内十一丁目</name>
+      </trkpt>
+      <trkpt lat="35.328681" lon="136.697296" muitiRoute="1">
+        <name>竹鼻町丸の内六丁目</name>
+      </trkpt>
+      <trkpt lat="35.331464" lon="136.697148" muitiRoute="1">
+        <name>福寿町間島七丁目</name>
+      </trkpt>
+      <trkpt lat="35.324505" lon="136.702122" muitiRoute="1">
+        <name>竹鼻町</name>
+      </trkpt>
+      <trkpt lat="35.321161" lon="136.695356" muitiRoute="1">
+        <name>竹鼻町錦町</name>
+      </trkpt>
+      <trkpt lat="35.321969" lon="136.693954" muitiRoute="1">
+        <name>竹鼻町西野町</name>
+      </trkpt>
+      <trkpt lat="35.317979" lon="136.697473" muitiRoute="1">
+        <name>舟橋町</name>
+      </trkpt>
+      <trkpt lat="35.319575" lon="136.70946" muitiRoute="1">
+        <name>竹鼻町狐穴</name>
+      </trkpt>
+      <trkpt lat="35.33175" lon="136.703379" muitiRoute="1">
+        <name>小熊町島新道</name>
+      </trkpt>
+      <trkpt lat="35.332325" lon="136.702609" muitiRoute="1">
+        <name>小熊町島前</name>
+      </trkpt>
+      <trkpt lat="35.333704" lon="136.704101" muitiRoute="1">
+        <name>小熊町島</name>
+      </trkpt>
+      <trkpt lat="35.333676" lon="136.705911" muitiRoute="1">
+        <name>小熊町島二丁目</name>
+      </trkpt>
+      <trkpt lat="35.332741" lon="136.707772" muitiRoute="1">
+        <name>小熊町島一丁目</name>
+      </trkpt>
+      <trkpt lat="35.334586" lon="136.709626" muitiRoute="1">
+        <name>小熊町島五丁目</name>
+      </trkpt>
+      <trkpt lat="35.335282" lon="136.707896" muitiRoute="1">
+        <name>小熊町島三丁目</name>
+      </trkpt>
+      <trkpt lat="35.336388" lon="136.70953" muitiRoute="1">
+        <name>小熊町島四丁目</name>
+      </trkpt>
+      <trkpt lat="35.338406" lon="136.706878" muitiRoute="1">
+        <name>小熊町江頭</name>
+      </trkpt>
+      <trkpt lat="35.339954" lon="136.705419" muitiRoute="1">
+        <name>小熊町四丁目</name>
+      </trkpt>
+      <trkpt lat="35.335485" lon="136.703132" muitiRoute="1">
+        <name>小熊町五丁目</name>
+      </trkpt>
+      <trkpt lat="35.33545" lon="136.701429" muitiRoute="1">
+        <name>小熊町川口</name>
+      </trkpt>
+      <trkpt lat="35.334955" lon="136.700617" muitiRoute="1">
+        <name>小熊町川口前</name>
+      </trkpt>
+      <trkpt lat="35.335216" lon="136.698712" muitiRoute="1">
+        <name>福寿町間島六丁目</name>
+      </trkpt>
+      <trkpt lat="35.336884" lon="136.699455" muitiRoute="1">
+        <name>小熊町川口一丁目</name>
+      </trkpt>
+      <trkpt lat="35.337549" lon="136.697403" muitiRoute="1">
+        <name>小熊町天王</name>
+      </trkpt>
+      <trkpt lat="35.337898" lon="136.696427" muitiRoute="1">
+        <name>小熊町天王四丁目</name>
+      </trkpt>
+      <trkpt lat="35.337706" lon="136.695194" muitiRoute="1">
+        <name>小熊町天王三丁目</name>
+      </trkpt>
+      <trkpt lat="35.337432" lon="136.693975" muitiRoute="1">
+        <name>小熊町天王二丁目</name>
+      </trkpt>
+      <trkpt lat="35.336243" lon="136.696259" muitiRoute="1">
+        <name>福寿町間島三丁目</name>
+      </trkpt>
+      <trkpt lat="35.333945" lon="136.696033" muitiRoute="1">
+        <name>福寿町間島五丁目</name>
+      </trkpt>
+      <trkpt lat="35.33363" lon="136.697678" muitiRoute="1">
+        <name>福寿町間島八丁目</name>
+      </trkpt>
+      <trkpt lat="35.331771" lon="136.699091" muitiRoute="1">
+        <name>福寿町間島九丁目</name>
+      </trkpt>
+      <trkpt lat="35.331716" lon="136.695178" muitiRoute="1">
+        <name>福寿町間島四丁目</name>
+      </trkpt>
+    </trkseg>
+    <extensions>
+      <stats xmlns="">
+        <totalDistanceKm>11.81</totalDistanceKm>
+        <pointCount>41</pointCount>
+      </stats>
+    </extensions>
+    <name xmlns="">Segment 4</name>
+  </trk>
+</gpx>
