@@ -1,4 +1,4 @@
-function Search-Place {
+function Search-Places {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0)]

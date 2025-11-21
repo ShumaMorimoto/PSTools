@@ -1,15 +1,4 @@
-#モジュールルートの設定
-$script:ModuleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-
-# ─── DLL 読み込み ───
-if (Test-Path "$PSScriptRoot\lib") {
-    Get-ChildItem "$PSScriptRoot\lib\*.dll" | ForEach-Object {
-        Add-Type -Path $_.FullName
-    }
-}
-
-# ─── クラス定義 ───
-class GPXDocument : System.Xml.XmlDocument {
+﻿class GPXDocument : System.Xml.XmlDocument {
     hidden static [System.Xml.XmlNamespaceManager] $NsMgr
 
     static [void] Initialize([System.Xml.XmlDocument]$doc) {
@@ -18,9 +7,14 @@ class GPXDocument : System.Xml.XmlDocument {
             [GPXDocument]::NsMgr.AddNamespace("gpx", $doc.DocumentElement.NamespaceURI)
         }
     }
+    
+    GPXDocument() {
+        # 空のコンストラクタ（Load 用）
+        # DocumentElement がまだないので Initialize は後で呼ばれる
+    }
 
-    GPXDocument() { }
     GPXDocument([string]$Creator, [string]$Name) {
+        # 新規生成用コンストラクタ
         $xmlDecl = $this.CreateXmlDeclaration("1.0", "UTF-8", $null)
         $this.AppendChild($xmlDecl) | Out-Null
 
@@ -29,6 +23,7 @@ class GPXDocument : System.Xml.XmlDocument {
         $gpx.SetAttribute("creator", $Creator)
         $this.AppendChild($gpx) | Out-Null
 
+        # metadata
         $metadata = $this.CreateElement("metadata", $gpx.NamespaceURI)
         $timeNode = $this.CreateElement("time", $gpx.NamespaceURI)
         $timeNode.InnerText = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
@@ -45,6 +40,7 @@ class GPXDocument : System.Xml.XmlDocument {
         $gpx.AppendChild($trk) | Out-Null
         $trk.AppendChild($trkseg) | Out-Null
 
+        # Initialize 呼び出し
         [GPXDocument]::Initialize($this)
     }
 
@@ -72,41 +68,6 @@ class GPXDocument : System.Xml.XmlDocument {
         foreach ($pt in $points) {
             $trkseg.AppendChild($this.ImportNode($pt, $true)) | Out-Null
         }
-        $this.UpdateStats()
-    }
-    [void] AddTrkPt([double]$lat, [double]$lon, [string]$name, [string]$desc, [object]$addr) {
-        $trkseg = $this.SelectSingleNode("//gpx:trk/gpx:trkseg", [GPXDocument]::NsMgr)
-
-        $trkpt = $this.CreateElement("trkpt", $this.DocumentElement.NamespaceURI)
-        $trkpt.SetAttribute("lat", $lat.ToString())
-        $trkpt.SetAttribute("lon", $lon.ToString())
-
-        if ($name) {
-            $nameNode = $this.CreateElement("name", $this.DocumentElement.NamespaceURI)
-            $nameNode.InnerText = $name
-            $trkpt.AppendChild($nameNode) | Out-Null
-        }
-
-        if ($desc) {
-            $descNode = $this.CreateElement("desc", $this.DocumentElement.NamespaceURI)
-            $descNode.InnerText = $desc
-            $trkpt.AppendChild($descNode) | Out-Null
-        }
-
-        if ($addr) {
-            $extNode = $this.CreateElement("extensions", $this.DocumentElement.NamespaceURI)
-            foreach ($key in $addr.PSObject.Properties.Name) {
-                $val = $addr.$key
-                if ($val) {
-                    $child = $this.CreateElement($key, $this.DocumentElement.NamespaceURI)
-                    $child.InnerText = $val
-                    $extNode.AppendChild($child) | Out-Null
-                }
-            }
-            $trkpt.AppendChild($extNode) | Out-Null
-        }
-
-        $trkseg.AppendChild($trkpt) | Out-Null
     }
 
     [void] UpdateStats() {
@@ -124,6 +85,7 @@ class GPXDocument : System.Xml.XmlDocument {
         $pointCount = $trkpts.Count
         $trkNode = $this.SelectSingleNode("//gpx:trk", [GPXDocument]::NsMgr)
 
+        # 統計情報追加
         $extNode = $trkNode.SelectSingleNode("gpx:extensions", [GPXDocument]::NsMgr)
         if (-not $extNode) {
             $extNode = $this.CreateElement("extensions", $this.DocumentElement.NamespaceURI)
@@ -150,24 +112,3 @@ class GPXDocument : System.Xml.XmlDocument {
         return $this.OuterXml
     }
 }
-
-# ─── 関数読み込み ───
-foreach ($folder in @('Common', 'Extensions', 'Private', 'Public')) {
-    if (Test-Path "$PSScriptRoot\$folder") {
-        Get-ChildItem "$PSScriptRoot\$folder\*.ps1" | ForEach-Object {
-            . $_.FullName
-        }
-    }
-}
-
-# ─── 公開関数 ───
-$publicFunctions = @()
-if (Test-Path "$PSScriptRoot\Public") {
-    $publicFunctions = Get-ChildItem "$PSScriptRoot\Public\*.ps1" | ForEach-Object {
-        [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
-    }
-}
-Export-ModuleMember -Function $publicFunctions
-
-# ─── モジュール初期化 ───
-Enable-ModuleSettings

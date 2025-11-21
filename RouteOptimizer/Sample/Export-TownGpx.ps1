@@ -12,20 +12,20 @@ param (
 )
 
 # ① 町字一覧を取得
-$towns = Get-CityTowns -Keyword $Keyword
-if (-not $towns) {
+$gpxXml = Get-CityTowns -Keyword $Keyword
+if (-not $gpxXml) {
     Write-Warning "❌ 町字が取得できませんでした。GPXファイルは生成されません。"
     return
 }
 
-# ② GA最適化
-$route = Optimize-AreaRoute $towns
+# ② 拠点取得
+$trkpts = $gpxXml.GetTrkPt()
 
-# ③ GPXオブジェクトを生成
-$gpxXml = $route | ConvertTo-Gpx -TrackName $TrackName
+# 並び替え
+$optimized = Optimize-AreaRoute -Places $trkpts
 
-# 統計情報追加
-$gpxXml = Add-GpxStats -GpxXml $gpxXml
+# 再構築
+$gpxXml.SetTrkPt($optimized)
 
 # ④ ファイルに保存
 try {

@@ -1,142 +1,549 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="PowerShell ConvertTo-Gpx" xmlns="http://www.topografix.com/GPX/1/1">
-  <metadata>
-    <time>2025-11-17T16:34:55Z</time>
-  </metadata>
+<gpx version="1.1" creator="PowerShell-Nominatim">
   <trk>
-    <name>
-    </name>
     <trkseg>
-      <trkpt lat="35.25834" lon="136.681079" muitiRoute="1">
-        <name>桑原町午南</name>
-      </trkpt>
-      <trkpt lat="35.25834" lon="136.681079" muitiRoute="1">
-        <name>桑原町午南</name>
-      </trkpt>
-      <trkpt lat="35.256726" lon="136.687033" muitiRoute="1">
-        <name>桑原町前野</name>
-      </trkpt>
-      <trkpt lat="35.258367" lon="136.673669" muitiRoute="1">
-        <name>桑原町大須五丁目</name>
-      </trkpt>
-      <trkpt lat="35.260566" lon="136.674285" muitiRoute="1">
-        <name>桑原町大須四丁目</name>
-      </trkpt>
-      <trkpt lat="35.262631" lon="136.675114" muitiRoute="1">
-        <name>桑原町大須三丁目</name>
-      </trkpt>
-      <trkpt lat="35.264664" lon="136.676138" muitiRoute="1">
-        <name>桑原町大須二丁目</name>
-      </trkpt>
-      <trkpt lat="35.268309" lon="136.676937" muitiRoute="1">
-        <name>桑原町大須一丁目</name>
-      </trkpt>
-      <trkpt lat="35.267149" lon="136.679574" muitiRoute="1">
-        <name>桑原町平太一丁目</name>
-      </trkpt>
-      <trkpt lat="35.263672" lon="136.671233" muitiRoute="1">
-        <name>桑原町大須</name>
-      </trkpt>
-      <trkpt lat="35.262081" lon="136.662654" muitiRoute="1">
-        <name>桑原町西小薮一丁目</name>
-      </trkpt>
-      <trkpt lat="35.257433" lon="136.660496" muitiRoute="1">
+      <trkpt lat="35.257433" lon="136.660496">
         <name>桑原町西小薮二丁目</name>
+        <desc>桑原町西小薮二丁目, 羽島市, 岐阜県, 503-0312, 日本</desc>
+        <extensions>
+          <neighbourhood>桑原町西小薮二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0312</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.253632" lon="136.66108" muitiRoute="1">
+      <trkpt lat="35.257433" lon="136.660496">
+        <name>桑原町西小薮二丁目</name>
+        <desc>桑原町西小薮二丁目, 羽島市, 岐阜県, 503-0312, 日本</desc>
+        <extensions>
+          <neighbourhood>桑原町西小薮二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0312</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.253632" lon="136.66108">
         <name>桑原町西小薮三丁目</name>
+        <desc>桑原町西小薮三丁目, 羽島市, 岐阜県, 503-0312, 日本</desc>
+        <extensions>
+          <neighbourhood>桑原町西小薮三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0312</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.25041" lon="136.67431" muitiRoute="1">
-        <name>桑原町小藪</name>
+      <trkpt lat="35.262081" lon="136.662654">
+        <name>桑原町西小薮一丁目</name>
+        <desc>桑原町西小薮一丁目, 羽島市, 岐阜県, 503-0312, 日本</desc>
+        <extensions>
+          <neighbourhood>桑原町西小薮一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0312</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.271024" lon="136.692144" muitiRoute="1">
-        <name>桑原町八神</name>
+      <trkpt lat="35.260566" lon="136.674285">
+        <name>桑原町大須四丁目</name>
+        <desc>桑原町大須四丁目, 羽島市, 岐阜県, 503-0312, 日本</desc>
+        <extensions>
+          <neighbourhood>桑原町大須四丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0312</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.278907" lon="136.680868" muitiRoute="1">
-        <name>桑原町東方</name>
+      <trkpt lat="35.262631" lon="136.675114">
+        <name>桑原町大須三丁目</name>
+        <desc>桑原町大須三丁目, 羽島市, 岐阜県, 503-0312, 日本</desc>
+        <extensions>
+          <neighbourhood>桑原町大須三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0312</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.287475" lon="136.68324" muitiRoute="1">
-        <name>下中町市之枝</name>
+      <trkpt lat="35.264664" lon="136.676138">
+        <name>桑原町大須二丁目</name>
+        <desc>桑原町大須二丁目, 羽島市, 岐阜県, 503-0312, 日本</desc>
+        <extensions>
+          <neighbourhood>桑原町大須二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0312</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.286704" lon="136.686224" muitiRoute="1">
-        <name>下中町市之枝六丁目</name>
+      <trkpt lat="35.268309" lon="136.676937">
+        <name>桑原町大須一丁目</name>
+        <desc>桑原町大須一丁目, 羽島市, 岐阜県, 503-0312, 日本</desc>
+        <extensions>
+          <neighbourhood>桑原町大須一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0312</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.286728" lon="136.689373" muitiRoute="1">
-        <name>下中町市之枝五丁目</name>
+      <trkpt lat="35.267149" lon="136.679574">
+        <name>桑原町平太一丁目</name>
+        <desc>桑原町平太一丁目, 羽島市, 岐阜県, 503-0312, 日本</desc>
+        <extensions>
+          <neighbourhood>桑原町平太一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0312</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.290256" lon="136.692291" muitiRoute="1">
-        <name>下中町市之枝四丁目</name>
+      <trkpt lat="35.258367" lon="136.673669">
+        <name>桑原町大須五丁目</name>
+        <desc>桑原町大須五丁目, 羽島市, 岐阜県, 503-0312, 日本</desc>
+        <extensions>
+          <neighbourhood>桑原町大須五丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0312</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.292165" lon="136.687985" muitiRoute="1">
-        <name>上中町午北</name>
-      </trkpt>
-      <trkpt lat="35.297384" lon="136.678151" muitiRoute="1">
-        <name>堀津町</name>
-      </trkpt>
-      <trkpt lat="35.30191" lon="136.688662" muitiRoute="1">
-        <name>上中町千束</name>
-      </trkpt>
-      <trkpt lat="35.295158" lon="136.696928" muitiRoute="1">
-        <name>上中町沖</name>
-      </trkpt>
-      <trkpt lat="35.289028" lon="136.695523" muitiRoute="1">
-        <name>下中町市之枝二丁目</name>
-      </trkpt>
-      <trkpt lat="35.286345" lon="136.694373" muitiRoute="1">
+      <trkpt lat="35.286345" lon="136.694373">
         <name>下中町市之枝三丁目</name>
+        <desc>下中町市之枝三丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>下中町市之枝三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.287215" lon="136.69958" muitiRoute="1">
+      <trkpt lat="35.289028" lon="136.695523">
+        <name>下中町市之枝二丁目</name>
+        <desc>下中町市之枝二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>下中町市之枝二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.287215" lon="136.69958">
         <name>下中町市之枝一丁目</name>
+        <desc>下中町市之枝一丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>下中町市之枝一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.288236" lon="136.706963" muitiRoute="1">
-        <name>下中町城屋敷</name>
+      <trkpt lat="35.290256" lon="136.692291">
+        <name>下中町市之枝四丁目</name>
+        <desc>下中町市之枝四丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>下中町市之枝四丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.292614" lon="136.718184" muitiRoute="1">
-        <name>下中町加賀野井</name>
+      <trkpt lat="35.286728" lon="136.689373">
+        <name>下中町市之枝五丁目</name>
+        <desc>下中町市之枝五丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>下中町市之枝五丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.303249" lon="136.719612" muitiRoute="1">
-        <name>竹鼻町駒塚</name>
+      <trkpt lat="35.286704" lon="136.686224">
+        <name>下中町市之枝六丁目</name>
+        <desc>下中町市之枝六丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>下中町市之枝六丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.299808" lon="136.712707" muitiRoute="1">
-        <name>上中町一色</name>
+      <trkpt lat="35.305373" lon="136.673492">
+        <name>堀津町須賀南一丁目</name>
+        <desc>堀津町須賀南一丁目, 羽島市, 岐阜県, 503-0198, 日本</desc>
+        <extensions>
+          <neighbourhood>堀津町須賀南一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0198</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.30045" lon="136.701487" muitiRoute="1">
-        <name>上中町中</name>
+      <trkpt lat="35.304901" lon="136.66874">
+        <name>堀津町須賀南二丁目</name>
+        <desc>堀津町須賀南二丁目, 羽島市, 岐阜県, 503-0234, 日本</desc>
+        <extensions>
+          <neighbourhood>堀津町須賀南二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0234</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.278876" lon="136.698375" muitiRoute="1">
-        <name>下中町石田</name>
+      <trkpt lat="35.311635" lon="136.668002">
+        <name>堀津町横手三丁目</name>
+        <desc>茶屋新田堀津線, 堀津町横手三丁目, 羽島市, 岐阜県, 503-0198, 日本</desc>
+        <extensions>
+          <road>茶屋新田堀津線</road>
+          <neighbourhood>堀津町横手三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0198</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.30878" lon="136.68865" muitiRoute="1">
-        <name>江吉良町江中七丁目</name>
+      <trkpt lat="35.311548" lon="136.672628">
+        <name>堀津町横手二丁目</name>
+        <desc>堀津町横手二丁目, 羽島市, 岐阜県, 503-0198, 日本</desc>
+        <extensions>
+          <neighbourhood>堀津町横手二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0198</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.310233" lon="136.687446" muitiRoute="1">
-        <name>舟橋町四丁目</name>
+      <trkpt lat="35.311396" lon="136.675049">
+        <name>堀津町横手一丁目</name>
+        <desc>堀津町横手一丁目, 羽島市, 岐阜県, 503-0198, 日本</desc>
+        <extensions>
+          <neighbourhood>堀津町横手一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0198</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.309814" lon="136.685197" muitiRoute="1">
-        <name>舟橋町本町五丁目</name>
+      <trkpt lat="35.312332" lon="136.678294">
+        <name>福寿町平方十三丁目</name>
+        <desc>福寿町平方十三丁目, 羽島市, 岐阜県, 503-0198, 日本</desc>
+        <extensions>
+          <neighbourhood>福寿町平方十三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0198</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.311084" lon="136.685345" muitiRoute="1">
-        <name>舟橋町本町四丁目</name>
+      <trkpt lat="35.313197" lon="136.68031">
+        <name>福寿町平方十二丁目</name>
+        <desc>福寿町平方十二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>福寿町平方十二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.312694" lon="136.686419" muitiRoute="1">
-        <name>舟橋町二丁目</name>
+      <trkpt lat="35.31176" lon="136.680558">
+        <name>舟橋町出須賀三丁目</name>
+        <desc>舟橋町出須賀三丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>舟橋町出須賀三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.313613" lon="136.685531" muitiRoute="1">
-        <name>舟橋町一丁目</name>
+      <trkpt lat="35.310367" lon="136.679401">
+        <name>舟橋町出須賀四丁目</name>
+        <desc>舟橋町出須賀四丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>舟橋町出須賀四丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.314474" lon="136.685078" muitiRoute="1">
-        <name>舟橋町本町一丁目</name>
+      <trkpt lat="35.308291" lon="136.678356">
+        <name>堀津町須賀北二丁目</name>
+        <desc>堀津町須賀北二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>堀津町須賀北二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.314971" lon="136.684903" muitiRoute="1">
+      <trkpt lat="35.307952" lon="136.680597">
+        <name>堀津町須賀北一丁目</name>
+        <desc>名神高速道路, 舟橋町出須賀四丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <road>名神高速道路</road>
+          <neighbourhood>舟橋町出須賀四丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.314879" lon="136.678696">
+        <name>福寿町平方十一丁目</name>
+        <desc>福寿町平方十一丁目, 羽島市, 岐阜県, 503-0198, 日本</desc>
+        <extensions>
+          <neighbourhood>福寿町平方十一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0198</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.317308" lon="136.679322">
+        <name>福寿町平方十丁目</name>
+        <desc>大垣一宮線, 福寿町千代田三丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <road>大垣一宮線</road>
+          <neighbourhood>福寿町千代田三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.319182" lon="136.680003">
+        <name>福寿町平方九丁目</name>
+        <desc>福寿町平方九丁目, 羽島市, 岐阜県, 503-0198, 日本</desc>
+        <extensions>
+          <neighbourhood>福寿町平方九丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0198</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.318144" lon="136.681146">
+        <name>福寿町平方八丁目</name>
+        <desc>福寿町平方八丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>福寿町平方八丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.317218" lon="136.68222">
+        <name>福寿町平方六丁目</name>
+        <desc>福寿町平方六丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>福寿町平方六丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.316359" lon="136.683099">
+        <name>福寿町平方四丁目</name>
+        <desc>福寿町平方四丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>福寿町平方四丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.315568" lon="136.683745">
+        <name>福寿町平方二丁目</name>
+        <desc>福寿町平方二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>福寿町平方二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.314971" lon="136.684903">
         <name>福寿町平方一丁目</name>
+        <desc>福寿町平方一丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>福寿町平方一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.314474" lon="136.685078">
+        <name>舟橋町本町一丁目</name>
+        <desc>舟橋町本町一丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>舟橋町本町一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.313613" lon="136.685531">
+        <name>舟橋町一丁目</name>
+        <desc>舟橋町一丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>舟橋町一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.312694" lon="136.686419">
+        <name>舟橋町二丁目</name>
+        <desc>舟橋町二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>舟橋町二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.311084" lon="136.685345">
+        <name>舟橋町本町四丁目</name>
+        <desc>舟橋町本町四丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>舟橋町本町四丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.309814" lon="136.685197">
+        <name>舟橋町本町五丁目</name>
+        <desc>舟橋町本町五丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>舟橋町本町五丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.310524" lon="136.683149">
+        <name>舟橋町出須賀二丁目</name>
+        <desc>舟橋町出須賀二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>舟橋町出須賀二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
     </trkseg>
     <extensions>
-      <stats xmlns="">
-        <totalDistanceKm>30.06</totalDistanceKm>
+      <stats>
+        <totalDistanceKm>18.90</totalDistanceKm>
         <pointCount>41</pointCount>
       </stats>
     </extensions>
-    <name xmlns="">Segment 1</name>
+    <name>Segment 1</name>
   </trk>
 </gpx>

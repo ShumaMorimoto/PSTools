@@ -1,142 +1,554 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="PowerShell ConvertTo-Gpx" xmlns="http://www.topografix.com/GPX/1/1">
-  <metadata>
-    <time>2025-11-17T16:34:55Z</time>
-  </metadata>
+<gpx version="1.1" creator="PowerShell-Nominatim">
   <trk>
-    <name>
-    </name>
     <trkseg>
-      <trkpt lat="35.316359" lon="136.683099" muitiRoute="1">
-        <name>福寿町平方四丁目</name>
+      <trkpt lat="35.331464" lon="136.697148">
+        <name>福寿町間島七丁目</name>
+        <desc>福寿町間島七丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>福寿町間島七丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.318049" lon="136.685042" muitiRoute="1">
-        <name>福寿町千代田一丁目</name>
+      <trkpt lat="35.331716" lon="136.695178">
+        <name>福寿町間島四丁目</name>
+        <desc>福寿町間島四丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>福寿町間島四丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.3191434" lon="136.6847545" muitiRoute="1">
-        <name>福寿町千代田二丁目</name>
+      <trkpt lat="35.329847" lon="136.695061">
+        <name>竹鼻町丸の内十一丁目</name>
+        <desc>竹鼻町丸の内十一丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>竹鼻町丸の内十一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.318899" lon="136.68383" muitiRoute="1">
-        <name>福寿町千代田</name>
+      <trkpt lat="35.328366" lon="136.694545">
+        <name>竹鼻町丸の内十丁目</name>
+        <desc>竹鼻町丸の内十丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>竹鼻町丸の内十丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.3194498" lon="136.6830862" muitiRoute="1">
-        <name>福寿町千代田三丁目</name>
+      <trkpt lat="35.327132" lon="136.694337">
+        <name>竹鼻町丸の内九丁目</name>
+        <desc>竹鼻町丸の内九丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>竹鼻町丸の内九丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.3210562" lon="136.6834348" muitiRoute="1">
-        <name>福寿町本郷二丁目</name>
+      <trkpt lat="35.32565" lon="136.694215">
+        <name>竹鼻町丸の内八丁目</name>
+        <desc>竹鼻町丸の内八丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>竹鼻町丸の内八丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.3209599" lon="136.6850871" muitiRoute="1">
-        <name>福寿町本郷一丁目</name>
+      <trkpt lat="35.324306" lon="136.693807">
+        <name>竹鼻町丸の内七丁目</name>
+        <desc>竹鼻町丸の内七丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>竹鼻町丸の内七丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.31843" lon="136.686803" muitiRoute="1">
-        <name>福寿町浅平二丁目</name>
+      <trkpt lat="35.324057" lon="136.696056">
+        <name>竹鼻町丸の内一丁目</name>
+        <desc>竹鼻町丸の内一丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>竹鼻町丸の内一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.317521" lon="136.68752" muitiRoute="1">
-        <name>福寿町浅平一丁目</name>
+      <trkpt lat="35.324839" lon="136.698325">
+        <name>竹鼻町丸の内二丁目</name>
+        <desc>竹鼻町丸の内二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>竹鼻町丸の内二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.316264" lon="136.687601" muitiRoute="1">
-        <name>舟橋町宮北一丁目</name>
+      <trkpt lat="35.32626" lon="136.697863">
+        <name>竹鼻町丸の内三丁目</name>
+        <desc>竹鼻町丸の内三丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>竹鼻町丸の内三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.316079" lon="136.688856" muitiRoute="1">
-        <name>舟橋町宮北六丁目</name>
+      <trkpt lat="35.327193" lon="136.699435">
+        <name>竹鼻町丸の内四丁目</name>
+        <desc>一般県道岐阜羽島線, 竹鼻町丸の内四丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <road>一般県道岐阜羽島線</road>
+          <neighbourhood>竹鼻町丸の内四丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
-      <trkpt lat="35.315984" lon="136.691279" muitiRoute="1">
-        <name>舟橋町宮北五丁目</name>
-      </trkpt>
-      <trkpt lat="35.317229" lon="136.691166" muitiRoute="1">
-        <name>舟橋町宮北四丁目</name>
-      </trkpt>
-      <trkpt lat="35.317526" lon="136.692575" muitiRoute="1">
-        <name>舟橋町宮北三丁目</name>
-      </trkpt>
-      <trkpt lat="35.317978" lon="136.689782" muitiRoute="1">
-        <name>舟橋町宮北二丁目</name>
-      </trkpt>
-      <trkpt lat="35.320521" lon="136.689856" muitiRoute="1">
-        <name>福寿町浅平四丁目</name>
-      </trkpt>
-      <trkpt lat="35.322188" lon="136.690954" muitiRoute="1">
-        <name>福寿町浅平</name>
-      </trkpt>
-      <trkpt lat="35.321828" lon="136.692495" muitiRoute="1">
-        <name>福寿町浅平五丁目</name>
-      </trkpt>
-      <trkpt lat="35.320279" lon="136.692835" muitiRoute="1">
-        <name>福寿町浅平三丁目</name>
-      </trkpt>
-      <trkpt lat="35.326675" lon="136.68724" muitiRoute="1">
-        <name>福寿町本郷</name>
-      </trkpt>
-      <trkpt lat="35.318144" lon="136.681146" muitiRoute="1">
-        <name>福寿町平方八丁目</name>
-      </trkpt>
-      <trkpt lat="35.3139761" lon="136.6937238" muitiRoute="1">
-        <name>江吉良町江西二丁目</name>
-      </trkpt>
-      <trkpt lat="35.3123893" lon="136.6957569" muitiRoute="1">
-        <name>江吉良町江中二丁目</name>
-      </trkpt>
-      <trkpt lat="35.3119253" lon="136.6970229" muitiRoute="1">
-        <name>江吉良町江南一丁目</name>
-      </trkpt>
-      <trkpt lat="35.3114854" lon="136.6970739" muitiRoute="1">
-        <name>江吉良町江南二丁目</name>
-      </trkpt>
-      <trkpt lat="35.311063" lon="136.6942602" muitiRoute="1">
-        <name>江吉良町江中三丁目</name>
-      </trkpt>
-      <trkpt lat="35.309846" lon="136.6941261" muitiRoute="1">
-        <name>江吉良町江中四丁目</name>
-      </trkpt>
-      <trkpt lat="35.3084583" lon="136.6936701" muitiRoute="1">
-        <name>江吉良町江中五丁目</name>
-      </trkpt>
-      <trkpt lat="35.31127" lon="136.700899" muitiRoute="1">
-        <name>江吉良町</name>
-      </trkpt>
-      <trkpt lat="35.304908" lon="136.700822" muitiRoute="1">
-        <name>上中町長間</name>
-      </trkpt>
-      <trkpt lat="35.308147" lon="136.7127" muitiRoute="1">
-        <name>竹鼻町蜂尻</name>
-      </trkpt>
-      <trkpt lat="35.315842" lon="136.716897" muitiRoute="1">
-        <name>竹鼻町飯柄</name>
-      </trkpt>
-      <trkpt lat="35.317248" lon="136.724772" muitiRoute="1">
-        <name>正木町新井</name>
-      </trkpt>
-      <trkpt lat="35.326836" lon="136.717767" muitiRoute="1">
-        <name>正木町曲利</name>
-      </trkpt>
-      <trkpt lat="35.330834" lon="136.716183" muitiRoute="1">
-        <name>小熊町足近新田</name>
-      </trkpt>
-      <trkpt lat="35.328958" lon="136.710961" muitiRoute="1">
-        <name>新生町三丁目</name>
-      </trkpt>
-      <trkpt lat="35.33025" lon="136.710403" muitiRoute="1">
-        <name>足近町南之川</name>
-      </trkpt>
-      <trkpt lat="35.329468" lon="136.707746" muitiRoute="1">
-        <name>新生町二丁目</name>
-      </trkpt>
-      <trkpt lat="35.330008" lon="136.705921" muitiRoute="1">
-        <name>新生町一丁目</name>
-      </trkpt>
-      <trkpt lat="35.330537" lon="136.703939" muitiRoute="1">
-        <name>竹鼻町神楽</name>
-      </trkpt>
-      <trkpt lat="35.328634" lon="136.700924" muitiRoute="1">
+      <trkpt lat="35.328634" lon="136.700924">
         <name>竹鼻町丸の内五丁目</name>
+        <desc>一般県道岐阜羽島線, 竹鼻町丸の内五丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <road>一般県道岐阜羽島線</road>
+          <neighbourhood>竹鼻町丸の内五丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.328681" lon="136.697296">
+        <name>竹鼻町丸の内六丁目</name>
+        <desc>羽島市文化センター, 羽島茶屋新田線, 竹鼻町丸の内十一丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <amenity>羽島市文化センター</amenity>
+          <road>羽島茶屋新田線</road>
+          <neighbourhood>竹鼻町丸の内十一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.330008" lon="136.705921">
+        <name>新生町一丁目</name>
+        <desc>新生町一丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>新生町一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.329468" lon="136.707746">
+        <name>新生町二丁目</name>
+        <desc>新生町二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>新生町二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.328958" lon="136.710961">
+        <name>新生町三丁目</name>
+        <desc>新生町三丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>新生町三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.332741" lon="136.707772">
+        <name>小熊町島一丁目</name>
+        <desc>岐阜羽島線, 足近町四丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <road>岐阜羽島線</road>
+          <neighbourhood>足近町四丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.333676" lon="136.705911">
+        <name>小熊町島二丁目</name>
+        <desc>小熊町島二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>小熊町島二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.334586" lon="136.709626">
+        <name>小熊町島五丁目</name>
+        <desc>小熊町島五丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>小熊町島五丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.333359" lon="136.713201">
+        <name>足近町五丁目</name>
+        <desc>足近町五丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>足近町五丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.333235" lon="136.718729">
+        <name>足近町小荒井三丁目</name>
+        <desc>足近町小荒井三丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>足近町小荒井三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.3119253" lon="136.6970229">
+        <name>江吉良町江南一丁目</name>
+        <desc>江吉良町江南一丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>江吉良町江南一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.3114854" lon="136.6970739">
+        <name>江吉良町江南二丁目</name>
+        <desc>江吉良町江南二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>江吉良町江南二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.3123893" lon="136.6957569">
+        <name>江吉良町江中二丁目</name>
+        <desc>岐阜羽島インター線, 江吉良町江中二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <road>岐阜羽島インター線</road>
+          <neighbourhood>江吉良町江中二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.311063" lon="136.6942602">
+        <name>江吉良町江中三丁目</name>
+        <desc>江吉良町江中三丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>江吉良町江中三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.309846" lon="136.6941261">
+        <name>江吉良町江中四丁目</name>
+        <desc>江吉良町江中四丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>江吉良町江中四丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.3084583" lon="136.6936701">
+        <name>江吉良町江中五丁目</name>
+        <desc>江吉良町江中五丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>江吉良町江中五丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.3139761" lon="136.6937238">
+        <name>江吉良町江西二丁目</name>
+        <desc>江吉良町江西二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>江吉良町江西二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.337461" lon="136.692539">
+        <name>小熊町天王一丁目</name>
+        <desc>小熊町天王一丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>小熊町天王一丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.340033" lon="136.69137">
+        <name>小熊町内粟野一丁目</name>
+        <desc>茶屋新田堀津線, 小熊町外粟野, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <road>茶屋新田堀津線</road>
+          <quarter>小熊町外粟野</quarter>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.342277" lon="136.69146">
+        <name>小熊町外粟野一丁目</name>
+        <desc>茶屋新田堀津線, 小熊町外粟野, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <road>茶屋新田堀津線</road>
+          <quarter>小熊町外粟野</quarter>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.341852" lon="136.694646">
+        <name>小熊町外粟野二丁目</name>
+        <desc>小熊町外粟野二丁目, 羽島市, 岐阜県, 503-0103, 日本</desc>
+        <extensions>
+          <neighbourhood>小熊町外粟野二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>503-0103</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.342093" lon="136.695869">
+        <name>小熊町外粟野三丁目</name>
+        <desc>小熊町外粟野三丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>小熊町外粟野三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.342038" lon="136.69706">
+        <name>小熊町外粟野四丁目</name>
+        <desc>小熊町外粟野四丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>小熊町外粟野四丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.339677" lon="136.696667">
+        <name>小熊町内粟野四丁目</name>
+        <desc>小熊町内粟野四丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>小熊町内粟野四丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.3398" lon="136.695503">
+        <name>小熊町内粟野三丁目</name>
+        <desc>小熊町内粟野三丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>小熊町内粟野三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.339909" lon="136.694346">
+        <name>小熊町内粟野二丁目</name>
+        <desc>小熊町内粟野二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>小熊町内粟野二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.337706" lon="136.695194">
+        <name>小熊町天王三丁目</name>
+        <desc>小熊町天王三丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>小熊町天王三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.337898" lon="136.696427">
+        <name>小熊町天王四丁目</name>
+        <desc>小熊町天王四丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>小熊町天王四丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.336243" lon="136.696259">
+        <name>福寿町間島三丁目</name>
+        <desc>福寿町間島三丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>福寿町間島三丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.337432" lon="136.693975">
+        <name>小熊町天王二丁目</name>
+        <desc>小熊町天王二丁目, 羽島市, 岐阜県, 501-6295, 日本</desc>
+        <extensions>
+          <neighbourhood>小熊町天王二丁目</neighbourhood>
+          <city>羽島市</city>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-6295</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
       </trkpt>
     </trkseg>
     <extensions>
-      <stats xmlns="">
-        <totalDistanceKm>14.93</totalDistanceKm>
+      <stats>
+        <totalDistanceKm>14.87</totalDistanceKm>
         <pointCount>41</pointCount>
       </stats>
     </extensions>
-    <name xmlns="">Segment 3</name>
+    <name>Segment 3</name>
   </trk>
 </gpx>

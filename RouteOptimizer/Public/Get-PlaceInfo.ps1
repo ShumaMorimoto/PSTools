@@ -1,4 +1,4 @@
-﻿function Get-Place {
+﻿function Get-PlaceInfo {
     [CmdletBinding()]
     param (
         [Parameter(ValueFromPipeline = $true, Mandatory = $true)]

@@ -1,4 +1,4 @@
-﻿function Split-Route {
+﻿function Split-Places {
     param (
         [Parameter(Mandatory)]
         [array]$Places,  # @{lat=..., lon=...} の配列

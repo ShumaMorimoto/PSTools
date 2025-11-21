@@ -50,7 +50,7 @@ function Start-PlaceSearchTool {
             break
         }
 
-        $trkpts = Search-Place -Keyword $keyword
+        $trkpts = Search-Places -Keyword $keyword
         if (-not $trkpts -or $trkpts.Count -eq 0) {
             Write-Warning "検索結果が見つかりませんでした。"
             continue

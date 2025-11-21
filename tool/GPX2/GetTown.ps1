@@ -1,28 +1,19 @@
-﻿function Get-CityTowns {
-    [CmdletBinding()]    
-    <#
-    .SYNOPSIS
-        指定された地名キーワードに基づいて、その地域の町字一覧を取得します。
-    .DESCRIPTION
-        Nominatim APIで地名の候補を検索し、ユーザーが選択した地域の町字（neighbourhood）一覧と座標を出力します。
-    .PARAMETER Keyword
-        検索したい地名キーワードを指定します。（例: "横浜", "渋谷"）
-    .EXAMPLE
-        Get-TownListFromKeyword -Keyword "横浜"
-    #>
+﻿using module RouteOptimizer
 
+function Get-CityTowns {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
-        [string]$Keyword
+        [string]$Keyword,
+
+        [string]$UserAgent = "PowerShell-Nominatim-Client"
     )
 
     $nominatimUrl = "https://nominatim.openstreetmap.org/search"
-    $overpassUrl = "https://overpass-api.de/api/interpreter"
-#    $overpassUrl = "https://overpass.private.coffee/api/interpreter"
-#    $overpassUrl = "https://overpass.openstreetmap.fr/api/interpreter"
+    $overpassUrl  = "https://overpass-api.de/api/interpreter"
+    $reverseUrl   = "https://nominatim.openstreetmap.org/reverse"
 
-    Write-Verbose "🔍 地名検索中: $Keyword"
-
+    # Step 1: 自治体候補検索
     $nominatimParams = @{
         q              = $Keyword
         countrycodes   = 'jp'
@@ -32,57 +23,43 @@
         limit          = 100
     }
 
+    $headers = @{ "User-Agent" = $UserAgent }
+
     try {
-        $nominatimResult = Invoke-RestMethod -Uri $nominatimUrl -Method Get -Body $nominatimParams -ErrorAction Stop
+        $results = Invoke-RestMethod -Uri $nominatimUrl -Method Get -Body $nominatimParams -Headers $headers
     }
     catch {
-        Write-Error "❌ Nominatim APIへのアクセス失敗: $($_.Exception.Message)"
+        Write-Error "Nominatim検索失敗: $_"
         return
     }
 
-    $nominatimResult = $nominatimResult | Where-Object { $_.addresstype -in @("city", "town", "village", "suburb") }
+    $results = $results | Where-Object { $_.addresstype -in @("city", "town", "village", "suburb") }
 
-    if (-not $nominatimResult) {
-        Write-Warning "⚠️ 地名が見つかりませんでした: '$Keyword'"
+    if (-not $results) {
+        Write-Warning "候補が見つかりませんでした。"
         return
     }
 
-    $targetLocation = $null
-
-    if ($nominatimResult.Count -eq 1) {
-        $targetLocation = $nominatimResult[0]
-        Write-Verbose "✅ 候補が1件見つかりました: $($targetLocation.display_name)"
+    $target = if ($results.Count -eq 1) {
+        $results[0]
     }
     else {
-        Write-Host "🗂️ 複数候補あり。番号を選択してください："
-        for ($i = 0; $i -lt $nominatimResult.Count; $i++) {
-            Write-Host (" {0,2}: {1}" -f ($i + 1), $nominatimResult[$i].display_name)
+        Write-Host "候補一覧："
+        for ($i = 0; $i -lt $results.Count; $i++) {
+            Write-Host (" {0,2}: {1}" -f ($i + 1), $results[$i].display_name)
         }
-
-        while ($true) {
-            $input = Read-Host "🔢 番号を入力 (1-$($nominatimResult.Count))、または 'q' で終了"
-            if ($input -eq 'q') {
-                Write-Warning "🚪 処理を中断しました。"
-                return
-            }
-            if ($input -match '^\d+$' -and [int]$input -ge 1 -and [int]$input -le $nominatimResult.Count) {
-                $targetLocation = $nominatimResult[[int]$input - 1]
-                break
-            }
-            else {
-                Write-Warning "⚠️ 無効な入力です。1〜$($nominatimResult.Count) の番号を入力してください。"
-            }
-        }
+        do {
+            $sel = Read-Host "番号を選択 (1-$($results.Count)) または qで中止"
+            if ($sel -eq 'q') { return }
+        } while (-not ($sel -match '^\d+$' -and $sel -ge 1 -and $sel -le $results.Count))
+        $results[[int]$sel - 1]
     }
 
-    $lat = $targetLocation.lat
-    $lon = $targetLocation.lon
-    $displayName = $targetLocation.display_name
+    $lat = $target.lat
+    $lon = $target.lon
 
-    Write-Verbose "`n📍 選択された候補: $displayName"
-    Write-Verbose "🌍 座標: $lat, $lon"
-
-    $overpassQuery = @"
+    # Step 2: relation ID取得
+    $queryRel = @"
 [out:json];
 is_in($lat,$lon)->.a;
 rel(pivot.a)["boundary"="administrative"]["admin_level"~"^[6-8]$"];
@@ -90,26 +67,23 @@ out body;
 "@
 
     try {
-        $relationResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $overpassQuery -ErrorAction Stop
+        $relResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $queryRel -Headers $headers
     }
     catch {
-        Write-Error "❌ Overpass APIへのアクセス失敗: $($_.Exception.Message)"
+        Write-Error "Overpass relation取得失敗: $_"
         return
     }
 
-    $relation = $relationResult.elements | Sort-Object { [int]$_.tags.admin_level } -Descending | Select-Object -First 1
-    $relationId = $relation.id
-
-    if (-not $relationId) {
-        Write-Warning "❌ relation IDが取得できませんでした。"
+    $relation = $relResult.elements | Sort-Object { [int]$_.tags.admin_level } -Descending | Select-Object -First 1
+    if (-not $relation.id) {
+        Write-Warning "relation IDが取得できませんでした。"
         return
     }
 
-    $areaId = 3600000000 + $relationId
-    Write-Verbose "🆔 relation ID: $relationId"
-    Write-Verbose "🌐 area ID: $areaId"
+    $areaId = 3600000000 + $relation.id
 
-    $townQuery = @"
+    # Step 3: 町字一覧取得
+    $queryTowns = @"
 [out:json];
 area($areaId)->.searchArea;
 node(area.searchArea)["place"];
@@ -117,106 +91,50 @@ out body;
 "@
 
     try {
-        $townResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $townQuery -ErrorAction Stop
+        $townResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $queryTowns -Headers $headers
     }
     catch {
-        Write-Error "❌ 町字一覧取得中にエラー: $($_.Exception.Message)"
+        Write-Error "町字一覧取得失敗: $_"
         return
     }
 
-    $towns = $townResult.elements | Where-Object { $_.tags.name } | Sort-Object { $_.tags.name }
-    $towns = $towns | Where-Object { $_.tags.place -notin @("city", "town", "village", "suburb") }
+    $towns = $townResult.elements | Where-Object { $_.tags.name -and $_.tags.place -eq 'neighbourhood'}
 
-    if ($towns) {
-        foreach ($town in $towns) {
-            $lat = $town.lat ? $town.lat : $town.center.lat
-            $lon = $town.lon ? $town.lon : $town.center.lon
-            Write-Host "📍 $($town.tags.name)  ($lat, $lon)"
-        }
-        Write-Host "`n✅ 取得した町字数: $($towns.Count)" -ForegroundColor Green
-    }
-    else {
-        Write-Warning "ℹ️ このエリアには 'neighbourhood' として登録されている町字が見つかりませんでした。"
+    if (-not $towns) {
+        Write-Warning "町字が見つかりませんでした。"
+        return
     }
 
-    return $towns
-}
+    # Step 4: GPX構築 (GPXDocumentクラス利用)
+    $doc = [GPXDocument]::new("RouteOptimizer","")
 
-function Get-Place {
-    [CmdletBinding()]
-    param (
-        [Parameter(ValueFromPipeline = $true, Mandatory = $true)]
-        [object]$InputObject
-    )
+    $total = $towns.Count
+    $index = 0
+    foreach ($town in $towns) {
+        $index++
+        $tLat = $town.lat
+        $tLon = $town.lon
+        $name = $town.tags.name
 
-    begin {
-        $headers = @{ "User-Agent" = "PowerShell-ReverseGeocoding" }
-        $doc = New-Object System.Xml.XmlDocument
-    }
+        Write-Host "📍 [$index/$total] $name ($tLat, $tLon)" -ForegroundColor Cyan
 
-    process {
-        # lat/lon抽出（trkptノード or 任意オブジェクト対応）
-        $lat = $InputObject.lat ?? $InputObject.Latitude
-        $lon = $InputObject.lon ?? $InputObject.Longitude
-
-        if (-not ($lat -and $lon)) {
-            Write-Warning "緯度経度が見つかりません: $($InputObject | Out-String)"
-            return
-        }
-
-        $uri = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json&addressdetails=1"
-
+        $uri = "${reverseUrl}?lat=$tLat&lon=$tLon&format=json&addressdetails=1"
         try {
-            $response = Invoke-RestMethod -Uri $uri -Headers $headers -ErrorAction Stop
-            $addr = $response.address
-            $display = $response.display_name
-            $townArea = $addr.road ?? $addr.suburb ?? $addr.neighbourhood ?? $addr.city ?? 'Unknown'
-
-            # 入力がtrkptノードならコピーして使う
-            if ($InputObject -is [System.Xml.XmlElement] -and $InputObject.Name -eq "trkpt") {
-                $trkpt = $doc.ImportNode($InputObject, $true)
-
-                # name, desc, extensions をすべて削除
-                foreach ($tag in @("name", "desc", "extensions")) {
-                    $nodes = $trkpt.SelectNodes($tag)
-                    foreach ($node in $nodes) {
-                        $trkpt.RemoveChild($node) | Out-Null
-                    }
-                }
-            }
-            else {
-                # 新規trkptノードを作成
-                $trkpt = $doc.CreateElement("trkpt")
-                $trkpt.SetAttribute("lat", $lat.ToString())
-                $trkpt.SetAttribute("lon", $lon.ToString())
-            }
-
-            # nameノード
-            $nameNode = $doc.CreateElement("name")
-            $nameNode.InnerText = $townArea
-            $trkpt.AppendChild($nameNode) | Out-Null
-
-            # descノード
-            $descNode = $doc.CreateElement("desc")
-            $descNode.InnerText = $display
-            $trkpt.AppendChild($descNode) | Out-Null
-
-            # extensionsノード
-            $extNode = $doc.CreateElement("extensions")
-            foreach ($key in $addr.PSObject.Properties.Name) {
-                $val = $addr.$key
-                if ($val) {
-                    $child = $doc.CreateElement($key)
-                    $child.InnerText = $val
-                    $extNode.AppendChild($child) | Out-Null
-                }
-            }
-            $trkpt.AppendChild($extNode) | Out-Null
-
-            return $trkpt
+            $res  = Invoke-RestMethod -Uri $uri -Headers $headers
+            $addr = $res.address   # 呼び出し側で住所情報を作る
+            $desc = $res.display_name
         }
         catch {
-            Write-Warning "[$lat,$lon] 逆ジオコーディング失敗: $($_.Exception.Message)"
+            Write-Warning "[$tLat,$tLon] 逆ジオコーディング失敗: $_"
+            continue
         }
+
+        # GPXDocumentのメソッドでtrkpt追加
+        $doc.AddTrkPt([double]$tLat, [double]$tLon, $name, $desc, $addr)
     }
+
+    # 統計情報も追加して返す
+    $doc.UpdateStats()
+
+    return [xml]$doc
 }

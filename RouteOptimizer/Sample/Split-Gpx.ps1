@@ -22,7 +22,7 @@ if (-not $trkpts -or $trkpts.Count -lt 2) {
 }
 
 # 分割（Split-Route使用）
-$routes = Split-Route -Places $trkpts -DistanceKm $DistanceKm -PointLimit $PointLimit
+$routes = Split-Places -Places $trkpts -DistanceKm $DistanceKm -PointLimit $PointLimit
 
 # 出力準備
 $baseName = [System.IO.Path]::GetFileNameWithoutExtension($InputFile)
