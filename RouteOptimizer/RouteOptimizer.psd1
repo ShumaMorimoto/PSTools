@@ -6,19 +6,14 @@
     Description       = ''
 
     FunctionsToExport = @(@(
-    'Add-GpxStats',
-    'ConvertFrom-Gpx',
-    'ConvertTo-Gpx',
-    'ConvertTo-GpxFromPoints',
     'Get-CityTowns',
-    'Get-Place',
+    'Get-PlaceInfo',
     'Group-Places',
-    'New-GpxFromTrkpt',
     'Optimize-AreaRoute',
     'Optimize-Route',
-    'Search-Place',
+    'Search-Places',
     'Show-Groups',
-    'Split-Route'
+    'Split-Places'
 ))
     CmdletsToExport   = @()
     VariablesToExport = @()

@@ -1,0 +1,529 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="RouteOptimizer" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <time>2025-11-22T09:58:27Z</time>
+    <name>美浜町</name>
+  </metadata>
+  <trk>
+    <trkseg>
+      <trkpt lat="35.597929" lon="135.9504971">
+        <name>中寺</name>
+        <desc>松屋河原市線, 河原市, 栄, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <road>松屋河原市線</road>
+          <quarter>河原市</quarter>
+          <hamlet>栄</hamlet>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6021559" lon="135.9442615">
+        <name>南市</name>
+        <desc>河原市, 洪水山, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <quarter>河原市</quarter>
+          <hamlet>洪水山</hamlet>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6163377" lon="135.9435473">
+        <name>和田</name>
+        <desc>宝寿院, 日向郷市線, 河原市, 栄, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <amenity>宝寿院</amenity>
+          <road>日向郷市線</road>
+          <quarter>河原市</quarter>
+          <hamlet>栄</hamlet>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6203632" lon="135.9635993">
+        <name>坂尻</name>
+        <desc>敦賀美浜線, 坂尻, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <road>敦賀美浜線</road>
+          <quarter>坂尻</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.617875" lon="135.9032032">
+        <name>早瀬</name>
+        <desc>日向郷市線, 笹田, 美浜町, 三方郡, 福井県, 919-1122, 日本</desc>
+        <extensions>
+          <road>日向郷市線</road>
+          <quarter>笹田</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1122</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6107107" lon="135.9492589">
+        <name>木野</name>
+        <desc>木野, 栄, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <quarter>木野</quarter>
+          <hamlet>栄</hamlet>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6026891" lon="135.937059">
+        <name>郷市</name>
+        <desc>郷市, 洪水山, 美浜町, 三方郡, 福井県, 919-1122, 日本</desc>
+        <extensions>
+          <quarter>郷市</quarter>
+          <hamlet>洪水山</hamlet>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1122</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.5946391" lon="135.943675">
+        <name>興道寺</name>
+        <desc>興道寺, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <quarter>興道寺</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.712115" lon="135.9666207">
+        <name>奥ノ浦</name>
+        <desc>阿弥陀寺, 竹波立石繩間線, 田ノ口, 美浜町, 三方郡, 福井県, 日本</desc>
+        <extensions>
+          <amenity>阿弥陀寺</amenity>
+          <road>竹波立石繩間線</road>
+          <neighbourhood>田ノ口</neighbourhood>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.7131516" lon="135.9723821">
+        <name>丹生</name>
+        <desc>丹生, 美浜町, 三方郡, 福井県, 日本</desc>
+        <extensions>
+          <quarter>丹生</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.7102054" lon="135.9730267">
+        <name>田ノ口</name>
+        <desc>田ノ口, 美浜町, 三方郡, 福井県, 日本</desc>
+        <extensions>
+          <neighbourhood>田ノ口</neighbourhood>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6949988" lon="135.9766828">
+        <name>竹波</name>
+        <desc>竹波立石繩間線, 竹波, 美浜町, 三方郡, 福井県, 日本</desc>
+        <extensions>
+          <road>竹波立石繩間線</road>
+          <quarter>竹波</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6570066" lon="135.9773935">
+        <name>菅浜</name>
+        <desc>佐田竹波敦賀線, 菅浜, 美浜町, 三方郡, 福井県, 日本</desc>
+        <extensions>
+          <road>佐田竹波敦賀線</road>
+          <quarter>菅浜</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.639347" lon="135.9927808">
+        <name>北田</name>
+        <desc>北田集落センター, 佐田竹波敦賀線, けやき台, 美浜町, 三方郡, 福井県, 日本</desc>
+        <extensions>
+          <amenity>北田集落センター</amenity>
+          <road>佐田竹波敦賀線</road>
+          <neighbourhood>けやき台</neighbourhood>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6320167" lon="135.9837912">
+        <name>佐田</name>
+        <desc>敦賀美浜線, けやき台, 美浜町, 三方郡, 福井県, 日本</desc>
+        <extensions>
+          <road>敦賀美浜線</road>
+          <neighbourhood>けやき台</neighbourhood>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.619524" lon="135.9753475">
+        <name>山上</name>
+        <desc>山上, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <quarter>山上</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6154287" lon="135.9853215">
+        <name>太田</name>
+        <desc>東美浜停車場線, 太田, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <road>東美浜停車場線</road>
+          <quarter>太田</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6082378" lon="135.954099">
+        <name>佐柿</name>
+        <desc>ファミリーマート, 国道27号, 河原市, 栄, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <shop>ファミリーマート</shop>
+          <road>国道27号</road>
+          <quarter>河原市</quarter>
+          <hamlet>栄</hamlet>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6058929" lon="135.9446679">
+        <name>河原市</name>
+        <desc>国道27号, 河原市, 栄, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <road>国道27号</road>
+          <quarter>河原市</quarter>
+          <hamlet>栄</hamlet>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6100215" lon="135.9291977">
+        <name>松原</name>
+        <desc>松原, 洪水山, 美浜町, 三方郡, 福井県, 919-1122, 日本</desc>
+        <extensions>
+          <quarter>松原</quarter>
+          <hamlet>洪水山</hamlet>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1122</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6065785" lon="135.9140341">
+        <name>久々子</name>
+        <desc>久々子, 美浜町, 三方郡, 福井県, 919-1122, 日本</desc>
+        <extensions>
+          <quarter>久々子</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1122</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.5979846" lon="135.9267788">
+        <name>金山</name>
+        <desc>金山, 別所, 美浜町, 三方郡, 福井県, 919-1122, 日本</desc>
+        <extensions>
+          <quarter>金山</quarter>
+          <hamlet>別所</hamlet>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1122</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6142286" lon="135.8969278">
+        <name>笹田</name>
+        <desc>日向郷市線, 日向, 美浜町, 三方郡, 福井県, 919-1122, 日本</desc>
+        <extensions>
+          <road>日向郷市線</road>
+          <quarter>日向</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1122</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.6123386" lon="135.8906572">
+        <name>日向</name>
+        <desc>日向, 美浜町, 三方郡, 福井県, 919-1455, 日本</desc>
+        <extensions>
+          <quarter>日向</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1455</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.634344" lon="135.9871813">
+        <name>けやき台</name>
+        <desc>けやき台, 美浜町, 三方郡, 福井県, 日本</desc>
+        <extensions>
+          <neighbourhood>けやき台</neighbourhood>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.5585774" lon="135.9781829">
+        <name>新庄</name>
+        <desc>松屋河原市線, 新庄, 馬場, 美浜町, 三方郡, 福井県, 日本</desc>
+        <extensions>
+          <road>松屋河原市線</road>
+          <quarter>新庄</quarter>
+          <hamlet>馬場</hamlet>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.570847" lon="135.961194">
+        <name>雲谷</name>
+        <desc>雲谷, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <quarter>雲谷</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.5843346" lon="135.9530202">
+        <name>佐野</name>
+        <desc>佐野, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <quarter>佐野</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.5819858" lon="135.9619315">
+        <name>寄戸</name>
+        <desc>寄戸, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <quarter>寄戸</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.591258" lon="135.957487">
+        <name>安江</name>
+        <desc>安江, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <quarter>安江</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.5953433" lon="135.9591239">
+        <name>宮代</name>
+        <desc>宮代, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <quarter>宮代</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.5877864" lon="135.9142644">
+        <name>気山</name>
+        <desc>気山, 美浜町, 三方郡, 福井県, 919-1122, 日本</desc>
+        <extensions>
+          <quarter>気山</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1122</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.592748" lon="135.918235">
+        <name>大藪</name>
+        <desc>国道27号, 郷市, 洪水山, 美浜町, 三方郡, 福井県, 919-1122, 日本</desc>
+        <extensions>
+          <road>国道27号</road>
+          <quarter>郷市</quarter>
+          <hamlet>洪水山</hamlet>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1122</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.5882419" lon="135.9604895">
+        <name>五十谷</name>
+        <desc>安江, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <quarter>安江</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.60087" lon="135.959182">
+        <name>麻生</name>
+        <desc>麻生, 美浜町, 三方郡, 福井県, 919-1192, 日本</desc>
+        <extensions>
+          <quarter>麻生</quarter>
+          <town>美浜町</town>
+          <county>三方郡</county>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>919-1192</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+    </trkseg>
+    <name>美浜町の周遊</name>
+    <extensions>
+      <stats>
+        <totalDistanceKm>88.39</totalDistanceKm>
+        <pointCount>35</pointCount>
+      </stats>
+    </extensions>
+  </trk>
+</gpx>

@@ -7,14 +7,9 @@
             [GPXDocument]::NsMgr.AddNamespace("gpx", $doc.DocumentElement.NamespaceURI)
         }
     }
-    
-    GPXDocument() {
-        # 空のコンストラクタ（Load 用）
-        # DocumentElement がまだないので Initialize は後で呼ばれる
-    }
 
+    GPXDocument() { }
     GPXDocument([string]$Creator, [string]$Name) {
-        # 新規生成用コンストラクタ
         $xmlDecl = $this.CreateXmlDeclaration("1.0", "UTF-8", $null)
         $this.AppendChild($xmlDecl) | Out-Null
 
@@ -23,7 +18,6 @@
         $gpx.SetAttribute("creator", $Creator)
         $this.AppendChild($gpx) | Out-Null
 
-        # metadata
         $metadata = $this.CreateElement("metadata", $gpx.NamespaceURI)
         $timeNode = $this.CreateElement("time", $gpx.NamespaceURI)
         $timeNode.InnerText = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
@@ -40,7 +34,6 @@
         $gpx.AppendChild($trk) | Out-Null
         $trk.AppendChild($trkseg) | Out-Null
 
-        # Initialize 呼び出し
         [GPXDocument]::Initialize($this)
     }
 
@@ -58,8 +51,8 @@
         return $doc
     }
 
-    [System.Xml.XmlNodeList] GetTrkPt() {
-        return $this.SelectNodes("//gpx:trk/gpx:trkseg/gpx:trkpt", [GPXDocument]::NsMgr)
+    [System.Xml.XmlElement[]] GetTrkPt() {
+        return @($this.SelectNodes("//gpx:trk/gpx:trkseg/gpx:trkpt", [GPXDocument]::NsMgr))
     }
 
     [void] SetTrkPt([System.Xml.XmlElement[]]$points) {
@@ -68,13 +61,68 @@
         foreach ($pt in $points) {
             $trkseg.AppendChild($this.ImportNode($pt, $true)) | Out-Null
         }
+        $this.UpdateStats()
     }
+    [void] AddTrkPtNode([System.Xml.XmlElement]$trkptNode) {
+        if (-not $trkptNode) { return }
 
-    [void] UpdateStats() {
+        $trkseg = $this.SelectSingleNode("//gpx:trk/gpx:trkseg", [GPXDocument]::NsMgr)
+        if (-not $trkseg) { return }
+
+        # ImportNodeで安全にコピーして追加
+        $imported = $this.ImportNode($trkptNode, $true)
+        $trkseg.AppendChild($imported) | Out-Null
+
+        # 統計情報更新
+        $this.UpdateStats()
+    }
+    [void] AddTrkPt([double]$lat, [double]$lon, [string]$name, [string]$desc, [object]$addr) {
+        $trkseg = $this.SelectSingleNode("//gpx:trk/gpx:trkseg", [GPXDocument]::NsMgr)
+
+        $trkpt = $this.CreateElement("trkpt", $this.DocumentElement.NamespaceURI)
+        $trkpt.SetAttribute("lat", $lat.ToString())
+        $trkpt.SetAttribute("lon", $lon.ToString())
+
+        if ($name) {
+            $nameNode = $this.CreateElement("name", $this.DocumentElement.NamespaceURI)
+            $nameNode.InnerText = $name
+            $trkpt.AppendChild($nameNode) | Out-Null
+        }
+
+        if ($desc) {
+            $descNode = $this.CreateElement("desc", $this.DocumentElement.NamespaceURI)
+            $descNode.InnerText = $desc
+            $trkpt.AppendChild($descNode) | Out-Null
+        }
+
+        if ($addr) {
+            # $addr が XmlNode の場合（extensionsノードを想定）
+            if ($addr -is [System.Xml.XmlNode]) {
+                # そのままインポートして追加
+                $extNode = $this.ImportNode($addr, $true)
+                $trkpt.AppendChild($extNode) | Out-Null
+            }
+            else {
+                # ハッシュテーブルやPSObjectの場合
+                $extNode = $this.CreateElement("extensions", $this.DocumentElement.NamespaceURI)
+                foreach ($key in $addr.PSObject.Properties.Name) {
+                    $val = $addr.$key
+                    if ($val) {
+                        $child = $this.CreateElement($key, $this.DocumentElement.NamespaceURI)
+                        $child.InnerText = $val
+                        $extNode.AppendChild($child) | Out-Null
+                    }
+                }
+                $trkpt.AppendChild($extNode) | Out-Null
+            }
+        }
+
+        $trkseg.AppendChild($trkpt) | Out-Null
+    }
+    [hashtable] GetStats() {
         $trkpts = $this.GetTrkPt()
         if (-not $trkpts -or $trkpts.Count -lt 2) {
-            Write-Warning "trkptが不足しています。統計情報は追加されません。"
-            return
+            return @{TotalDistance = 0; PointCount = $trkpts.Count }
         }
 
         $totalDistance = 0.0
@@ -83,29 +131,58 @@
         }
 
         $pointCount = $trkpts.Count
+
+        return @{
+            TotalDistanceKm = [math]::Round($totalDistance, 2)
+            PointCount      = $pointCount
+        }
+    }
+    [void] UpdateStats() {
+        # GetStatsで統計情報を取得
+        $stats = $this.GetStats()
+        if (-not $stats -or $stats.Count -eq 0) {
+            Write-Warning "統計情報が取得できませんでした。"
+            return
+        }
+
         $trkNode = $this.SelectSingleNode("//gpx:trk", [GPXDocument]::NsMgr)
 
-        # 統計情報追加
+        # extensionsノードを探す／作成
         $extNode = $trkNode.SelectSingleNode("gpx:extensions", [GPXDocument]::NsMgr)
         if (-not $extNode) {
             $extNode = $this.CreateElement("extensions", $this.DocumentElement.NamespaceURI)
             $trkNode.AppendChild($extNode) | Out-Null
         }
         else {
+            # 既存のstatsノードを削除
             $existingStats = $extNode.SelectSingleNode("gpx:stats", [GPXDocument]::NsMgr)
             if ($existingStats) { $extNode.RemoveChild($existingStats) | Out-Null }
         }
 
+        # 新しいstatsノードを作成
         $statsNode = $this.CreateElement("stats", $this.DocumentElement.NamespaceURI)
+
         $distNode = $this.CreateElement("totalDistanceKm", $this.DocumentElement.NamespaceURI)
-        $distNode.InnerText = ("{0:F2}" -f $totalDistance)
+        $distNode.InnerText = ("{0:F2}" -f $stats.TotalDistanceKm)
         $statsNode.AppendChild($distNode) | Out-Null
 
         $countNode = $this.CreateElement("pointCount", $this.DocumentElement.NamespaceURI)
-        $countNode.InnerText = "$pointCount"
+        $countNode.InnerText = "$($stats.PointCount)"
         $statsNode.AppendChild($countNode) | Out-Null
 
         $extNode.AppendChild($statsNode) | Out-Null
+    }
+
+    [void] SetTrkName([string]$trkName) {
+        $trkNode = $this.SelectSingleNode("//gpx:trk", [GPXDocument]::NsMgr)
+        if (-not $trkNode) { return }
+
+        $nameNode = $trkNode.SelectSingleNode("gpx:name", [GPXDocument]::NsMgr)
+        if (-not $nameNode) {
+            $nameNode = $this.CreateElement("name", $this.DocumentElement.NamespaceURI)
+            $trkNode.AppendChild($nameNode) | Out-Null
+        }
+        $nameNode.InnerText = $trkName
     }
 
     [string] ToXmlString() {

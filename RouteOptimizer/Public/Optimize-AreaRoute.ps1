@@ -35,12 +35,14 @@
     $ordered = Optimize-Route $centroids 
 
     # ④ クラスタ内ルート最適化（ベース関数使用）
-    $finalRoute = @($ordered[0].Points[0])
+    $finalRoute = @()
     for ($i = 0; $i -lt $ordered.Count; $i++) {
         $cluster = $ordered[$i]
-        $start = $finalRoute[-1]
+        $start = if ($finalRoute.Count -gt 0) { $finalRoute[-1] } else { $null }
+
         $optimized = Optimize-Route -Places $cluster.Points -StartLocation $start -RouteMode "Open" `
             -PopulationSize 10 -Generations 50
+
         $finalRoute += $optimized
     }
 

@@ -1,54 +1,39 @@
-﻿# --- 距離計算（ハバーサイン公式） ---
-function Get-Distance($p1, $p2) {
-    $R = 6371
-    $dLat = [math]::PI / 180 * ($p2.Lat - $p1.Lat)
-    $dLon = [math]::PI / 180 * ($p2.Lon - $p1.Lon)
-    $lat1 = [math]::PI / 180 * $p1.Lat
-    $lat2 = [math]::PI / 180 * $p2.Lat
-
-    $a = [math]::Pow([math]::Sin($dLat / 2), 2) +
-         [math]::Cos($lat1) * [math]::Cos($lat2) *
-         [math]::Pow([math]::Sin($dLon / 2), 2)
-    $c = 2 * [math]::Atan2([math]::Sqrt($a), [math]::Sqrt(1 - $a))
-    return $R * $c
-}
-
-# --- バケット走査＋サイズ超過時スプリット ---
-function Group-Places2 {
+﻿function Group-Places2 {
     param (
         [Parameter(Mandatory)] [array]$Towns,
         [double]$MaxDistanceKm = 5.0,
         [int]$MaxGroupSize = 50
     )
 
-    if ($Towns.Count -eq 0) { return @() }
+    if (-not $Towns -or $Towns.Count -eq 0) { 
+        Write-Warning "[WARN] 入力拠点が空です"
+        return @() 
+    }
 
     # --- サブ関数: バケット幅を距離から度に換算 ---
     function Get-BucketSteps {
         param([array]$Towns, [double]$MaxDistanceKm)
         $latStep = $MaxDistanceKm / 111.0
-        $latRef = ($Towns | Measure-Object Lat -Average).Average
+        $latRef = ($Towns | ForEach-Object { [double]$_.Lat } | Measure-Object -Average).Average
         $cosLat = [math]::Cos($latRef * [math]::PI / 180.0)
         if ([math]::Abs($cosLat) -lt 1e-6) { $cosLat = 1e-6 }
         $lonStep = $MaxDistanceKm / (111.0 * $cosLat)
         return @{ LatStep = $latStep; LonStep = $lonStep }
     }
 
-    # --- サブ関数: サイズ超過時の再帰分割（必ず2要素返す） ---
+    # --- サブ関数: サイズ超過時の再帰分割（必ずオブジェクト返す） ---
     function Split-GroupRecursively {
-        param(
-            [array]$Towns,
-            [int]$MaxGroupSize
-        )
+        param([array]$Towns,[int]$MaxGroupSize)
 
         if ($Towns.Count -le $MaxGroupSize) {
-            return @(,$Towns)
+            Write-Host "[DEBUG] Split-GroupRecursively: return group size=$($Towns.Count)"
+            return @([pscustomobject]@{ Items = [object[]]$Towns })
         }
 
-        $minLat = ($Towns | Measure-Object Lat -Minimum).Minimum
-        $maxLat = ($Towns | Measure-Object Lat -Maximum).Maximum
-        $minLon = ($Towns | Measure-Object Lon -Minimum).Minimum
-        $maxLon = ($Towns | Measure-Object Lon -Maximum).Maximum
+        $minLat = ($Towns | ForEach-Object { [double]$_.Lat } | Measure-Object -Minimum).Minimum
+        $maxLat = ($Towns | ForEach-Object { [double]$_.Lat } | Measure-Object -Maximum).Maximum
+        $minLon = ($Towns | ForEach-Object { [double]$_.Lon } | Measure-Object -Minimum).Minimum
+        $maxLon = ($Towns | ForEach-Object { [double]$_.Lon } | Measure-Object -Maximum).Maximum
 
         $latMid = ($minLat + $maxLat) / 2
         $lonMid = ($minLon + $maxLon) / 2
@@ -61,8 +46,8 @@ function Group-Places2 {
         $result = @()
         foreach ($subset in @($nw,$ne,$sw,$se)) {
             if ($subset.Count -gt 0) {
-                $childGroups = @(Split-GroupRecursively -Towns $subset -MaxGroupSize $MaxGroupSize)
-                $result += $childGroups
+                $childGroups = Split-GroupRecursively -Towns $subset -MaxGroupSize $MaxGroupSize
+                $result += $childGroups   # flattenされても中身はオブジェクトなので安全
             }
         }
         return $result
@@ -73,14 +58,13 @@ function Group-Places2 {
     $latStep = $steps.LatStep
     $lonStep = $steps.LonStep
 
-    $minLat = ($Towns | Measure-Object Lat -Minimum).Minimum
-    $maxLat = ($Towns | Measure-Object Lat -Maximum).Maximum
-    $minLon = ($Towns | Measure-Object Lon -Minimum).Minimum
-    $maxLon = ($Towns | Measure-Object Lon -Maximum).Maximum
+    $minLat = ($Towns | ForEach-Object { [double]$_.Lat } | Measure-Object -Minimum).Minimum
+    $maxLat = ($Towns | ForEach-Object { [double]$_.Lat } | Measure-Object -Maximum).Maximum
+    $minLon = ($Towns | ForEach-Object { [double]$_.Lon } | Measure-Object -Minimum).Minimum
+    $maxLon = ($Towns | ForEach-Object { [double]$_.Lon } | Measure-Object -Maximum).Maximum
 
     $groups = @()
     $groupIdx = 1
-    $bucketIdx = 1
 
     for ($lat = $minLat; $lat -le $maxLat; $lat += $latStep) {
         for ($lon = $minLon; $lon -le $maxLon; $lon += $lonStep) {
@@ -91,28 +75,39 @@ function Group-Places2 {
             if ($bucket.Count -gt 0) {
                 if ($bucket.Count -gt $MaxGroupSize) {
                     $splitGroups = Split-GroupRecursively -Towns $bucket -MaxGroupSize $MaxGroupSize
-#                    $splitGroups = $splitGroups | Where-Object { $_ }   # $null 除外
-
                     foreach ($sg in $splitGroups) {
-                        Write-Host "Group $($groupIdx) size: $($sg.Count)"
-                        $groups += ,$sg
+                        Write-Host "[INFO] Group $groupIdx size=$($sg.Items.Count)"
+                        $groups += $sg
                         $groupIdx++
                     }
                 }
                 else {
-                    Write-Host "Group $($groupIdx) size: $($bucket.Count)"
-#                    $groups += @($bucket, $null)   # 常に2要素返す
-                    $groups += @(,$bucket)   # 常に2要素返す
+                    Write-Host "[INFO] Group $groupIdx size=$($bucket.Count)"
+                    $groups += [pscustomobject]@{ Items = [object[]]$bucket }
                     $groupIdx++
                 }
             }
-            $bucketIdx++
         }
     }
 
-    # 最後に $null を除外
- #   $groups = $groups | Where-Object { $_ }
+    Write-Host "[INFO] Total groups formed: $($groups.Count)"
 
-    Write-Host "Total groups formed: $($groups.Count)"
+    # --- 最終チェック ---
+    $broken = $false
+    foreach ($g in $groups) {
+        if (-not ($g.Items -is [array])) {
+            Write-Warning "[FINAL CHECK] グループが配列でない: $($g.Items.GetType().Name)"
+            $broken = $true
+        }
+    }
+    if (-not $broken) {
+        Write-Host "[INFO] 全てのグループが配列として保持されています"
+    }
+
     return $groups
 }
+
+$towns = Get-CityTowns 新宿区 -skipreverse
+$places = $towns.GetTrkPt()
+
+$groups = Group-Places2 $places

@@ -1,6 +1,7 @@
 ﻿using module RouteOptimizer
 
 $FilePath = "D:\tool\log\SearchPlaceLog.gpx"
+
 function Start-PlaceSearchTool {
     function Write-PlaceLog {
         [CmdletBinding()]
@@ -14,30 +15,17 @@ function Start-PlaceSearchTool {
 
         # 履歴ファイルがなければ初期化
         if (-not (Test-Path $FilePath)) {
-            $doc = New-Object System.Xml.XmlDocument
-            $gpx = $doc.CreateElement("gpx")
-            $gpx.SetAttribute("version", "1.1")
-            $gpx.SetAttribute("creator", "PlaceSearchTool")
-            $doc.AppendChild($gpx) | Out-Null
-
-            $trk = $doc.CreateElement("trk")
-            $gpx.AppendChild($trk) | Out-Null
-
-            $trkseg = $doc.CreateElement("trkseg")
-            $trk.AppendChild($trkseg) | Out-Null
-
+            $doc = [GPXDocument]::new("PlaceSearchTool", "SearchPlaceLog")
             $doc.Save($FilePath)
         }
 
         # 履歴ファイル読み込み
-        $doc = New-Object System.Xml.XmlDocument
-        $doc.Load($FilePath)
-        $trkseg = $doc.SelectSingleNode("//trkseg")
+        $doc = [GPXDocument]::Load($FilePath)
 
-        # trkptノードをインポートして追加
-        $imported = $doc.ImportNode($Trkpt, $true)
-        $trkseg.AppendChild($imported) | Out-Null
+        # trkptノードを追加（AddTrkPtNodeを利用）
+        $doc.AddTrkPtNode($Trkpt)
 
+        # 保存
         $doc.Save($FilePath)
     }
 
@@ -50,7 +38,7 @@ function Start-PlaceSearchTool {
             break
         }
 
-        $trkpts = Search-Places -Keyword $keyword
+        $trkpts = (Search-Places -Keyword $keyword).GetTrkPt()
         if (-not $trkpts -or $trkpts.Count -eq 0) {
             Write-Warning "検索結果が見つかりませんでした。"
             continue
@@ -58,14 +46,14 @@ function Start-PlaceSearchTool {
 
         # 表示用に整形
         $results = $trkpts | ForEach-Object -Begin { $i = 0 } -Process {
-            $name = $_.SelectSingleNode("name").InnerText
-            $lat = $_.GetAttribute("lat")
-            $lon = $_.GetAttribute("lon")
-            $desc = $_.SelectSingleNode("desc").InnerText
+            $name = $_.name
+            $lat = $_.lat
+            $lon = $_.lon
+            $desc = $_.desc
 
             # extensions/townname を取得
-            $townnameNode = $_.SelectSingleNode("extensions/townname")
-            $municipality = if ($townnameNode) { $townnameNode.InnerText } else { "Unknown" }
+            $townnameNode = $_.extensions.townname
+            $municipality = $townnameNode ?? 'Unknown'
 
             [PSCustomObject]@{
                 Index     = $i++
@@ -75,7 +63,6 @@ function Start-PlaceSearchTool {
                 Longitude = $lon
             }
         }
-
 
         # 結果表示
         Write-Host "`n📍 検索結果一覧:" -ForegroundColor Green
@@ -102,6 +89,8 @@ function Start-PlaceSearchTool {
             else {
                 Write-Host "⏭ スキップしました。" -ForegroundColor DarkGray
             }
-        }    
+        }
     }
 }
+
+Start-PlaceSearchTool

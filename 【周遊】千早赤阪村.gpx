@@ -1,0 +1,186 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="RouteOptimizer" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <time>2025-11-21T18:19:53Z</time>
+  </metadata>
+  <trk>
+    <trkseg>
+      <trkpt lat="34.4371249" lon="135.6226155">
+        <name>中津原</name>
+        <desc>中津原, 千早赤阪村, 南河内郡, 大阪府, 585-0053, 日本</desc>
+        <extensions>
+          <neighbourhood>中津原</neighbourhood>
+          <village>千早赤阪村</village>
+          <county>南河内郡</county>
+          <province>大阪府</province>
+          <ISO3166-2-lvl4>JP-27</ISO3166-2-lvl4>
+          <postcode>585-0053</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="34.4371249" lon="135.6226155">
+        <name>中津原</name>
+        <desc>中津原, 千早赤阪村, 南河内郡, 大阪府, 585-0053, 日本</desc>
+        <extensions>
+          <neighbourhood>中津原</neighbourhood>
+          <village>千早赤阪村</village>
+          <county>南河内郡</county>
+          <province>大阪府</province>
+          <ISO3166-2-lvl4>JP-27</ISO3166-2-lvl4>
+          <postcode>585-0053</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="34.4377921" lon="135.6130915">
+        <name>小吹</name>
+        <desc>小吹, 千早赤阪村, 南河内郡, 大阪府, 585-0053, 日本</desc>
+        <extensions>
+          <neighbourhood>小吹</neighbourhood>
+          <village>千早赤阪村</village>
+          <county>南河内郡</county>
+          <province>大阪府</province>
+          <ISO3166-2-lvl4>JP-27</ISO3166-2-lvl4>
+          <postcode>585-0053</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="34.4386988" lon="135.6053598">
+        <name>小吹台</name>
+        <desc>小吹台, 千早赤阪村, 南河内郡, 大阪府, 585-0053, 日本</desc>
+        <extensions>
+          <neighbourhood>小吹台</neighbourhood>
+          <village>千早赤阪村</village>
+          <county>南河内郡</county>
+          <province>大阪府</province>
+          <ISO3166-2-lvl4>JP-27</ISO3166-2-lvl4>
+          <postcode>585-0053</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="34.4711135" lon="135.6228733">
+        <name>森屋</name>
+        <desc>富田林五条線, 森屋, 千早赤阪村, 南河内郡, 大阪府, 585-0034, 日本</desc>
+        <extensions>
+          <road>富田林五条線</road>
+          <neighbourhood>森屋</neighbourhood>
+          <village>千早赤阪村</village>
+          <county>南河内郡</county>
+          <province>大阪府</province>
+          <ISO3166-2-lvl4>JP-27</ISO3166-2-lvl4>
+          <postcode>585-0034</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="34.4654348" lon="135.6322503">
+        <name>川野邊</name>
+        <desc>川野邊, 千早赤阪村, 南河内郡, 大阪府, 585-8501, 日本</desc>
+        <extensions>
+          <neighbourhood>川野邊</neighbourhood>
+          <village>千早赤阪村</village>
+          <county>南河内郡</county>
+          <province>大阪府</province>
+          <ISO3166-2-lvl4>JP-27</ISO3166-2-lvl4>
+          <postcode>585-8501</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="34.4632146" lon="135.6319284">
+        <name>水分</name>
+        <desc>水分, 千早赤阪村, 南河内郡, 大阪府, 585-8501, 日本</desc>
+        <extensions>
+          <neighbourhood>水分</neighbourhood>
+          <village>千早赤阪村</village>
+          <county>南河内郡</county>
+          <province>大阪府</province>
+          <ISO3166-2-lvl4>JP-27</ISO3166-2-lvl4>
+          <postcode>585-8501</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="34.4577889" lon="135.6298545">
+        <name>二河原邊</name>
+        <desc>二河原邊, 千早赤阪村, 南河内郡, 大阪府, 585-8501, 日本</desc>
+        <extensions>
+          <neighbourhood>二河原邊</neighbourhood>
+          <village>千早赤阪村</village>
+          <county>南河内郡</county>
+          <province>大阪府</province>
+          <ISO3166-2-lvl4>JP-27</ISO3166-2-lvl4>
+          <postcode>585-8501</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="34.4572706" lon="135.6244194">
+        <name>桐山</name>
+        <desc>桐山, 千早赤阪村, 南河内郡, 大阪府, 585-8501, 日本</desc>
+        <extensions>
+          <neighbourhood>桐山</neighbourhood>
+          <village>千早赤阪村</village>
+          <county>南河内郡</county>
+          <province>大阪府</province>
+          <ISO3166-2-lvl4>JP-27</ISO3166-2-lvl4>
+          <postcode>585-8501</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="34.4474054" lon="135.6159364">
+        <name>吉年</name>
+        <desc>吉年, 千早赤阪村, 南河内郡, 大阪府, 584-0054, 日本</desc>
+        <extensions>
+          <neighbourhood>吉年</neighbourhood>
+          <village>千早赤阪村</village>
+          <county>南河内郡</county>
+          <province>大阪府</province>
+          <ISO3166-2-lvl4>JP-27</ISO3166-2-lvl4>
+          <postcode>584-0054</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="34.4436867" lon="135.6258491">
+        <name>東阪</name>
+        <desc>富田林五条線, 東阪, 千早赤阪村, 南河内郡, 大阪府, 585-0053, 日本</desc>
+        <extensions>
+          <road>富田林五条線</road>
+          <neighbourhood>東阪</neighbourhood>
+          <village>千早赤阪村</village>
+          <county>南河内郡</county>
+          <province>大阪府</province>
+          <ISO3166-2-lvl4>JP-27</ISO3166-2-lvl4>
+          <postcode>585-0053</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="34.4154895" lon="135.6470856">
+        <name>千早</name>
+        <desc>千早, 千早赤阪村, 南河内郡, 大阪府, 585-0051, 日本</desc>
+        <extensions>
+          <neighbourhood>千早</neighbourhood>
+          <village>千早赤阪村</village>
+          <county>南河内郡</county>
+          <province>大阪府</province>
+          <ISO3166-2-lvl4>JP-27</ISO3166-2-lvl4>
+          <postcode>585-0051</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+    </trkseg>
+    <extensions>
+      <stats>
+        <totalDistanceKm>14.02</totalDistanceKm>
+        <pointCount>12</pointCount>
+      </stats>
+    </extensions>
+  </trk>
+</gpx>

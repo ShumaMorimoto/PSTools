@@ -3,13 +3,13 @@
     param (
         [Parameter(Mandatory = $true)]
         [string]$Keyword,
-
-        [string]$UserAgent = "PowerShell-Nominatim-Client"
+        [string]$UserAgent = "PowerShell-Nominatim-Client",
+        [switch]$SkipReverse
     )
 
     $nominatimUrl = "https://nominatim.openstreetmap.org/search"
-    $overpassUrl  = "https://overpass-api.de/api/interpreter"
-    $reverseUrl   = "https://nominatim.openstreetmap.org/reverse"
+    $overpassUrl = "https://overpass-api.de/api/interpreter"
+    $reverseUrl = "https://nominatim.openstreetmap.org/reverse"
 
     # Step 1: 自治体候補検索
     $nominatimParams = @{
@@ -96,15 +96,25 @@ out body;
         return
     }
 
-    $towns = $townResult.elements | Where-Object { $_.tags.name -and $_.tags.place -eq 'neighbourhood'}
+    # --- 集計追加 ---
+    $placeStats = $townResult.elements | Where-Object { $_.tags.place } | Group-Object { $_.tags.place }
+    Write-Host "=== tags.place 集計 ==="
+    foreach ($stat in $placeStats) {
+        Write-Host ("{0}: {1}件" -f $stat.Name, $stat.Count)
+    }
+    Write-Host "========================"
 
+    # 町字フィルタ（neighbourhood, quarter, hamlet を対象）
+    $towns = $townResult.elements | Where-Object {
+        $_.tags.name -and ($_.tags.place -in @('neighbourhood', 'quarter'))
+    }
     if (-not $towns) {
         Write-Warning "町字が見つかりませんでした。"
         return
     }
 
-    # Step 4: GPX構築 (GPXDocumentクラス利用)
-    $doc = [GPXDocument]::new("RouteOptimizer","")
+    # Step 4: GPX構築
+    $doc = [GPXDocument]::new("RouteOptimizer", $target.name)
 
     $total = $towns.Count
     $index = 0
@@ -116,22 +126,27 @@ out body;
 
         Write-Host "📍 [$index/$total] $name ($tLat, $tLon)" -ForegroundColor Cyan
 
-        $uri = "${reverseUrl}?lat=$tLat&lon=$tLon&format=json&addressdetails=1"
-        try {
-            $res  = Invoke-RestMethod -Uri $uri -Headers $headers
-            $addr = $res.address   # 呼び出し側で住所情報を作る
-            $desc = $res.display_name
+        if (-not $SkipReverse) {
+            $uri = "${reverseUrl}?lat=$tLat&lon=$tLon&format=json&addressdetails=1"
+            try {
+                $res = Invoke-RestMethod -Uri $uri -Headers $headers
+                $addr = $res.address
+                $desc = $res.display_name
+            }
+            catch {
+                Write-Warning "[$tLat,$tLon] 逆ジオコーディング失敗: $_"
+                $addr = $null
+                $desc = $null
+            }
         }
-        catch {
-            Write-Warning "[$tLat,$tLon] 逆ジオコーディング失敗: $_"
-            continue
+        else {
+            $addr = $null
+            $desc = $name
         }
 
-        # GPXDocumentのメソッドでtrkpt追加
         $doc.AddTrkPt([double]$tLat, [double]$tLon, $name, $desc, $addr)
     }
-
-    # 統計情報も追加して返す
+    $doc.SetTrkName($target.name + "の周遊")
     $doc.UpdateStats()
 
     return [GPXDocument]$doc

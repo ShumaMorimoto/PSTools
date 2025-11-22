@@ -21,20 +21,21 @@ function Search-Places {
             $response = Invoke-RestMethod -Uri $uri -Method Get -Headers $headers -ErrorAction Stop
 
             if ($null -ne $response -and $response.Count -gt 0) {
-                $trkptNodes = @()
+                # GPXDocumentを生成
+                $doc = [GPXDocument]::new("Search-Places",$Keyword)
                 $timestamp = (Get-Date).ToString("o")
 
                 foreach ($item in $response) {
-                    $lat = [double]$item.lat
-                    $lon = [double]$item.lon
+                    $lat   = [double]$item.lat
+                    $lon   = [double]$item.lon
                     $display = $item.display_name
-                    $addr = $item.address
+                    $addr  = $item.address
 
                     # 町名抽出（優先順：quarter > neighbourhood > suburb）
-                    $townArea = $addr.quarter ?? $addr.neighbourhood ?? $addr.suburb ?? $null
+                    $townArea     = $addr.quarter ?? $addr.neighbourhood ?? $addr.suburb ?? $null
                     $municipality = $addr.city ?? $addr.town ?? $addr.village ?? $null
-                    $county = $addr.county
-                    $suburb = $addr.suburb
+                    $county       = $addr.county
+                    $suburb       = $addr.suburb
 
                     # townname生成ロジック
                     if ($municipality -and $townArea) {
@@ -60,56 +61,29 @@ function Search-Places {
                         $townname = "Unknown"
                     }
 
-                    # GPXノード構築
-                    $doc = New-Object System.Xml.XmlDocument
-                    $trkpt = $doc.CreateElement("trkpt")
-                    $trkpt.SetAttribute("lat", $lat.ToString())
-                    $trkpt.SetAttribute("lon", $lon.ToString())
+                    # 住所情報に追加フィールドを付与
+                    $addrExt = $addr.PSObject.Copy()
+                    $addrExt | Add-Member -NotePropertyName "townname" -NotePropertyValue $townname
+                    $addrExt | Add-Member -NotePropertyName "keyword"  -NotePropertyValue $Keyword
+                    $addrExt | Add-Member -NotePropertyName "timestamp" -NotePropertyValue $timestamp
 
-                    $nameNode = $doc.CreateElement("name")
-                    $nameNode.InnerText = $item.name ?? $display
-                    $trkpt.AppendChild($nameNode) | Out-Null
-
-                    $descNode = $doc.CreateElement("desc")
-                    $descNode.InnerText = $display
-                    $trkpt.AppendChild($descNode) | Out-Null
-
-                    $extNode = $doc.CreateElement("extensions")
-
-                    foreach ($key in $addr.PSObject.Properties.Name) {
-                        $val = $addr.$key
-                        if ($val) {
-                            $child = $doc.CreateElement($key)
-                            $child.InnerText = $val
-                            $extNode.AppendChild($child) | Out-Null
-                        }
-                    }
-
-                    $townNode = $doc.CreateElement("townname")
-                    $townNode.InnerText = $townname
-                    $extNode.AppendChild($townNode) | Out-Null
-
-                    $kwNode = $doc.CreateElement("keyword")
-                    $kwNode.InnerText = $Keyword
-                    $extNode.AppendChild($kwNode) | Out-Null
-
-                    $tsNode = $doc.CreateElement("timestamp")
-                    $tsNode.InnerText = $timestamp
-                    $extNode.AppendChild($tsNode) | Out-Null
-
-                    $trkpt.AppendChild($extNode) | Out-Null
-                    $trkptNodes += $trkpt
+                    # GPXDocumentのメソッドでtrkpt追加
+                    $doc.AddTrkPt($lat, $lon, ($item.name ?? $display), $display, $addrExt)
                 }
-                return $trkptNodes
+
+                # 統計情報も追加
+                $doc.UpdateStats()
+
+                return [GPXDocument]$doc
             }
             else {
                 Write-Warning "キーワード '$Keyword' に一致する結果が見つかりませんでした。"
-                return @()
+                return $null
             }
         }
         catch {
             Write-Error "キーワード '$Keyword' の処理中にエラーが発生しました: $($_.Exception.Message)"
-            return @()
+            return $null
         }
     }
 }
