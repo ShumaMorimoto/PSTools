@@ -1,0 +1,218 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="RouteOptimizer" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <time>2025-11-22T18:34:57Z</time>
+    <name>大野町, 揖斐郡, 岐阜県, 日本</name>
+  </metadata>
+  <trk>
+    <trkseg>
+      <trkpt lat="35.465178" lon="136.612979">
+        <name>大字中之元</name>
+        <desc>大字中之元, 大野町, 揖斐郡, 岐阜県, 501-0592, 日本</desc>
+        <extensions>
+          <quarter>大字中之元</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0592</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.471199" lon="136.612869">
+        <name>大字瀬古</name>
+        <desc>大字瀬古, 大野町, 揖斐郡, 岐阜県, 501-0592, 日本</desc>
+        <extensions>
+          <quarter>大字瀬古</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0592</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.476478" lon="136.6242">
+        <name>大字西方</name>
+        <desc>深坂大野線, 大字西方, 大野町, 揖斐郡, 岐阜県, 501-0592, 日本</desc>
+        <extensions>
+          <road>深坂大野線</road>
+          <quarter>大字西方</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0592</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.477913" lon="136.63334">
+        <name>大字桜大門</name>
+        <desc>大字桜大門, 大野町, 揖斐郡, 岐阜県, 501-0592, 日本</desc>
+        <extensions>
+          <quarter>大字桜大門</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0592</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.477996" lon="136.637021">
+        <name>大字大野</name>
+        <desc>大字大野, 大野町, 揖斐郡, 岐阜県, 501-0592, 日本</desc>
+        <extensions>
+          <quarter>大字大野</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0592</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.476529" lon="136.640476">
+        <name>大字稲畑</name>
+        <desc>岐阜大野線, 大字稲畑, 大野町, 揖斐郡, 岐阜県, 501-0592, 日本</desc>
+        <extensions>
+          <road>岐阜大野線</road>
+          <quarter>大字稲畑</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0592</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.467455" lon="136.633972">
+        <name>大字黒野</name>
+        <desc>大字黒野, 大野町, 揖斐郡, 岐阜県, 501-0592, 日本</desc>
+        <extensions>
+          <quarter>大字黒野</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0592</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.459127" lon="136.63149">
+        <name>大字六里</name>
+        <desc>大字六里, 大野町, 揖斐郡, 岐阜県, 501-0592, 日本</desc>
+        <extensions>
+          <quarter>大字六里</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0592</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.458871" lon="136.624898">
+        <name>大字小衣斐</name>
+        <desc>大字小衣斐, 大野町, 揖斐郡, 岐阜県, 501-0592, 日本</desc>
+        <extensions>
+          <quarter>大字小衣斐</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0592</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.457948" lon="136.61935">
+        <name>大字大衣斐</name>
+        <desc>大字大衣斐, 大野町, 揖斐郡, 岐阜県, 501-0592, 日本</desc>
+        <extensions>
+          <quarter>大字大衣斐</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0592</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.45586" lon="136.61565">
+        <name>大字領家</name>
+        <desc>大字領家, 大野町, 揖斐郡, 岐阜県, 501-0592, 日本</desc>
+        <extensions>
+          <quarter>大字領家</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0592</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.464107" lon="136.623515">
+        <name>大字麻生</name>
+        <desc>大字麻生, 大野町, 揖斐郡, 岐阜県, 501-0592, 日本</desc>
+        <extensions>
+          <quarter>大字麻生</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0592</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.458007" lon="136.639668">
+        <name>大字相羽</name>
+        <desc>町立東小学校, 国道303号, 大字相羽, 大野町, 揖斐郡, 岐阜県, 501-0592, 日本</desc>
+        <extensions>
+          <amenity>町立東小学校</amenity>
+          <road>国道303号</road>
+          <quarter>大字相羽</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0592</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="35.475642" lon="136.64745">
+        <name>大字上秋</name>
+        <desc>大字上秋, 大野町, 揖斐郡, 岐阜県, 501-0501, 日本</desc>
+        <extensions>
+          <quarter>大字上秋</quarter>
+          <town>大野町</town>
+          <county>揖斐郡</county>
+          <province>岐阜県</province>
+          <ISO3166-2-lvl4>JP-21</ISO3166-2-lvl4>
+          <postcode>501-0501</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+    </trkseg>
+    <name>大野町, 揖斐郡, 岐阜県, 日本 半径2km以内</name>
+    <extensions>
+      <stats>
+        <totalDistanceKm>11.88</totalDistanceKm>
+        <pointCount>14</pointCount>
+      </stats>
+    </extensions>
+  </trk>
+</gpx>

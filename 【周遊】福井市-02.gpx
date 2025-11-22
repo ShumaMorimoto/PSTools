@@ -1,0 +1,562 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="RouteOptimizer" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <time>2025-11-22T16:42:21Z</time>
+    <name>福井市</name>
+  </metadata>
+  <trk>
+    <trkseg>
+      <trkpt lat="36.017648" lon="136.3394523">
+        <name>大久保町</name>
+        <desc>篠尾勝山線, 高田町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <road>篠尾勝山線</road>
+          <quarter>高田町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0239912" lon="136.3361692">
+        <name>福島町</name>
+        <desc>福島町, 福井市, 福井県, 910-1228, 日本</desc>
+        <extensions>
+          <quarter>福島町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-1228</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0199996" lon="136.3280797">
+        <name>市波町</name>
+        <desc>市波町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>市波町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0252755" lon="136.3209236">
+        <name>高田町</name>
+        <desc>篠尾勝山線, 高田町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <road>篠尾勝山線</road>
+          <quarter>高田町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0208327" lon="136.320076">
+        <name>田尻町</name>
+        <desc>国道158号, 市波町, 福井市, 福井県, 910-2222, 日本</desc>
+        <extensions>
+          <road>国道158号</road>
+          <quarter>市波町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2222</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.012849" lon="136.334281">
+        <name>奈良瀬町</name>
+        <desc>奈良瀬町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>奈良瀬町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.003632" lon="136.3265884">
+        <name>宇坂別所町</name>
+        <desc>宇坂別所町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>宇坂別所町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0059493" lon="136.3170719">
+        <name>三万谷町</name>
+        <desc>三万谷町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>三万谷町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0385502" lon="136.3309228">
+        <name>宇坂大谷町</name>
+        <desc>国道364号, 宇坂大谷町, 福井市, 福井県, 910-1228, 日本</desc>
+        <extensions>
+          <road>国道364号</road>
+          <quarter>宇坂大谷町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-1228</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0267071" lon="136.2984359">
+        <name>高尾町</name>
+        <desc>高尾町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>高尾町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0279826" lon="136.2933183">
+        <name>篠尾町</name>
+        <desc>高尾町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>高尾町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0199736" lon="136.2998736">
+        <name>前波町</name>
+        <desc>前波町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>前波町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0175786" lon="136.2964404">
+        <name>安波賀中島町</name>
+        <desc>篠尾勝山線, 安波賀町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <road>篠尾勝山線</road>
+          <quarter>安波賀町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0173356" lon="136.2900031">
+        <name>脇三ケ町</name>
+        <desc>脇三ケ町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>脇三ケ町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0106012" lon="136.2835872">
+        <name>南山町</name>
+        <desc>南山町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>南山町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0176067" lon="136.278078">
+        <name>東郷美里町</name>
+        <desc>東郷美里町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <neighbourhood>東郷美里町</neighbourhood>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0197393" lon="136.2778151">
+        <name>上毘沙門町</name>
+        <desc>上毘沙門町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>上毘沙門町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0122935" lon="136.2993371">
+        <name>安波賀町</name>
+        <desc>篠尾勝山線, 安波賀町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <road>篠尾勝山線</road>
+          <quarter>安波賀町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0139772" lon="136.3045192">
+        <name>宿布町</name>
+        <desc>前波-田尻バイパス, 宿布町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <road>前波-田尻バイパス</road>
+          <quarter>宿布町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0026946" lon="136.2988972">
+        <name>城戸ノ内町</name>
+        <desc>城戸ノ内町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>城戸ノ内町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0325551" lon="136.277504">
+        <name>成願寺町</name>
+        <desc>成願寺町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>成願寺町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.040346" lon="136.2778795">
+        <name>次郎丸町</name>
+        <desc>次郎丸町, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <quarter>次郎丸町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0424281" lon="136.2787914">
+        <name>大畑町</name>
+        <desc>大畑町, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <quarter>大畑町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0426016" lon="136.2837374">
+        <name>宮地町</name>
+        <desc>宮地町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>宮地町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0446749" lon="136.2878144">
+        <name>花野谷町</name>
+        <desc>花野谷町, 福井市, 福井県, 910-2151, 日本</desc>
+        <extensions>
+          <quarter>花野谷町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>910-2151</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.052586" lon="136.2770426">
+        <name>河水町</name>
+        <desc>越知神社, 大畑松岡線, 河水町, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <amenity>越知神社</amenity>
+          <road>大畑松岡線</road>
+          <quarter>河水町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0451173" lon="136.2662923">
+        <name>荒木別所町</name>
+        <desc>稲津松岡線, 荒木別所町, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <road>稲津松岡線</road>
+          <quarter>荒木別所町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0405108" lon="136.2669253">
+        <name>荒木町</name>
+        <desc>荒木町, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <quarter>荒木町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0382379" lon="136.2631917">
+        <name>合島町</name>
+        <desc>合島町, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <quarter>合島町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0349497" lon="136.2708413">
+        <name>荒木新保町</name>
+        <desc>荒木新保町, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <quarter>荒木新保町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0373616" lon="136.2749612">
+        <name>岡西谷町</name>
+        <desc>岡西谷町, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <quarter>岡西谷町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.046167" lon="136.2597906">
+        <name>曽万布町</name>
+        <desc>稲津松岡線, 曽万布町, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <road>稲津松岡線</road>
+          <quarter>曽万布町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0457376" lon="136.2515241">
+        <name>和田中三丁目</name>
+        <desc>和田中三丁目, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <neighbourhood>和田中三丁目</neighbourhood>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0468609" lon="136.2481338">
+        <name>和田中二丁目</name>
+        <desc>和田中二丁目, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <neighbourhood>和田中二丁目</neighbourhood>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0493418" lon="136.2495875">
+        <name>和田東二丁目</name>
+        <desc>和田東二丁目, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <neighbourhood>和田東二丁目</neighbourhood>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0497539" lon="136.2457707">
+        <name>和田三丁目</name>
+        <desc>和田三丁目, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <neighbourhood>和田三丁目</neighbourhood>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0532452" lon="136.247246">
+        <name>和田東一丁目</name>
+        <desc>和田東一丁目, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <neighbourhood>和田東一丁目</neighbourhood>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0526164" lon="136.2520015">
+        <name>問屋町三丁目</name>
+        <desc>問屋町三丁目, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <neighbourhood>問屋町三丁目</neighbourhood>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0526337" lon="136.2560356">
+        <name>問屋町四丁目</name>
+        <desc>問屋町四丁目, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <neighbourhood>問屋町四丁目</neighbourhood>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0552142" lon="136.2560409">
+        <name>問屋町二丁目</name>
+        <desc>問屋町二丁目, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <neighbourhood>問屋町二丁目</neighbourhood>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+      <trkpt lat="36.0416039" lon="136.2484074">
+        <name>和田中町</name>
+        <desc>和田中町, 福井市, 福井県, 918-8237, 日本</desc>
+        <extensions>
+          <quarter>和田中町</quarter>
+          <city>福井市</city>
+          <province>福井県</province>
+          <ISO3166-2-lvl4>JP-18</ISO3166-2-lvl4>
+          <postcode>918-8237</postcode>
+          <country>日本</country>
+          <country_code>jp</country_code>
+        </extensions>
+      </trkpt>
+    </trkseg>
+    <name>分割 2</name>
+    <extensions>
+      <stats>
+        <totalDistanceKm>39.46</totalDistanceKm>
+        <pointCount>41</pointCount>
+      </stats>
+    </extensions>
+  </trk>
+</gpx>

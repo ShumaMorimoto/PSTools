@@ -9,7 +9,7 @@
         return $null
     }
 
-    $ext      = $pt.extensions
+    $ext = $pt.extensions
     $province = $ext.province
     $city     = $ext.city
     $suburb   = $ext.suburb
@@ -20,9 +20,8 @@
     # ordered ハッシュで順序を固定
     $meta = [ordered]@{}
 
-    # 東京23区などは city 単独で分類（provinceは入れない）
     if ($city -and $city -match '区$') {
-        $meta["city"] = $city
+        $meta["city"]     = $city
     }
     elseif ($city -and $suburb) {
         $meta["province"] = $province
@@ -45,7 +44,6 @@
 
     return $meta
 }
-
 
 function Group-PlacesByMuni {
     [CmdletBinding()]

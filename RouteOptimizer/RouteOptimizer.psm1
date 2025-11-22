@@ -9,6 +9,11 @@ if (Test-Path "$PSScriptRoot\lib") {
 }
 
 # ─── クラス定義 ───
+
+# Windows Forms と Drawing をロード
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
 class GPXDocument : System.Xml.XmlDocument {
     hidden static [System.Xml.XmlNamespaceManager] $NsMgr
 

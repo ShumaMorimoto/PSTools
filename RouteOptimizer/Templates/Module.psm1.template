@@ -8,6 +8,10 @@ if (Test-Path "$PSScriptRoot\lib") {
     }
 }
 
+# Windows Forms と Drawing をロード
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
 # ─── クラス定義 ───
 {{Classes}}
 

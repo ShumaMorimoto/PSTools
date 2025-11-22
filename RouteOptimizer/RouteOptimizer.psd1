@@ -8,12 +8,14 @@
     FunctionsToExport = @(@(
     'Get-CityTowns',
     'Get-PlaceInfo',
+    'Get-TownsAround',
     'Group-Places',
     'Optimize-AreaRoute',
     'Optimize-Route',
     'Search-Places',
     'Show-Groups',
-    'Split-Places'
+    'Split-Places',
+    'Select-Places'
 ))
     CmdletsToExport   = @()
     VariablesToExport = @()
