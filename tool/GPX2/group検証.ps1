@@ -1,34 +1,49 @@
-﻿function Split-Simple {
-    param([array]$items, [int]$maxSize = 3)
+﻿function Split-GroupRecursively {
+    param([array]$Towns,[int]$MaxGroupSize)
 
-    # グループは「配列」ではなく「オブジェクトの Items プロパティ」に入れて返す
-    if ($items.Count -le $maxSize) {
-        return @(
-            [pscustomobject]@{
-                Items = [object[]]$items
-            }
-        )
+    if ($Towns.Count -le $MaxGroupSize) {
+        Write-Host "[DEBUG] Split-GroupRecursively: return group size=$($Towns.Count)"
+        # PSObjectでラップ
+        return @([PSCustomObject]@{ Cluster = $Towns })
     }
 
-    $mid   = [math]::Floor($items.Count / 2)
-    $left  = $items[0..($mid-1)]
-    $right = $items[$mid..($items.Count-1)]
+    $minLat = ($Towns | ForEach-Object { [double]$_.Lat } | Measure-Object -Minimum).Minimum
+    $maxLat = ($Towns | ForEach-Object { [double]$_.Lat } | Measure-Object -Maximum).Maximum
+    $minLon = ($Towns | ForEach-Object { [double]$_.Lon } | Measure-Object -Minimum).Minimum
+    $maxLon = ($Towns | ForEach-Object { [double]$_.Lon } | Measure-Object -Maximum).Maximum
+
+    $latMid = ($minLat + $maxLat) / 2
+    $lonMid = ($minLon + $maxLon) / 2
+
+    $nw = $Towns | Where-Object { $_.Lat -ge $latMid -and $_.Lon -lt $lonMid }
+    $ne = $Towns | Where-Object { $_.Lat -ge $latMid -and $_.Lon -ge $lonMid }
+    $sw = $Towns | Where-Object { $_.Lat -lt $latMid -and $_.Lon -lt $lonMid }
+    $se = $Towns | Where-Object { $_.Lat -lt $latMid -and $_.Lon -ge $lonMid }
 
     $result = @()
-    foreach ($subset in @($left, $right)) {
-        $childGroups = Split-Simple -items $subset -maxSize $maxSize
-        # ここは“そのまま配列結合”。enumerationされても中身はオブジェクトなので壊れない
-        $result += $childGroups
+    foreach ($subset in @($nw,$ne,$sw,$se)) {
+        if ($subset.Count -gt 0) {
+            $result += Split-GroupRecursively -Towns $subset -MaxGroupSize $MaxGroupSize
+        }
     }
     return $result
 }
 
-# --- テスト ---
-$data = 1..10
-$groups = Split-Simple $data -maxSize 3
+function Group-Places {
+    param([array]$Towns,[double]$MaxDistanceKm = 5.0,[int]$MaxGroupSize = 50)
 
-Write-Host "Total groups: $($groups.Count)"
-foreach ($g in $groups) {
-    Write-Host ("Group size={0} values={1}" -f $g.Items.Count, ($g.Items -join ','))
+    $groups = @()
+
+    # ここでは単純に全体をSplitに渡す例
+    $splitResult = Split-GroupRecursively -Towns $Towns -MaxGroupSize $MaxGroupSize
+
+    foreach ($s in $splitResult) {
+        # unwrapして「拠点配列」を取り出す
+        $groups += ,$s.Cluster
+    }
+
+    Write-Host "[INFO] Total groups formed: $($groups.Count)"
+    return $groups
 }
+
 

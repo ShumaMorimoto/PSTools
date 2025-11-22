@@ -21,16 +21,13 @@
         return @{ LatStep = $latStep; LonStep = $lonStep }
     }
 
-    # --- サブ関数: サイズ超過時の再帰分割（必ず配列返す） ---
+    # --- サブ関数: サイズ超過時の再帰分割（PSObjectでラップして返す） ---
     function Split-GroupRecursively {
         param([array]$Towns,[int]$MaxGroupSize)
 
-        $result = [System.Collections.ArrayList]::new()
-
         if ($Towns.Count -le $MaxGroupSize) {
             Write-Host "[DEBUG] Split-GroupRecursively: return group size=$($Towns.Count)"
-            [void]$result.Add([object[]]$Towns)
-            return ,($result.ToArray())
+            return @([PSCustomObject]@{ Cluster = @($Towns) })
         }
 
         $minLat = ($Towns | ForEach-Object { [double]$_.Lat } | Measure-Object -Minimum).Minimum
@@ -46,18 +43,13 @@
         $sw = $Towns | Where-Object { $_.Lat -lt $latMid -and $_.Lon -lt $lonMid }
         $se = $Towns | Where-Object { $_.Lat -lt $latMid -and $_.Lon -ge $lonMid }
 
+        $result = @()
         foreach ($subset in @($nw,$ne,$sw,$se)) {
             if ($subset.Count -gt 0) {
-                $childGroups = Split-GroupRecursively -Towns $subset -MaxGroupSize $MaxGroupSize
-                foreach ($cg in $childGroups) {
-                    if ($cg -is [array]) {
-                        Write-Host "[DEBUG] 子グループ追加 size=$($cg.Count)"
-                        [void]$result.Add([object[]]$cg)
-                    }
-                }
+                $result += Split-GroupRecursively -Towns $subset -MaxGroupSize $MaxGroupSize
             }
         }
-        return ,($result.ToArray())
+        return $result
     }
 
     # --- 本体処理 ---
@@ -84,25 +76,24 @@
                 if ($bucket.Count -gt $MaxGroupSize) {
                     $splitGroups = Split-GroupRecursively -Towns $bucket -MaxGroupSize $MaxGroupSize
                     foreach ($sg in $splitGroups) {
-                        Write-Host "[INFO] Group $groupIdx size=$($sg.Count)"
-                        [void]$groupsList.Add([object[]]$sg)
+                        Write-Host "[INFO] Group $groupIdx size=$($sg.Cluster.Count)"
+                        [void]$groupsList.Add(@($sg.Cluster))   # ← 必ず配列として追加
                         $groupIdx++
                     }
                 } else {
                     Write-Host "[INFO] Group $groupIdx size=$($bucket.Count)"
-                    [void]$groupsList.Add([object[]]$bucket)
+                    [void]$groupsList.Add(@($bucket))          # ← 1要素でも配列として追加
                     $groupIdx++
                 }
             }
         }
     }
 
-    $groups = $groupsList.ToArray()
-    Write-Host "[INFO] Total groups formed: $($groups.Count)"
+    Write-Host "[INFO] Total groups formed: $($groupsList.Count)"
 
     # --- 最終チェック ---
     $broken = $false
-    foreach ($g in $groups) {
+    foreach ($g in $groupsList) {
         if (-not ($g -is [array])) {
             Write-Warning "[FINAL CHECK] グループが配列でない: $($g.GetType().Name)"
             $broken = $true
@@ -112,5 +103,6 @@
         Write-Host "[INFO] 全てのグループが配列として保持されています"
     }
 
-    return ,([object[]]$groups)
+    # 最後に配列化して返す
+    return ,([object[]]$groupsList)
 }
