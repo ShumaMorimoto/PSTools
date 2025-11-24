@@ -8,8 +8,8 @@
     )
 
     $nominatimUrl = "https://nominatim.openstreetmap.org/search"
-    $overpassUrl = "https://overpass-api.de/api/interpreter"
-    $reverseUrl = "https://nominatim.openstreetmap.org/reverse"
+    $overpassUrl  = "https://overpass-api.de/api/interpreter"
+    $reverseUrl   = "https://nominatim.openstreetmap.org/reverse"
 
     # Step 1: 自治体候補検索
     $nominatimParams = @{
@@ -56,7 +56,7 @@
     $lat = $target.lat
     $lon = $target.lon
 
-    # Step 2: relation ID取得
+    # Step 2: relation ID取得（リトライ付き）
     $queryRel = @"
 [out:json];
 is_in($lat,$lon)->.a;
@@ -65,7 +65,9 @@ out body;
 "@
 
     try {
-        $relResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $queryRel -Headers $headers
+        $relResult = Invoke-WithRetry {
+            Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $queryRel -Headers $headers
+        } -MaxRetry 5 -DelaySec 3
     }
     catch {
         Write-Error "Overpass relation取得失敗: $_"
@@ -80,7 +82,7 @@ out body;
 
     $areaId = 3600000000 + $relation.id
 
-    # Step 3: 町字一覧取得
+    # Step 3: 町字一覧取得（リトライ付き）
     $queryTowns = @"
 [out:json];
 area($areaId)->.searchArea;
@@ -89,7 +91,9 @@ out body;
 "@
 
     try {
-        $townResult = Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $queryTowns -Headers $headers
+        $townResult = Invoke-WithRetry {
+            Invoke-RestMethod -Uri $overpassUrl -Method Post -Body $queryTowns -Headers $headers
+        } -MaxRetry 5 -DelaySec 3
     }
     catch {
         Write-Error "町字一覧取得失敗: $_"
@@ -104,7 +108,7 @@ out body;
     }
     Write-Host "========================"
 
-    # 町字フィルタ（neighbourhood, quarter, hamlet を対象）
+    # 町字フィルタ（neighbourhood, quarter を対象）
     $towns = $townResult.elements | Where-Object {
         $_.tags.name -and ($_.tags.place -in @('neighbourhood', 'quarter'))
     }

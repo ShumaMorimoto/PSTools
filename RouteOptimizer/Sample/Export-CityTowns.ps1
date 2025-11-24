@@ -12,7 +12,7 @@ param (
 )
 
 # ① 町字一覧を取得
-$gpxXml = Get-CityTowns -Keyword $Keyword
+$gpxXml = [GPXDocumentFactory]::FromCityTowns($Keyword)
 if (-not $gpxXml) {
     Write-Warning "❌ 町字が取得できませんでした。GPXファイルは生成されません。"
     return
