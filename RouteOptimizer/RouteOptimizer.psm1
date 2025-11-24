@@ -133,39 +133,47 @@ class GPXDocument : System.Xml.XmlDocument {
         return @($this.SelectNodes("//gpx:trk/gpx:trkseg/gpx:trkpt", [GPXDocument]::NamespaceManager))
     }
 
-    # trkptを追加（単一または複数）
-    [void] AppendTrkPt([hashtable]$info) {
+    # trkptを追加（単一）
+    [void] AppendTrkPt($info) {
         # 名前空間マネージャを利用
         $trkseg = $this.SelectSingleNode("//gpx:trk/gpx:trkseg", [GPXDocument]::NamespaceManager)
         if (-not $trkseg) { return }
 
-        $trkpt = $this.CreateElement("trkpt", $this.DocumentElement.NamespaceURI)
-        $trkpt.SetAttribute("lat", $info["lat"])
-        $trkpt.SetAttribute("lon", $info["lon"])
+        if ($info -is [System.Xml.XmlElement] -and $info.LocalName -eq "trkpt") {
+            # 既存のtrkpt要素ならそのまま追加
+            $trkseg.AppendChild($this.ImportNode($info, $true)) | Out-Null
+        }
+        elseif ($info -is [hashtable]) {
+            # 新規にtrkptを構築
+            $trkpt = $this.CreateElement("trkpt", $this.DocumentElement.NamespaceURI)
+            $trkpt.SetAttribute("lat", $info["lat"])
+            $trkpt.SetAttribute("lon", $info["lon"])
 
-        if ($info["name"]) {
-            $nameNode = $this.CreateElement("name", $this.DocumentElement.NamespaceURI)
-            $nameNode.InnerText = $info["name"]
-            $trkpt.AppendChild($nameNode) | Out-Null
-        }
-        if ($info["desc"]) {
-            $descNode = $this.CreateElement("desc", $this.DocumentElement.NamespaceURI)
-            $descNode.InnerText = $info["desc"]
-            $trkpt.AppendChild($descNode) | Out-Null
-        }
-        if ($info["address"]) {
-            $extNode = $this.CreateElement("extensions", $this.DocumentElement.NamespaceURI)
-            foreach ($key in $info["address"].PSObject.Properties.Name) {
-                $val = $info["address"].$key
-                if ($val) {
-                    $child = $this.CreateElement($key, $this.DocumentElement.NamespaceURI)
-                    $child.InnerText = $val
-                    $extNode.AppendChild($child) | Out-Null
-                }
+            if ($info["name"]) {
+                $nameNode = $this.CreateElement("name", $this.DocumentElement.NamespaceURI)
+                $nameNode.InnerText = $info["name"]
+                $trkpt.AppendChild($nameNode) | Out-Null
             }
-            $trkpt.AppendChild($extNode) | Out-Null
-        }       
-        $trkseg.AppendChild($trkpt) | Out-Null
+            if ($info["desc"]) {
+                $descNode = $this.CreateElement("desc", $this.DocumentElement.NamespaceURI)
+                $descNode.InnerText = $info["desc"]
+                $trkpt.AppendChild($descNode) | Out-Null
+            }
+            if ($info["address"]) {
+                $extNode = $this.CreateElement("extensions", $this.DocumentElement.NamespaceURI)
+                foreach ($key in $info["address"].PSObject.Properties.Name) {
+                    $val = $info["address"].$key
+                    if ($val) {
+                        $child = $this.CreateElement($key, $this.DocumentElement.NamespaceURI)
+                        $child.InnerText = $val
+                        $extNode.AppendChild($child) | Out-Null
+                    }
+                }
+                $trkpt.AppendChild($extNode) | Out-Null
+            }
+
+            $trkseg.AppendChild($trkpt) | Out-Null
+        }
     }
 
     # trkptを一括設定（既存を置換）

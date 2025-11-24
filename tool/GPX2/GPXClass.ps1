@@ -297,6 +297,72 @@ class GPXDocumentFactory {
             return $null
         }
     }
+
+    static [GPXDocument] FromKeyword([string]$Keyword) {
+        try {
+            $encodedKeyword = [System.Web.HttpUtility]::UrlEncode($Keyword)
+            $uri = "https://nominatim.openstreetmap.org/search?q=$encodedKeyword&format=json&addressdetails=1&countrycodes=jp"
+
+            $response = Invoke-RestMethod -Uri $uri -Method Get -Headers ([GPXDocumentFactory]::Headers) -ErrorAction Stop
+
+            # GPXDocumentを生成
+            $doc = [GPXDocument]::new("GPXDocumentFactory", @{name = $Keyword })
+            $timestamp = (Get-Date).ToString("o")
+
+            foreach ($item in $response) {
+                $addr = $item.address
+
+                # 町名抽出ロジック
+                $townArea = $addr.quarter ?? $addr.neighbourhood ?? $addr.suburb ?? $null
+                $municipality = $addr.city ?? $addr.town ?? $addr.village ?? $null
+                $county = $addr.county
+                $suburb = $addr.suburb
+
+                if ($municipality -and $townArea) {
+                    if ($addr.city -and $suburb) {
+                        $townname = "$municipality$suburb$townArea"
+                    }
+                    elseif ($addr.town -and $county) {
+                        $townname = "$county$municipality$townArea"
+                    }
+                    else {
+                        $townname = "$municipality$townArea"
+                    }
+                }
+                elseif ($municipality -and -not $townArea) {
+                    if ($county) {
+                        $townname = "$county$municipality"
+                    }
+                    else {
+                        $townname = "$municipality"
+                    }
+                }
+                else {
+                    $townname = "Unknown"
+                }
+
+                # 住所情報に追加フィールドを付与
+                $addrExt = $addr.PSObject.Copy()
+                $addrExt | Add-Member -NotePropertyName "townname" -NotePropertyValue $townname
+                $addrExt | Add-Member -NotePropertyName "keyword"  -NotePropertyValue $Keyword
+                $addrExt | Add-Member -NotePropertyName "timestamp" -NotePropertyValue $timestamp
+
+                # GPXDocumentにtrkpt追加
+                $doc.AppendTrkPt(@{
+                        lat     = [double]$item.lat
+                        lon     = [double]$item.lon
+                        name    = $item.name
+                        desc    = $item.display_name
+                        address = $addrExt
+                    })
+            }
+            return $doc
+        }
+        catch {
+            Write-Error "キーワード '$Keyword' の処理中にエラーが発生しました: $($_.Exception.Message)"
+            return $null
+        }
+    }
    
     static [GPXDocument] FromCityTowns([string]$Keyword) {
         return [GPXDocumentFactory]::FromCityTowns($Keyword, $false)

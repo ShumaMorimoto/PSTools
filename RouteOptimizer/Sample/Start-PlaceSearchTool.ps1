@@ -15,7 +15,7 @@ function Start-PlaceSearchTool {
 
         # 履歴ファイルがなければ初期化
         if (-not (Test-Path $FilePath)) {
-            $doc = [GPXDocument]::new("PlaceSearchTool", "SearchPlaceLog")
+            $doc = [GPXDocument]::new("PlaceSearchTool", @{name="SearchPlaceLog"})
             $doc.Save($FilePath)
         }
 
@@ -23,7 +23,7 @@ function Start-PlaceSearchTool {
         $doc = [GPXDocument]::Load($FilePath)
 
         # trkptノードを追加（AddTrkPtNodeを利用）
-        $doc.AddTrkPtNode($Trkpt)
+        $doc.AppendTrkPt($Trkpt)
 
         # 保存
         $doc.Save($FilePath)

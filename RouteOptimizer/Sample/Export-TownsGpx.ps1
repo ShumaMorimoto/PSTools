@@ -12,20 +12,20 @@ param (
 )
 
 # ① 町字一覧を取得
-$gpxXml = Get-CityTowns -Keyword $Keyword
+$gpxXml = [GPXDocumentFactory]::FromCityTowns($Keyword)
 if (-not $gpxXml) {
     Write-Warning "❌ 町字が取得できませんでした。GPXファイルは生成されません。"
     return
 }
 
 # ② 拠点取得
-$trkpts = $gpxXml.GetTrkPt()
+$trkpts = $gpxXml.GetTrkPts()
 
 # 並び替え
 $optimized = Optimize-AreaRoute -Places $trkpts
 
 # 再構築
-$gpxXml.SetTrkPt($optimized)
+$gpxXml.SetTrkPts($optimized)
 
 # ④ ファイルに保存
 try {

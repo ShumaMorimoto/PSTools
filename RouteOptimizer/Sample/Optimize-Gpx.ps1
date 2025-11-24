@@ -13,13 +13,13 @@ try {
     $gpxDoc = [GPXDocument]::Load($InputGpxPath)
 
     # ② 拠点取得
-    $trkpts = $gpxDoc.GetTrkPt()
+    $trkpts = $gpxDoc.GetTrkPts()
 
     # ③ 並び替え
     $optimized = Optimize-AreaRoute -Places $trkpts
 
     # ④ 再構築
-    $gpxDoc.SetTrkPt($optimized)
+    $gpxDoc.SetTrkPts($optimized)
 
     # ⑥ 保存
     $gpxDoc.Save($OutputGpxPath)

@@ -16,7 +16,7 @@ if (-not (Test-Path $InputFile)) {
 try {
     # ① GPX読み込み
     $gpxDoc = [GPXDocument]::Load($InputFile)
-    $trkpts = $gpxDoc.GetTrkPt()
+    $trkpts = $gpxDoc.GetTrkPts()
     if (-not $trkpts -or $trkpts.Count -lt 2) {
         Write-Warning "trkptが不足しています。分割できません。"
         exit 1
@@ -35,7 +35,7 @@ try {
         $newDoc = [GPXDocument]::LoadXml($gpxDoc.OuterXml)
 
         # 拠点を再設定（内部でUpdateStatsが呼ばれる）
-        $newDoc.SetTrkPt($trkptNodes)
+        $newDoc.SetTrkPts($trkptNodes)
 
         # トラック名設定
         $newDoc.SetTrkName("分割 $segmentIndex")
