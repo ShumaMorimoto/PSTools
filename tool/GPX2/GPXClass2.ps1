@@ -1,31 +1,44 @@
 class GPXDocument : System.Xml.XmlDocument {
+    hidden static $creator = "GPXDocument クラス"
+    hidden static [string] $GpxNamespace = "http://www.topografix.com/GPX/1/1"
     hidden static [System.Xml.XmlNamespaceManager] $NamespaceManager
 
+    # 初期化: 名前空間マネージャを設定
     static [void] Initialize([System.Xml.XmlDocument]$doc) {
         if (-not [GPXDocument]::NamespaceManager -and $doc.DocumentElement) {
-            $mgr = [System.Xml.XmlNamespaceManager]::new($doc.NameTable)
-            $mgr.AddNamespace("gpx", $doc.DocumentElement.NamespaceURI)
-            [GPXDocument]::NamespaceManager = $mgr
+            [GPXDocument]::NamespaceManager = [System.Xml.XmlNamespaceManager]::new($doc.NameTable)
+            [GPXDocument]::NamespaceManager.AddNamespace("gpx", $doc.DocumentElement.NamespaceURI)
         }
     }
 
-    GPXDocument() { }
+    GPXDocument() { 
+    }
 
     GPXDocument($rep) {
-        $creator = "GPXDocument クラス"
+        # rep が文字列なら name にラップ、nullなら空ハッシュに
+        if ($rep -is [string]) { $rep = @{ name = $rep } }
+        elseif (-not $rep) { $rep = @{} }
+
         $this.AppendChild($this.CreateXmlDeclaration("1.0", "UTF-8", $null))
-        $gpxRoot = $this.CreateElement("gpx", "http://www.topografix.com/GPX/1/1")
-        $gpxRoot.SetAttribute("version", "1.1")
-        $gpxRoot.SetAttribute("creator", $creator)
+
+        # metadata 用 info を事前加工
+        $metaInfo = [pscustomobject]@{
+            time       = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            name       = $rep.name
+            desc       = $rep.desc
+            extensions = $rep.address
+        }
+        # gpx のルート info
+        $rootInfo = [pscustomobject]@{
+            version  = "1.1"
+            creator  = [GPXDocument]::creator
+            metadata = $metaInfo
+            trk      = @{ trkseg = $null }  # 空タグを info 展開で生成
+        }
+
+        $gpxRoot = $this.CreateElementFromPSO("gpx", $rootInfo, @("version", "creator"))
+        $gpxRoot.SetAttribute("xmlns", [GPXDocument]::GpxNamespace)
         $this.AppendChild($gpxRoot)
-
-        $metadataNode = $this.CreateMetadataElement($rep, $gpxRoot.NamespaceURI)
-        if ($metadataNode) { $gpxRoot.AppendChild($metadataNode) | Out-Null }
-
-        $trk = $this.CreateElement("trk", $gpxRoot.NamespaceURI)
-        $trkseg = $this.CreateElement("trkseg", $gpxRoot.NamespaceURI)
-        $trk.AppendChild($trkseg) | Out-Null
-        $gpxRoot.AppendChild($trk) | Out-Null
 
         [GPXDocument]::Initialize($this)
     }
@@ -35,14 +48,16 @@ class GPXDocument : System.Xml.XmlDocument {
         $doc.Load($path)
         $root = $doc.DocumentElement
         if (-not $root.HasAttribute("version")) { $root.SetAttribute("version", "1.1") }
-        if (-not $root.HasAttribute("xmlns")) { $root.SetAttribute("xmlns", "http://www.topografix.com/GPX/1/1") }
+        if (-not $root.HasAttribute("xmlns")) { $root.SetAttribute("xmlns", [GPXDocument]::GpxNamespace) }
         [GPXDocument]::Initialize($doc)
+
         return $doc
     }
     static [GPXDocument] LoadXml([string]$xml) {
         $doc = [GPXDocument]::new()
         $doc.LoadXml($xml)
         [GPXDocument]::Initialize($doc)
+
         return $doc
     }
 
@@ -57,7 +72,15 @@ class GPXDocument : System.Xml.XmlDocument {
             $trkseg.AppendChild($this.ImportNode($info, $true)) | Out-Null
         }
         else {
-            $trkpt = $this.CreateTrkPtElement($info, $this.DocumentElement.NamespaceURI)
+            # info を組み立てて PSO展開
+            $info = [pscustomobject]@{
+                lat        = $info.lat
+                lon        = $info.lon
+                name       = $info.name
+                desc       = $info.desc
+                extensions = $info.address
+            }
+            $trkpt = $this.CreateElementFromPSO("trkpt", $info, @("lat", "lon"))
             if ($trkpt) { $trkseg.AppendChild($trkpt) | Out-Null }
         }
     }
@@ -80,7 +103,7 @@ class GPXDocument : System.Xml.XmlDocument {
         }
         $totalDistance = 0.0
         for ($i = 0; $i -lt $trackPoints.Count - 1; $i++) {
-            $totalDistance += Get-Distance($trackPoints[$i], $trackPoints[$i + 1])
+            $totalDistance += Get-Distance $trackPoints[$i] $trackPoints[$i + 1]
         }
         return @{
             TotalDistanceKm = [math]::Round($totalDistance, 2)
@@ -91,28 +114,28 @@ class GPXDocument : System.Xml.XmlDocument {
     [void] UpdateStats() {
         $stats = $this.GetStats()
         if (-not $stats) { return }
+
         $trackNode = $this.SelectSingleNode("//gpx:trk", [GPXDocument]::NamespaceManager)
         if (-not $trackNode) { return }
 
         $extensionsNode = $trackNode.SelectSingleNode("gpx:extensions", [GPXDocument]::NamespaceManager)
         if (-not $extensionsNode) {
-            $extensionsNode = $this.CreateElement("extensions", $this.DocumentElement.NamespaceURI)
+            # CreateElementFromPSOでextensionsノードを生成
+            $extensionsNode = $this.CreateElementFromPSO("extensions")
             $trackNode.AppendChild($extensionsNode) | Out-Null
         }
         else {
             $existingStatsNode = $extensionsNode.SelectSingleNode("gpx:stats", [GPXDocument]::NamespaceManager)
             if ($existingStatsNode) { $extensionsNode.RemoveChild($existingStatsNode) | Out-Null }
         }
-        $statsNode = $this.CreateElement("stats", $this.DocumentElement.NamespaceURI)
 
-        $distanceNode = $this.CreateElement("totalDistanceKm", $this.DocumentElement.NamespaceURI)
-        $distanceNode.InnerText = ("{0:F2}" -f $stats.TotalDistanceKm)
-        $statsNode.AppendChild($distanceNode) | Out-Null
+        # statsノードをPSO展開で生成
+        $statsInfo = [pscustomobject]@{
+            totalDistanceKm = ("{0:F2}" -f $stats.TotalDistanceKm)
+            pointCount      = "$($stats.PointCount)"
+        }
 
-        $countNode = $this.CreateElement("pointCount", $this.DocumentElement.NamespaceURI)
-        $countNode.InnerText = "$($stats.PointCount)"
-        $statsNode.AppendChild($countNode) | Out-Null
-
+        $statsNode = $this.CreateElementFromPSO("stats", $statsInfo)
         $extensionsNode.AppendChild($statsNode) | Out-Null
     }
 
@@ -128,55 +151,64 @@ class GPXDocument : System.Xml.XmlDocument {
     }
 
     # ------- 以下エレメント生成ヘルパ -------
-    hidden [System.Xml.XmlElement] CreateMetadataElement($rep, $ns) {
-        $meta = $this.CreateElement("metadata", $ns)
-        $timeNode = $this.CreateElement("time", $ns)
-        $timeNode.InnerText = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-        $meta.AppendChild($timeNode) | Out-Null
-        if ($rep.name) {
-            $nameNode = $this.CreateElement("name", $ns)
-            $nameNode.InnerText = $rep.name
-            $meta.AppendChild($nameNode) | Out-Null
-        }
-        if ($rep.desc) {
-            $descNode = $this.CreateElement("desc", $ns)
-            $descNode.InnerText = $rep.desc
-            $meta.AppendChild($descNode) | Out-Null
-        }
-        if ($rep.address) {
-            $meta.AppendChild($this.CreateExtensionsElement($rep.address, $ns)) | Out-Null
-        }
-        return $meta
+    hidden [System.Xml.XmlElement] CreateElementFromPSO([string]$tagName) {
+        return $this.CreateElementFromPSO($tagName, $null, @())
     }
-    hidden [System.Xml.XmlElement] CreateExtensionsElement($data, $ns) {
-        $ext = $this.CreateElement("extensions", $ns)
-        foreach ($prop in $data.PSObject.Properties) {
-            if ($prop.Value) {
-                $child = $this.CreateElement($prop.Name, $ns)
-                $child.InnerText = $prop.Value
-                $ext.AppendChild($child) | Out-Null
+    hidden [System.Xml.XmlElement] CreateElementFromPSO([string]$tagName, [object]$info) {
+        return $this.CreateElementFromPSO($tagName, $info, @())
+    }
+    hidden [System.Xml.XmlElement] CreateElementFromPSO(
+        [string]$elementName,
+        [object]$pso,
+        [string[]]$attributes
+    ) {
+        $elem = $this.CreateElement($elementName, [GPXDocument]::GpxNamespace)
+
+        if (-not $pso) { return $elem }
+
+        if ($pso -is [hashtable]) {
+            foreach ($kv in $pso.GetEnumerator()) {
+                $name = $kv.Key
+                $value = $kv.Value
+                $this.ProcessPSOProperty($elem, $name, $value, $attributes, [GPXDocument]::GpxNamespace)
             }
         }
-        return $ext
+        else {
+            foreach ($prop in $pso.PSObject.Properties) {
+                $name = $prop.Name
+                $value = $prop.Value
+                $this.ProcessPSOProperty($elem, $name, $value, $attributes, [GPXDocument]::GpxNamespace)
+            }
+        }
+
+        return $elem
     }
-    hidden [System.Xml.XmlElement] CreateTrkPtElement($info, $ns) {
-        $trkpt = $this.CreateElement("trkpt", $ns)
-        if ($info.lat) { $trkpt.SetAttribute("lat", $info.lat) }
-        if ($info.lon) { $trkpt.SetAttribute("lon", $info.lon) }
-        if ($info.name) {
-            $nameNode = $this.CreateElement("name", $ns)
-            $nameNode.InnerText = $info.name
-            $trkpt.AppendChild($nameNode) | Out-Null
+
+    hidden [void] ProcessPSOProperty(
+        [System.Xml.XmlElement]$parent,
+        [string]$name,
+        [object]$value,
+        [string[]]$attributes,
+        [string]$ns
+    ) {
+        if ($attributes -contains $name) {
+            $parent.SetAttribute($name, "$($value ?? '')")
         }
-        if ($info.desc) {
-            $descNode = $this.CreateElement("desc", $ns)
-            $descNode.InnerText = $info.desc
-            $trkpt.AppendChild($descNode) | Out-Null
+        else {
+            if ($null -eq $value) {
+                $child = $this.CreateElement($name, $ns)
+                $parent.AppendChild($child) | Out-Null
+            }
+            elseif ($value -is [hashtable] -or $value -is [PSCustomObject]) {
+                $child = $this.CreateElementFromPSO($name, $value)
+                $parent.AppendChild($child) | Out-Null
+            }
+            else {
+                $child = $this.CreateElement($name, $ns)
+                $child.InnerText = "$value"
+                $parent.AppendChild($child) | Out-Null
+            }
         }
-        if ($info.address) {
-            $trkpt.AppendChild($this.CreateExtensionsElement($info.address, $ns)) | Out-Null
-        }
-        return $trkpt
     }
 }
 
@@ -238,9 +270,9 @@ out body;
             $addr = $res.address
             $town = [GPXDocumentFactory]::_GenTownName($addr)
             $enriched = $addr.PSObject.Copy()
-            $enriched | Add-Member -NotePropertyName townname -Value $town -Force
-            $enriched | Add-Member -NotePropertyName keyword -Value $Keyword -Force
-            $enriched | Add-Member -NotePropertyName timestamp -Value $now -Force
+            $enriched | Add-Member -NotePropertyName "townname" -NotePropertyValue $town -Force
+            $enriched | Add-Member -NotePropertyName "keyword" -NotePropertyValue $Keyword -Force
+            $enriched | Add-Member -NotePropertyName "timstamp" -NotePropertyValue $now -Force
             $gpx.AppendTrkPt(@{
                     lat     = [double]$res.lat
                     lon     = [double]$res.lon
@@ -285,14 +317,27 @@ out body;
 
     #region Hidden/Private Helper Methods
 
-    hidden static [object] InvokeWithRetry([scriptblock]$act, [int]$MaxRetry = 5, [int]$DelaySec = 3) {
-        $last = $null
+    hidden static [object] InvokeWithRetry(
+        [scriptblock]$act,
+        [int]$MaxRetry = 5,
+        [int]$DelaySec = 3
+    ) {
+        [Exception]$last = $null
         for ($i = 1; $i -le $MaxRetry; $i++) {
-            try { return $act.Invoke() }
-            catch { $last = $_; if ($i -lt $MaxRetry) { Start-Sleep -Seconds $DelaySec } }
+            try {
+                return & $act   # 成功したら必ず return
+            }
+            catch {
+                $last = $_.Exception
+                if ($i -lt $MaxRetry) {
+                    Start-Sleep -Seconds $DelaySec
+                }
+            }
         }
-        if ($last) { throw $last }
+        # ここまで来たら全て失敗
+        throw $last ?? [System.Exception]::new("InvokeWithRetry failed after $MaxRetry attempts.")
     }
+    
     hidden static [hashtable] _ResolveCenterPoint([string]$Keyword, [bool]$MunicipalityOnly) {
         if ($Keyword -match '^\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$') {
             $lat = [double]$matches[1]; $lon = [double]$matches[3]
@@ -311,6 +356,7 @@ out body;
         for ($i = 0; $i -lt $candidates.Count; $i++) {
             Write-Host ("{0,2}: {1}" -f ($i + 1), $candidates[$i].display_name)
         }
+        $sel = $null
         do {
             $sel = Read-Host "番号 (1-$($candidates.Count)) or 'q' to quit"
             if ($sel -eq 'q') { return $null }
@@ -319,7 +365,11 @@ out body;
     }
     hidden static [object[]] _InvokeOverpassQuery([string]$query) {
         try {
-            $result = [GPXDocumentFactory]::InvokeWithRetry({ Invoke-RestMethod -Uri ([GPXDocumentFactory]::OverpassUrl) -Method Post -Body $query -Headers ([GPXDocumentFactory]::ApiHeaders) })
+            $result = [GPXDocumentFactory]::InvokeWithRetry(
+                { Invoke-RestMethod -Uri ([GPXDocumentFactory]::OverpassUrl) -Method Post -Body $query -Headers ([GPXDocumentFactory]::ApiHeaders) },
+                5,
+                3
+            )
             return @($result.elements)
         }
         catch {
@@ -357,9 +407,11 @@ out body;
         $enc = [System.Web.HttpUtility]::UrlEncode($Keyword)
         $uri = "https://nominatim.openstreetmap.org/search?q=$enc&format=json&addressdetails=1&limit=50&countrycodes=jp"
         try {
-            $res = [GPXDocumentFactory]::InvokeWithRetry({
-                    Invoke-RestMethod -Uri $uri -Method Get -Headers ([GPXDocumentFactory]::ApiHeaders)
-                })
+            $res = [GPXDocumentFactory]::InvokeWithRetry(
+                { Invoke-RestMethod -Uri $uri -Method Get -Headers ([GPXDocumentFactory]::ApiHeaders) },
+                5,
+                3
+            )
             return @($res)
         }
         catch {

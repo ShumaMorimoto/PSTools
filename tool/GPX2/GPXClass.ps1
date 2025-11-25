@@ -3,9 +3,11 @@
 
     # 初期化: 名前空間マネージャを設定
     static [void] Initialize([System.Xml.XmlDocument]$doc) {
-        if (-not [GPXDocument]::NamespaceManager -and $doc.DocumentElement) {
-            [GPXDocument]::NamespaceManager = [System.Xml.XmlNamespaceManager]::new($doc.NameTable)
-            [GPXDocument]::NamespaceManager.AddNamespace("gpx", $doc.DocumentElement.NamespaceURI)
+        if (-not [GPXDocument]::NamespaceManager) {
+            $mgr = [System.Xml.XmlNamespaceManager]::new($doc.NameTable)
+            # GPX 固定の名前空間を直接登録
+            $mgr.AddNamespace("gpx", "http://www.topografix.com/GPX/1/1")
+            [GPXDocument]::NamespaceManager = $mgr
         }
     }
 
