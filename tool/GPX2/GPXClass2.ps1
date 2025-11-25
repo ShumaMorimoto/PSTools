@@ -221,7 +221,9 @@ class GPXDocumentFactory {
     #endregion 
 
     #region Public Factory Methods
-
+    static [GPXDocument] FromCityTowns([string]$Keyword) {
+        return [GPXDocumentFactory]::FromCityTowns($Keyword, $false)
+    }
     static [GPXDocument] FromCityTowns([string]$Keyword, [bool]$ResolveAddress = $false) {
         $center = [GPXDocumentFactory]::_ResolveCenterPoint($Keyword, $true)
         if (-not $center) { return $null }
@@ -241,6 +243,12 @@ out body;
         [GPXDocumentFactory]::_AddTownsToDoc($gpx, $towns, $ResolveAddress)
         return $gpx
     }
+    static [GPXDocument] FromAreaTowns([string]$Keyword) {
+        return [GPXDocumentFactory]::FromAreaTowns($Keyword, 2, $false)
+    }
+    static [GPXDocument] FromAreaTowns([string]$Keyword, $RadiusKm) {
+        return [GPXDocumentFactory]::FromAreaTowns($Keyword, $RadiusKm, $false)
+    }
     static [GPXDocument] FromAreaTowns([string]$Keyword, [double]$RadiusKm, [bool]$ResolveAddress = $false) {
         $center = [GPXDocumentFactory]::_ResolveCenterPoint($Keyword, $false)
         if (-not $center) { return $null }
@@ -255,8 +263,9 @@ out body;
         [GPXDocumentFactory]::_AddTownsToDoc($gpx, $towns, $ResolveAddress)
         return $gpx
     }
+
     static [GPXDocument] Search([string]$Keyword) {
-        $results = [GPXDocumentFactory]::_InvokeNominatimSearch($Keyword)
+        $results = [GPXDocumentFactory]::_InvokeNominatimSearch($Keyword,100)
         if (-not $results) {
             Write-Warning "結果が得られませんでした"
             return $null
@@ -284,15 +293,13 @@ out body;
         $gpx.UpdateStats()
         return $gpx
     }
-
     #endregion
 
     #region Public Helpers
 
     static [object[]] ResolveKeyword([string]$Keyword, [bool]$MunicipalityOnly) {
-        $params = @{ q = $Keyword; format = 'json'; addressdetails = 1; limit = 7; zoom = 12 }
         try {
-            $result = Invoke-RestMethod -Uri ([GPXDocumentFactory]::NominatimSearchUrl) -Method Get -Body $params -Headers ([GPXDocumentFactory]::ApiHeaders)
+            $result = [GPXDocumentFactory]::_InvokeNominatimSearch($Keyword,20)
             if ($MunicipalityOnly) {
                 return @($result | Where-Object { $_.addresstype -in @("city", "town", "village", "suburb", "municipality") })
             }
@@ -313,6 +320,7 @@ out body;
             Write-Warning "逆引き失敗: $($_.Exception.Message)"; return $null
         }
     }
+
     #endregion
 
     #region Hidden/Private Helper Methods
@@ -403,15 +411,11 @@ out body;
         }
         $gpx.UpdateStats()
     }
-    hidden static [object[]] _InvokeNominatimSearch([string]$Keyword) {
+    hidden static [object[]] _InvokeNominatimSearch([string]$Keyword, [int]$Limit) {
         $enc = [System.Web.HttpUtility]::UrlEncode($Keyword)
-        $uri = "https://nominatim.openstreetmap.org/search?q=$enc&format=json&addressdetails=1&limit=50&countrycodes=jp"
+        $uri = "{0}?q={1}&format=json&addressdetails=1&limit={2}&countrycodes=jp" -f [GPXDocumentFactory]::NominatimSearchUrl, $enc, $Limit
         try {
-            $res = [GPXDocumentFactory]::InvokeWithRetry(
-                { Invoke-RestMethod -Uri $uri -Method Get -Headers ([GPXDocumentFactory]::ApiHeaders) },
-                5,
-                3
-            )
+            $res = Invoke-RestMethod -Uri $uri -Method Get -Headers ([GPXDocumentFactory]::ApiHeaders)
             return @($res)
         }
         catch {
