@@ -274,7 +274,11 @@ node(area.a)["place"~"^(neighbourhood|quarter)$"];
 out body;
 "@
         $towns = [GPXDocumentFactory]::_InvokeOverpassQuery($query)
-        [GPXDocumentFactory]::_AddTownsToDoc($gpx, $towns, $ResolveAddress)
+
+        $elapsed = Measure-Command {
+            [GPXDocumentFactory]::_AddTownsToDoc($gpx, $towns, $ResolveAddress)
+        }
+        Write-Host ("_AddTownsToDoc 実行時間: {0} 秒" -f $elapsed.TotalSeconds)
         return $gpx
     }
     static [GPXDocument] FromAreaTowns([string]$Keyword) {
@@ -330,46 +334,78 @@ out body;
         if (-not $gpx) { throw "GPXDocumentが指定されていません。" }
 
         $trkpts = $gpx.GetTrkPts()
-        if (-not $trkpts -or $trkpts.Count -eq 0) { return $null}
+        if (-not $trkpts -or $trkpts.Count -eq 0) { return $null }
 
-        foreach ($pt in $trkpts) {
-            # 住所取得（必要に応じてレート制限のために短いスリープ）
-            Start-Sleep -Milliseconds 250
-            $rev = [GPXDocumentFactory]::ResolveLocation($pt.lat, $pt.lon)
-            if (-not $rev -or -not $rev.address) { continue }
+        # 住所解決は並列関数に集約
+        $resolved = [GPXDocumentFactory]::ResolveLocationsParallel($trkpts)
 
-            # (1) extensions を置換（既存があれば削除 → 新規作成）
+        foreach ($r in $resolved) {
+            $pt = $r.item
+            $res = $r.result
+            if (-not $res -or -not $res.address) { continue }
+
+            # (1) extensions を置換
             $extNodeOld = $pt.SelectSingleNode("gpx:extensions", [GPXDocument]::NamespaceManager)
             if ($extNodeOld) { $pt.RemoveChild($extNodeOld) | Out-Null }
-
-            $extNode = $gpx.CreateElementFromPSO("extensions", @{extensions = $rev.address})
-            # 完成した extensions を trkpt に追加
+            $extNode = $gpx.CreateElementFromPSO("extensions", $res.address)
             $pt.AppendChild($extNode) | Out-Null
 
-            # (2) name が無ければ補完（既存は尊重）
+            # (2) name 補完
             $nameNode = $pt.SelectSingleNode("gpx:name", [GPXDocument]::NamespaceManager)
             if (-not $nameNode) {
                 $nameNode = $gpx.CreateElement("name", [GPXDocument]::GpxNamespace)
                 $pt.AppendChild($nameNode) | Out-Null
             }
-            if ([string]::IsNullOrWhiteSpace($nameNode.InnerText) -and $rev.name) {
-                $nameNode.InnerText = $rev.name
+            if ([string]::IsNullOrWhiteSpace($nameNode.InnerText) -and $res.name) {
+                $nameNode.InnerText = $res.name
             }
 
-            # (3) desc が無ければ補完（既存は尊重）
+            # (3) desc 補完
             $descNode = $pt.SelectSingleNode("gpx:desc", [GPXDocument]::NamespaceManager)
             if (-not $descNode) {
                 $descNode = $gpx.CreateElement("desc", [GPXDocument]::GpxNamespace)
                 $pt.AppendChild($descNode) | Out-Null
             }
-            if ([string]::IsNullOrWhiteSpace($descNode.InnerText) -and $rev.desc) {
-                $descNode.InnerText = $rev.desc
+            if ([string]::IsNullOrWhiteSpace($descNode.InnerText) -and $res.display_name) {
+                $descNode.InnerText = $res.display_name
             }
         }
-        # 距離は座標から計算されるため、最後に統計更新
+
         $gpx.UpdateStats()
+        return $gpx
     }
     #endregion
+
+    #region --- 町字ノード追加ロジック ---
+
+    hidden static [object[]] ResolveLocationsParallel([object[]]$items) {
+        if (-not $items -or $items.Count -eq 0) { return @() }
+
+        $results = $items | ForEach-Object -Parallel {
+            $lat = [double]$_.lat
+            $lon = [double]$_.lon
+
+            $uri = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json&addressdetails=1"
+            try {
+                $res = Invoke-RestMethod -Uri $uri -Headers @{ "User-Agent" = "PowerShell-GPXFactory-Client/1.0" }
+                return @{
+                    item   = $_      # 元の要素を保持
+                    result = $res    # 呼び出し側で加工する
+                }
+            }
+            catch {
+                Write-Warning "逆引き失敗: $($_.Exception.Message)"
+                return @{
+                    item   = $_
+                    result = $null
+                }
+            }
+        } -ThrottleLimit 5   # ← 入力には含めず、内部で固定値を指定
+
+        return @($results)
+    }
+
+    #endregion --- 町字ノード追加ロジック ---
 
     #region Public Helpers
 
@@ -387,16 +423,31 @@ out body;
         }
     }
     static [hashtable] ResolveLocation([double]$lat, [double]$lon) {
-        $uri = "{0}?lat={1}&lon={2}&format=json&addressdetails=1" -f [GPXDocumentFactory]::NominatimReverseUrl, $lat, $lon
-        try {
-            $res = Invoke-RestMethod -Uri $uri -Headers ([GPXDocumentFactory]::ApiHeaders)
-            return @{ lat = $lat; lon = $lon; name = $res.name; desc = $res.display_name; address = $res.address }
-        }
-        catch {
-            Write-Warning "逆引き失敗: $($_.Exception.Message)"; return $null
+        $items = @(@{ lat = $lat; lon = $lon })
+        $resolved = [GPXDocumentFactory]::ResolveLocationsParallel($items)
+        if (-not $resolved -or $resolved.Count -eq 0) { return $null }
+
+        $r = $resolved[0].result
+        if (-not $r) { return $null }
+
+        return @{
+            lat     = $lat
+            lon     = $lon
+            name    = $r.name
+            desc    = $r.display_name
+            address = $r.address
         }
     }
-
+    #    static [hashtable] ResolveLocation([double]$lat, [double]$lon) {
+    #        $uri = "{0}?lat={1}&lon={2}&format=json&addressdetails=1" -f [GPXDocumentFactory]::NominatimReverseUrl, $lat, $lon
+    #        try {
+    #            $res = Invoke-RestMethod -Uri $uri -Headers ([GPXDocumentFactory]::ApiHeaders)
+    #            return @{ lat = $lat; lon = $lon; name = $res.name; desc = $res.display_name; address = $res.address }
+    #        }
+    #        catch {
+    #            Write-Warning "逆引き失敗: $($_.Exception.Message)"; return $null
+    #        }
+    #    }
     #endregion
 
     #region Hidden/Private Helper Methods
@@ -473,15 +524,45 @@ out body;
         if (-not $rel) { return $null }
         return 3600000000 + $rel.id
     }
+    #    hidden static [void] _AddTownsToDoc([GPXDocument]$gpx, [object[]]$towns, [bool]$resolveAddr) {
+    #        if (-not $towns) { return }
+    #        foreach ($t in $towns) {
+    #            if (-not $t.tags.name) { continue }
+    #            $info = @{lat = [double]$t.lat; lon = [double]$t.lon; name = $t.tags.name; desc = $t.tags.name; extensions = $null }
+    #            if ($resolveAddr) {
+    #                Start-Sleep -Milliseconds 250
+    #                $rev = [GPXDocumentFactory]::ResolveLocation($info.lat, $info.lon)
+    #                if ($rev) { $info.desc = $rev.desc; $info.extensions = $rev.address }
+    #            }
+    #            $gpx.AppendTrkPt($info)
+    #        }
+    #        $gpx.UpdateStats()
+    #    }
+
     hidden static [void] _AddTownsToDoc([GPXDocument]$gpx, [object[]]$towns, [bool]$resolveAddr) {
         if (-not $towns) { return }
-        foreach ($t in $towns) {
+
+        # 住所解決ありなら並列関数を呼ぶ、なしならダミーを作る
+        $resolved = if ($resolveAddr) {
+            [GPXDocumentFactory]::ResolveLocationsParallel($towns)
+        }
+        else {
+            $towns | ForEach-Object { @{ item = $_; result = $null } }
+        }
+        foreach ($r in $resolved) {
+            $t = $r.item
             if (-not $t.tags.name) { continue }
-            $info = @{lat = [double]$t.lat; lon = [double]$t.lon; name = $t.tags.name; desc = $t.tags.name; extensions = $null }
-            if ($resolveAddr) {
-                Start-Sleep -Milliseconds 250
-                $rev = [GPXDocumentFactory]::ResolveLocation($info.lat, $info.lon)
-                if ($rev) { $info.desc = $rev.desc; $info.extensions = $rev.address }
+
+            $info = @{
+                lat     = [double]$t.lat
+                lon     = [double]$t.lon
+                name    = $t.tags.name
+                desc    = $t.tags.name
+                address = $null
+            }
+            if ($r.result) {
+                if ($r.result.display_name) { $info.desc = $r.result.display_name }
+                if ($r.result.address) { $info.address = $r.result.address }
             }
             $gpx.AppendTrkPt($info)
         }

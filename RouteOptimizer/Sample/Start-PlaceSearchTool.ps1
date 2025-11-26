@@ -15,7 +15,7 @@ function Start-PlaceSearchTool {
 
         # 履歴ファイルがなければ初期化
         if (-not (Test-Path $FilePath)) {
-            $doc = [GPXDocument]::new("PlaceSearchTool", @{name="SearchPlaceLog"})
+            $doc = [GPXDocument]::new("SearchPlaceLog")
             $doc.Save($FilePath)
         }
 

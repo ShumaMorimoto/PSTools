@@ -12,14 +12,8 @@ try {
     # ① GPX読み込み
     $gpxDoc = [GPXDocument]::Load($InputGpxPath)
 
-    # ② 拠点取得
-    $trkpts = $gpxDoc.GetTrkPt()
-
     # ③ 拠点情報付加
-    $newtrkpts = ($trkpts | Get-PlaceInfo)
-
-    # ④ 再構築
-    $gpxDoc.SetTrkPt($newtrkpts)
+    $gpxDoc = [GPXDocumentFactory]::EnrichTrkPts($gpxDoc)
 
     # ⑥ 保存
     $gpxDoc.Save($OutputGpxPath)

@@ -13,8 +13,11 @@
         Write-Warning "❌ 拠点リストが空です。"
         return @()
     }
-
-    if (-not $StartLocation) {
+ 
+    if ($RouteMode -eq "Free") {
+        $targets = $Places
+        $prependStart = $false
+    } elseif (-not $StartLocation) {
         $StartLocation = $Places[0]
         $targets = if ($Places.Count -gt 1) { $Places[1..($Places.Count - 1)] } else { @() }
         $prependStart = $true
