@@ -43,6 +43,40 @@ class GPXDocument : System.Xml.XmlDocument {
         [GPXDocument]::Initialize($this)
     }
 
+    static [GPXDocument] LoadKmlFile([string]$path) {
+        if (-not (Test-Path $path)) {
+            throw "KMLファイルが見つかりません: $path"
+        }
+        $xml = [xml](Get-Content $path -Raw)
+        return [GPXDocumentFactory]::FromKmlXml($xml)
+    }
+    static [GPXDocument] FromKmlXml([System.Xml.XmlDocument]$xmlDoc) {
+        $placemarks = $xmlDoc.SelectNodes("//Placemark")
+        $gpx = [GPXDocument]::new(@{
+                name = "Converted from KML"
+                desc = "KML source document"
+            })
+
+        foreach ($pm in $placemarks) {
+            $name = $pm.SelectSingleNode("name")?.InnerText
+            $coordText = $pm.SelectSingleNode("Point/coordinates")?.InnerText
+            if (-not $coordText) { continue }
+
+            $parts = $coordText.Trim() -split ","
+            $lon = [double]$parts[0]
+            $lat = [double]$parts[1]
+
+            $gpx.AppendTrkPt(@{
+                    lat  = $lat
+                    lon  = $lon
+                    name = $name
+                    desc = $pm.SelectSingleNode("description")?.InnerText
+                })
+        }
+        $gpx.UpdateStats()
+        return $gpx
+    }
+
     static [GPXDocument] Load([string]$path) {
         $doc = [GPXDocument]::new()
         $doc.Load($path)
@@ -265,7 +299,7 @@ out body;
     }
 
     static [GPXDocument] Search([string]$Keyword) {
-        $results = [GPXDocumentFactory]::_InvokeNominatimSearch($Keyword,100)
+        $results = [GPXDocumentFactory]::_InvokeNominatimSearch($Keyword, 100)
         if (-not $results) {
             Write-Warning "結果が得られませんでした"
             return $null
@@ -290,8 +324,50 @@ out body;
                     address = $enriched
                 })
         }
-        $gpx.UpdateStats()
         return $gpx
+    }
+    static [GPXDocument] EnrichTrkPts([GPXDocument]$gpx) {
+        if (-not $gpx) { throw "GPXDocumentが指定されていません。" }
+
+        $trkpts = $gpx.GetTrkPts()
+        if (-not $trkpts -or $trkpts.Count -eq 0) { return $null}
+
+        foreach ($pt in $trkpts) {
+            # 住所取得（必要に応じてレート制限のために短いスリープ）
+            Start-Sleep -Milliseconds 250
+            $rev = [GPXDocumentFactory]::ResolveLocation($pt.lat, $pt.lon)
+            if (-not $rev -or -not $rev.address) { continue }
+
+            # (1) extensions を置換（既存があれば削除 → 新規作成）
+            $extNodeOld = $pt.SelectSingleNode("gpx:extensions", [GPXDocument]::NamespaceManager)
+            if ($extNodeOld) { $pt.RemoveChild($extNodeOld) | Out-Null }
+
+            $extNode = $gpx.CreateElementFromPSO("extensions", @{extensions = $rev.address})
+            # 完成した extensions を trkpt に追加
+            $pt.AppendChild($extNode) | Out-Null
+
+            # (2) name が無ければ補完（既存は尊重）
+            $nameNode = $pt.SelectSingleNode("gpx:name", [GPXDocument]::NamespaceManager)
+            if (-not $nameNode) {
+                $nameNode = $gpx.CreateElement("name", [GPXDocument]::GpxNamespace)
+                $pt.AppendChild($nameNode) | Out-Null
+            }
+            if ([string]::IsNullOrWhiteSpace($nameNode.InnerText) -and $rev.name) {
+                $nameNode.InnerText = $rev.name
+            }
+
+            # (3) desc が無ければ補完（既存は尊重）
+            $descNode = $pt.SelectSingleNode("gpx:desc", [GPXDocument]::NamespaceManager)
+            if (-not $descNode) {
+                $descNode = $gpx.CreateElement("desc", [GPXDocument]::GpxNamespace)
+                $pt.AppendChild($descNode) | Out-Null
+            }
+            if ([string]::IsNullOrWhiteSpace($descNode.InnerText) -and $rev.desc) {
+                $descNode.InnerText = $rev.desc
+            }
+        }
+        # 距離は座標から計算されるため、最後に統計更新
+        $gpx.UpdateStats()
     }
     #endregion
 
@@ -299,7 +375,7 @@ out body;
 
     static [object[]] ResolveKeyword([string]$Keyword, [bool]$MunicipalityOnly) {
         try {
-            $result = [GPXDocumentFactory]::_InvokeNominatimSearch($Keyword,20)
+            $result = [GPXDocumentFactory]::_InvokeNominatimSearch($Keyword, 20)
             if ($MunicipalityOnly) {
                 return @($result | Where-Object { $_.addresstype -in @("city", "town", "village", "suburb", "municipality") })
             }
@@ -401,11 +477,11 @@ out body;
         if (-not $towns) { return }
         foreach ($t in $towns) {
             if (-not $t.tags.name) { continue }
-            $info = @{lat = [double]$t.lat; lon = [double]$t.lon; name = $t.tags.name; desc = $t.tags.name; address = $null }
+            $info = @{lat = [double]$t.lat; lon = [double]$t.lon; name = $t.tags.name; desc = $t.tags.name; extensions = $null }
             if ($resolveAddr) {
                 Start-Sleep -Milliseconds 250
                 $rev = [GPXDocumentFactory]::ResolveLocation($info.lat, $info.lon)
-                if ($rev) { $info.desc = $rev.desc; $info.address = $rev.address }
+                if ($rev) { $info.desc = $rev.desc; $info.extensions = $rev.address }
             }
             $gpx.AppendTrkPt($info)
         }
