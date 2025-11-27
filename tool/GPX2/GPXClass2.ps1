@@ -337,7 +337,7 @@ out body;
         if (-not $trkpts -or $trkpts.Count -eq 0) { return $null }
 
         # 住所解決は並列関数に集約
-        $resolved = [GPXDocumentFactory]::ResolveLocationsParallel($trkpts)
+        $resolved = [GPXDocumentFactory]::ResolveLocations($trkpts)
 
         foreach ($r in $resolved) {
             $pt = $r.item
@@ -377,31 +377,53 @@ out body;
     #endregion
 
     #region --- 町字ノード追加ロジック ---
+    static [object[]] ResolveLocations([object[]]$items) {
+        # 静的プロパティの値をローカル変数にコピー
+        $urlTemplate = "$([GPXDocumentFactory]::NominatimReverseUrl)?lat={0}&lon={1}&format=json&addressdetails=1"
+        $headers = [GPXDocumentFactory]::ApiHeaders
 
-    hidden static [object[]] ResolveLocationsParallel([object[]]$items) {
-        if (-not $items -or $items.Count -eq 0) { return @() }
+        if ($items.Count -gt 1) {
+            # --- 並列実行 ---
+            Write-Verbose "実行モード: 並列 ($($items.Count)件)"
+            
+            $results = $items | ForEach-Object -Parallel {
+                # $processScriptBlockの内容をここに展開
+                $lat = [double]$_.'lat'; $lon = [double]$_.'lon'               
+                $uri = $using:urlTemplate -f $lat, $lon
 
-        $results = $items | ForEach-Object -Parallel {
-            $lat = [double]$_.lat
-            $lon = [double]$_.lon
+                try {
+                    $res = Invoke-RestMethod -Uri $uri -Headers $using:headers
+                    [PSCustomObject]@{ item = $_; result = $res }
+                } 
+                catch {
+                    # Write-Warning は並列処理ではコンソールに順序通り表示されないことがある
+                    # エラー情報を返す方がより堅牢
+                    [PSCustomObject]@{ item = $_; result = $null; error = "逆引き失敗: $($_.Exception.Message)" }
+                }
+            } -ThrottleLimit 5
+        }
+        else {
+            # --- 直列実行 ---
+            Write-Verbose "実行モード: 直列 (1件)"
 
-            $uri = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json&addressdetails=1"
-            try {
-                $res = Invoke-RestMethod -Uri $uri -Headers @{ "User-Agent" = "PowerShell-GPXFactory-Client/1.0" }
-                return @{
-                    item   = $_      # 元の要素を保持
-                    result = $res    # 呼び出し側で加工する
+            # 直列の場合は共通スクリプトブロック化が可能なので、再利用性のために定義する
+            $processScriptBlock = {
+                param($item) # 引数を$itemのみに限定
+                $lat = [double]$item.lat; $lon = [double]$item.lon
+                $uri = $urlTemplate -f $lat, $lon # $using不要
+                try {
+                    $res = Invoke-RestMethod -Uri $uri -Headers $headers # $using不要
+                    [PSCustomObject]@{ item = $item; result = $res }
+                }
+                catch {
+                    Write-Warning "逆引き失敗 (Lat: $lat, Lon: $lon): $($_.Exception.Message)"
+                    [PSCustomObject]@{ item = $item; result = $null }
                 }
             }
-            catch {
-                Write-Warning "逆引き失敗: $($_.Exception.Message)"
-                return @{
-                    item   = $_
-                    result = $null
-                }
-            }
-        } -ThrottleLimit 5   # ← 入力には含めず、内部で固定値を指定
-
+            # $itemsは1件しかないのでパイプラインでも直接呼び出しでも良い
+            $results = @(& $processScriptBlock -item $items[0])
+        }
+ 
         return @($results)
     }
 
@@ -423,11 +445,10 @@ out body;
         }
     }
     static [hashtable] ResolveLocation([double]$lat, [double]$lon) {
-        $items = @(@{ lat = $lat; lon = $lon })
-        $resolved = [GPXDocumentFactory]::ResolveLocationsParallel($items)
+        $resolved = [GPXDocumentFactory]::ResolveLocations( @{ lat = $lat; lon = $lon })
         if (-not $resolved -or $resolved.Count -eq 0) { return $null }
 
-        $r = $resolved[0].result
+        $r = $resolved.result
         if (-not $r) { return $null }
 
         return @{
@@ -438,17 +459,6 @@ out body;
             address = $r.address
         }
     }
-    #    static [hashtable] ResolveLocation([double]$lat, [double]$lon) {
-    #        $uri = "{0}?lat={1}&lon={2}&format=json&addressdetails=1" -f [GPXDocumentFactory]::NominatimReverseUrl, $lat, $lon
-    #        try {
-    #            $res = Invoke-RestMethod -Uri $uri -Headers ([GPXDocumentFactory]::ApiHeaders)
-    #            return @{ lat = $lat; lon = $lon; name = $res.name; desc = $res.display_name; address = $res.address }
-    #        }
-    #        catch {
-    #            Write-Warning "逆引き失敗: $($_.Exception.Message)"; return $null
-    #        }
-    #    }
-    #endregion
 
     #region Hidden/Private Helper Methods
 
@@ -544,7 +554,7 @@ out body;
 
         # 住所解決ありなら並列関数を呼ぶ、なしならダミーを作る
         $resolved = if ($resolveAddr) {
-            [GPXDocumentFactory]::ResolveLocationsParallel($towns)
+            [GPXDocumentFactory]::ResolveLocations($towns)
         }
         else {
             $towns | ForEach-Object { @{ item = $_; result = $null } }
