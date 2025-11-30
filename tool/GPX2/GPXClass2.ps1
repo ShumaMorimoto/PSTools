@@ -110,11 +110,12 @@ class GPXDocument : System.Xml.XmlDocument {
             $info = [pscustomobject]@{
                 lat        = $info.lat
                 lon        = $info.lon
+                muitiRoute = 1
                 name       = $info.name
                 desc       = $info.desc
                 extensions = $info.address
             }
-            $trkpt = $this.CreateElementFromPSO("trkpt", $info, @("lat", "lon"))
+            $trkpt = $this.CreateElementFromPSO("trkpt", $info, @("lat", "lon", "muitiRoute"))
             if ($trkpt) { $trkseg.AppendChild($trkpt) | Out-Null }
         }
     }
@@ -183,6 +184,43 @@ class GPXDocument : System.Xml.XmlDocument {
         }
         $nameNode.InnerText = $trackName
     }
+
+    static [string] GetTownName([System.Xml.XmlElement]$trkpt) {
+        return [GPXDocument]::GetTownName($trkpt, 1)
+    }
+    static [string] GetTownName([System.Xml.XmlElement]$trkpt, [int]$level = 1) {
+        if (-not $trkpt.extensions) { return "Unknown" }
+
+        # 値を文字列化（XmlElement対応）
+        function Get-Text($x) {
+            if ($x -is [System.Xml.XmlElement]) { return $x.InnerText }
+            else { return $x }
+        }
+
+        $province = Get-Text $trkpt.extensions.province
+        $county = Get-Text $trkpt.extensions.county
+        $city = Get-Text $trkpt.extensions.city
+        $town = Get-Text $trkpt.extensions.town
+        $village = Get-Text $trkpt.extensions.village
+        $suburb = Get-Text $trkpt.extensions.suburb
+        $quarter = Get-Text $trkpt.extensions.quarter
+        $neigh = Get-Text $trkpt.extensions.neighbourhood
+
+        switch ($level) {
+            0 { return ($province + $county + $city + $town + $village + $suburb + $quarter + $neigh) }
+            1 { return ($county + $city + $town + $village) }
+            2 {
+                if ($suburb) { return $suburb }
+                elseif ($county -or $town -or $village) { return ($county + $town + $village) }
+                elseif ($city) { return $city }
+                else { return "Unknown" }
+            }
+            3 { return ($county + $city + $town + $village + $suburb + $quarter + $neigh) }
+            default { return "Unknown" }
+        }
+        return "Unknown"
+    }
+
 
     # ------- 以下エレメント生成ヘルパ -------
     hidden [System.Xml.XmlElement] CreateElementFromPSO([string]$tagName) {
@@ -315,15 +353,13 @@ out body;
         $now = (Get-Date).ToString("o")
         foreach ($res in $results) {
             $addr = $res.address
-            $town = [GPXDocumentFactory]::_GenTownName($addr)
             $enriched = $addr.PSObject.Copy()
-            $enriched | Add-Member -NotePropertyName "townname" -NotePropertyValue $town -Force
             $enriched | Add-Member -NotePropertyName "keyword" -NotePropertyValue $Keyword -Force
             $enriched | Add-Member -NotePropertyName "timstamp" -NotePropertyValue $now -Force
             $gpx.AppendTrkPt(@{
                     lat     = [double]$res.lat
                     lon     = [double]$res.lon
-                    name    = $res.name ?? $town
+                    name    = $res.name
                     desc    = $res.display_name
                     address = $enriched
                 })
@@ -589,22 +625,6 @@ out body;
             Write-Warning "Nominatim Search失敗: $($_.Exception.Message)"
             return @()
         }
-    }
-    hidden static [string] _GenTownName([object]$addr) {
-        if (-not $addr) { return "Unknown" }
-        $townArea = $addr.quarter ?? $addr.neighbourhood ?? $addr.suburb ?? $null
-        $municipality = $addr.city ?? $addr.town ?? $addr.village ?? $null
-        $county = $addr.county; $suburb = $addr.suburb
-        if ($municipality -and $townArea) {
-            if ($addr.city -and $suburb) { return "$municipality$suburb$townArea" }
-            elseif ($addr.town -and $county) { return "$county$municipality$townArea" }
-            else { return "$municipality$townArea" }
-        }
-        elseif ($municipality) {
-            if ($county) { return "$county$municipality" }
-            else { return "$municipality" }
-        }
-        else { return "Unknown" }
     }
     #endregion
 }

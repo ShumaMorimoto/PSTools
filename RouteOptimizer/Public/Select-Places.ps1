@@ -20,14 +20,13 @@
     $colSel.Name = "Selected"
     $colSel.HeaderText = "選択"
     $grid.Columns.Add($colSel) | Out-Null
-    $grid.Columns.Add("Order","順番") | Out-Null
+    $grid.Columns.Add("Order","インデックス") | Out-Null
     $grid.Columns.Add("Name","拠点名") | Out-Null
     $grid.Columns.Add("Lat","緯度") | Out-Null
     $grid.Columns.Add("Lon","経度") | Out-Null
     $grid.Columns.Add("Distance","次の拠点までの距離(km)") | Out-Null
 
-    # データ投入
-    $index = 1
+    # データ投入（初期はすべて非選択）
     for ($i=0; $i -lt $Places.Count; $i++) {
         $pt = $Places[$i]
         $lat = [double]$pt.Lat
@@ -39,16 +38,12 @@
             $dist = "{0:N2}" -f (Get-Distance $pt $next)
         }
 
-        $grid.Rows.Add($false, $index, $pt.Name, $lat, $lon, $dist) | Out-Null
-        $index++
+        # 初期値は Selected = $false
+        $grid.Rows.Add($false, $i, $pt.Name, $lat, $lon, $dist) | Out-Null
     }
 
-    # 選択変更イベント
-    $grid.Add_SelectionChanged({
-        foreach ($row in $grid.SelectedRows) {
-            $row.Cells["Selected"].Value = $true
-        }
-    })
+    # 選択変更イベントは削除 → 行選択してもチェックは入らない
+    # ユーザーがチェックボックスを直接操作する仕様にする
 
     $form.Controls.Add($grid)
 
@@ -59,7 +54,7 @@
     $btnOk.Add_Click({
         $form.Tag = foreach ($row in $grid.Rows) {
             if ($row.Cells["Selected"].Value -eq $true) {
-                $Places | Where-Object { $_.Name -eq $row.Cells["Name"].Value }
+                $Places[[int]$row.Cells["Order"].Value]
             }
         }
         $form.Close()

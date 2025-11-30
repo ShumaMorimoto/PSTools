@@ -1,8 +1,7 @@
 ﻿function Generate-NextGeneration {
     param (
         [array]$population,
-        [object]$StartLocation,
-        [string]$RouteMode
+        [object]$StartLocation
     )
 
     $nextGeneration = @()

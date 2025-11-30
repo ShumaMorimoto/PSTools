@@ -5,7 +5,7 @@ param (
     [string]$InputGpxPath,
 
     [Parameter()]
-    [string]$OutputGpxPath = "$($InputGpxPath -replace '\.gpx$', '.optimized.gpx')"
+    [string]$OutputGpxPath = (Get-OutputFilename $InputGpxPath 'optimized')
 )
 
 try {

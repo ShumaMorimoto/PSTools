@@ -16,6 +16,7 @@
  
     if ($RouteMode -eq "Free") {
         $targets = $Places
+        $StartLocation = $null
         $prependStart = $false
     } elseif (-not $StartLocation) {
         $StartLocation = $Places[0]
@@ -54,7 +55,7 @@
             Get-TotalDistance $_ -StartLocation $StartLocation -RouteMode $RouteMode
         }
 
-        $population = Generate-NextGeneration -population $population -StartLocation $StartLocation -RouteMode $RouteMode
+        $population = Generate-NextGeneration -population $population -StartLocation $StartLocation 
     }
 
     $best = $population[0]

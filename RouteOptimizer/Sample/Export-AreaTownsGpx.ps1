@@ -11,7 +11,7 @@ param (
     [double]$RadiusKm = 2.0,             # 半径 (km)
 
     [Parameter()]
-    [string]$OutputPath = (Join-Path -Path $PWD -ChildPath "【周遊】$Keyword_起点.gpx")
+    [string]$OutputPath = (Join-Path -Path $PWD -ChildPath "【周遊】$($Keyword)_起点.gpx")
 )
 
 # ① 町字一覧を取得

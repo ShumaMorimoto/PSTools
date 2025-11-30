@@ -69,7 +69,7 @@ $psd1Content = $psd1Template `
     -replace '{{Description}}', $description `
     -replace '{{GUID}}', $guid `
     -replace '{{RequiredAssemblies}}', ($requiredAssemblies -join ', ') `
-    -replace '{{FunctionsToExport}}', $functionsToExportBlock
+    -replace '{{FunctionsToExport}}', $functionsToExportBlock 
 
     
     Backup-IfExists $psd1Path

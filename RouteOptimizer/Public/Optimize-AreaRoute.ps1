@@ -32,15 +32,16 @@
     }
 
     # ③ クラスタ順序決定（Nearest Neighbor）
-    $ordered = Optimize-Route $centroids 
+    $ordered = Optimize-Route $centroids -RouteMode "Free"
 
     # ④ クラスタ内ルート最適化（ベース関数使用）
     $finalRoute = @()
     for ($i = 0; $i -lt $ordered.Count; $i++) {
         $cluster = $ordered[$i]
         $start = if ($finalRoute.Count -gt 0) { $finalRoute[-1] } else { $null }
+        $routeMode = if ($finalRoute.Count -gt 0){"Open" } else { "Free" }
 
-        $optimized = Optimize-Route -Places $cluster.Points -StartLocation $start -RouteMode "Open" `
+        $optimized = Optimize-Route -Places $cluster.Points -StartLocation $start -RouteMode $routeMode `
             -PopulationSize 10 -Generations 50
 
         $finalRoute += $optimized
