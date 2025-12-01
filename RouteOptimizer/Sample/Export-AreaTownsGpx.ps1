@@ -24,6 +24,19 @@ if (-not $gpxXml) {
 # ② 拠点取得
 $trkpts = $gpxXml.GetTrkPts()
 
+# ② trkptタグに multiLocation="1" を追加
+foreach ($trkpt in $trkpts) {
+    # 既に属性がある場合は上書き、なければ追加
+    if ($trkpt.Attributes["muitiRoute"]) {
+        $trkpt.Attributes["muitiRoute"].Value = $muitiRoute
+    }
+    else {
+        $attr = $gpxXml.CreateAttribute("muitiRoute")
+        $attr.Value = "1"
+        $trkpt.Attributes.Append($attr) | Out-Null
+    }
+}
+
 # 並び替え
 $optimized = Optimize-AreaRoute -Places $trkpts
 

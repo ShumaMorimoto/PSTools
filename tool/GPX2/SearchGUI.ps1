@@ -38,8 +38,8 @@ function Start-KeywordListGui {
     $label.FontSize = 18
     $stack.Children.Add($label)
 
-    # キーワード入力用 ComboBox
-    $keywordBox = New-AutoCompleteComboBox -Name "keyword"
+    # キーワード入力用 ComboBox（New-SearchComboを利用）
+    $keywordBox = New-SearchCombo -Name "keyword"
     $stack.Children.Add($keywordBox)
 
     # 検索ボタン
@@ -83,7 +83,7 @@ function Start-KeywordListGui {
                     住所     = [GPXDocument]::GetTownName($_, 3)
                     緯度     = $_.lat
                     経度     = $_.lon
-                    _trkpt = $_
+                    _trkpt   = $_
                 }
             }
             $datagrid.ItemsSource = $results
@@ -98,10 +98,9 @@ function Start-KeywordListGui {
                     keyword  = $keyword
                     selected = @(@{ lat = $trkpt.lat; lon = $trkpt.lon })
                 }
-                $keywordBox.Tag.AddHistory.Invoke($keywordBox, $entry)
+                $keywordBox.Tag.AddHistory.Invoke($entry)
 
                 [System.Windows.MessageBox]::Show("検索結果が1件のため自動コピーしました: $text", "結果")
-                # ← returnせずにGridに表示する
             }
         }
         catch {
@@ -109,50 +108,33 @@ function Start-KeywordListGui {
         }
     }
 
+    # Entered に検索アクションを登録
+    $keywordBox.Tag.Entered = {
+        param($kw)
+        & $searchAction $kw
+    }
+
     # ボタンクリックで検索
     $searchBtn.Add_Click({ & $searchAction $keywordBox.Text })
 
-    # Enterキーで検索（内部TextBoxに付与）
-    $keywordBox.Add_Loaded({
-            param($sender, $args)
-            $sender.ApplyTemplate()
-            $editable = $sender.Template.FindName("PART_EditableTextBox", $sender)
-            if ($editable) {
-                $editable.Add_KeyDown({
-                        if ($_.Key -eq "Enter") {
-                            $sender.IsDropDownOpen = $false
-                            & $searchAction $sender.Text
-                            $_.Handled = $true
-                        }
-                    })
-            }
-        })
-
-    # 候補選択で検索
-    $keywordBox.Add_SelectionChanged({
-            if ($keywordBox.SelectedItem) {
-                & $searchAction $keywordBox.SelectedItem
-            }
-        })
-
-    # DataGrid選択イベント（クリックでコピー＋ログ保存）
+    # DataGrid選択イベント（クリックでコピー＋ログ保存＋履歴追加）
     $datagrid.Add_SelectionChanged({
-            $selected = $datagrid.SelectedItem
-            if ($selected) {
-                $text = "$($selected.緯度),$($selected.経度)"
-                Set-Clipboard -Value $text
-                [System.Windows.MessageBox]::Show("コピーしました: $text", "結果")
+        $selected = $datagrid.SelectedItem
+        if ($selected) {
+            $text = "$($selected.緯度),$($selected.経度)"
+            Set-Clipboard -Value $text
+            [System.Windows.MessageBox]::Show("コピーしました: $text", "結果")
 
-                if ($selected._trkpt) {
-                    Write-PlaceLog -FilePath $FilePath -Trkpt $selected._trkpt
-                    $entry = [pscustomobject]@{
-                        keyword  = $keywordBox.Text
-                        selected = @(@{ lat = $selected.緯度; lon = $selected.経度 })
-                    }
-                    $keywordBox.Tag.AddHistory.Invoke($keywordBox, $entry)
+            if ($selected._trkpt) {
+                Write-PlaceLog -FilePath $FilePath -Trkpt $selected._trkpt
+                $entry = [pscustomobject]@{
+                    keyword  = $keywordBox.Text
+                    selected = @(@{ lat = $selected.緯度; lon = $selected.経度 })
                 }
+                $keywordBox.Tag.AddHistory.Invoke($entry)
             }
-        })
+        }
+    })
 
     $window.ShowDialog() | Out-Null
 }

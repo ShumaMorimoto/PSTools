@@ -13,17 +13,30 @@ function Save-History {
 
     $History | ConvertTo-Json -Depth 5 | Out-File $HistoryFile -Encoding UTF8
 }
-
 function Convert-History {
-    param([array]$History)
-
+    param(
+        [array]$History,
+        [string]$Keyword = ""
+    )
     $items = New-Object System.Collections.Generic.List[string]
-    foreach ($h in $History) {
-        if ($h.keyword) { $items.Add([string]$h.keyword) }
-    }
-    return $items
-}
 
+    foreach ($h in $History) {
+        if ($h.keyword) {
+            if ([string]::IsNullOrWhiteSpace($Keyword)) {
+                # キーワードが空なら全件
+                $items.Add([string]$h.keyword)
+            }
+            else {
+                # 前方一致 or 部分一致
+                if ($h.keyword -like "$Keyword*" -or $h.keyword -like "*$Keyword*") {
+                    $items.Add([string]$h.keyword)
+                }
+            }
+        }
+    }
+    # 1件でも必ず配列として返す
+    return , $items
+}
 function Add-History {
     param([array]$History, [psobject]$Entry)
 
@@ -43,41 +56,27 @@ function Add-History {
     return $History | Sort-Object { [datetime]$_.lastUsed } -Descending
 }
 
-function Add-HistoryEntry {
-    param(
-        [System.Windows.Controls.ComboBox]$cb,
-        [psobject]$Entry
-    )
-
-    Write-Host "Add-HistoryEntry called for keyword=$($Entry.keyword)"
-
-    $hf   = $cb.Tag.HistoryFile
-    $hist = $cb.Tag.History
-
-    # 更新処理
-    $hist = Add-History -History $hist -Entry $Entry
-
-    # 保存
-    Save-History -HistoryFile $hf -History $hist
-
-    # リスト更新
-    $cb.ItemsSource = Convert-History $hist
-
-    # Tag更新
-    $cb.Tag.History = $hist
-}
 function New-SearchCombo {
-    param([string]$Name)
+    param(
+        [string]$Name,
+        [string]$HistoryName = $null   # 履歴共有用の名前（オプション）
+    )
 
     $comboBox = New-Object System.Windows.Controls.ComboBox
     $comboBox.IsEditable = $true
-    $comboBox.IsTextSearchEnabled = $false   # ← 自動選択を無効化
+    $comboBox.IsTextSearchEnabled = $false
     $comboBox.Margin     = "5"
     $comboBox.FontSize   = 16
 
-    # 履歴ファイルと初期履歴
-    $HistoryFile = "history_$Name.json"
-    $history     = Load-History -HistoryFile $HistoryFile
+    # 履歴ファイル名の決定
+    if ([string]::IsNullOrWhiteSpace($HistoryName)) {
+        $HistoryFile = "history_$Name.json"
+    } else {
+        $HistoryFile = "history_$HistoryName.json"
+    }
+
+    # 履歴のロード
+    $history = Load-History -HistoryFile $HistoryFile
     $comboBox.ItemsSource = Convert-History -History $history
 
     # Tagに状態と処理をまとめる
@@ -97,50 +96,68 @@ function New-SearchCombo {
         }.GetNewClosure()
     }
 
-    # Loaded → 内部 TextBox の KeyDown をフック
+    # Loaded → 内部 TextBox の TextChanged / KeyDown をフック
     $comboBox.Add_Loaded({
         param($sender, $args)
         $sender.ApplyTemplate()
         $editable = $sender.Template.FindName("PART_EditableTextBox", $sender)
         if (-not $editable) { return }
 
+        # TextChanged → 入力修正のたびにリスト再生成
+        $editable.Add_TextChanged({
+            param($tbSender, $tbArgs)
+            $comboRef = [System.Windows.Controls.ComboBox]$tbSender.TemplatedParent
+            $comboRef.ItemsSource = Convert-History -History $comboRef.Tag.History -Keyword $comboRef.Text
+            $comboRef.SelectedIndex = -1
+            Write-Host "TextChanged(PART_EditableTextBox) → リスト再生成"
+        })
+
+        # KeyDown制御（TAB/Enter）
         $editable.Add_KeyDown({
             $e = $_
-            $textBox = $this
-            $comboRef = [System.Windows.Controls.ComboBox]$textBox.TemplatedParent
+            $comboRef = [System.Windows.Controls.ComboBox]$this.TemplatedParent
             if (-not $comboRef) { return }
 
             switch ($e.Key) {
-                "Return" {
-                    $comboRef.IsDropDownOpen = $false
-                    $e.Handled = $true
-                    Write-Host "Enter → close"
-                    $comboRef.Tag.Entered.Invoke($comboRef.Text)
-                }
                 "Tab" {
-                    $comboRef.IsDropDownOpen = $false
                     $e.Handled = $true
-                    Write-Host "Tab → move focus"
-                    $comboRef.Tag.Entered.Invoke($comboRef.Text)
-                }
-                "Down" {
                     if (-not $comboRef.IsDropDownOpen) {
                         $comboRef.IsDropDownOpen = $true
-                        $e.Handled = $true
-                        Write-Host "Down → open dropdown"
+                        $comboRef.SelectedIndex = 0
                     }
+                    else {
+                        $comboRef.SelectedIndex = ($comboRef.SelectedIndex + 1) % $comboRef.Items.Count
+                    }
+                }
+                "Return" {
+                    $e.Handled = $true
+                    $comboRef.IsDropDownOpen = $false
+                    $comboRef.Tag.Entered.Invoke($comboRef.Text)
                 }
             }
         })
     })
 
-    # SelectionChanged → ドロップダウン操作時のみ Entered
+    # ComboBox側でDownキーを処理
+    $comboBox.Add_KeyDown({
+        $e = $_
+        switch ($e.Key) {
+            "Down" {
+                if (-not $comboBox.IsDropDownOpen) {
+                    $comboBox.IsDropDownOpen = $true
+                    $comboBox.SelectedIndex = 0
+                    $e.Handled = $true
+                    Write-Host "ComboBox.Down → ドロップダウンを開いて先頭選択"
+                }
+            }
+        }
+    })
+
+    # SelectionChanged → Textにコピーのみ
     $comboBox.Add_SelectionChanged({
-        param($sender, $args)
-        if ($sender.IsDropDownOpen -and $sender.SelectedItem) {
-            $keyword = [string]$sender.SelectedItem
-            Write-Host "Selection → Tag.Entered: $keyword"
-            $sender.Tag.Entered.Invoke($keyword)
+        if ($comboBox.IsDropDownOpen -and $comboBox.SelectedItem) {
+            $comboBox.Text = [string]$comboBox.SelectedItem
+            Write-Host "候補選択 → Textにコピー"
         }
     })
 
