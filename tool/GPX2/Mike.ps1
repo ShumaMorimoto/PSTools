@@ -61,11 +61,10 @@ function New-AutoCompleteComboBox {
         }
     )
 
-    # Enterキーで「テキストを確定」する（検索は外部ロジックが呼ぶ前提）
+    # キー操作（Enter専用を置き換え → 矢印＋Tab＋Enter統合）
     $comboBox.Add_Loaded({
         param($sender, $args)
 
-        # テンプレート適用と取得の安全化
         $sender.ApplyTemplate()
         $editable = $sender.Template.FindName("PART_EditableTextBox", $sender)
 
@@ -76,10 +75,34 @@ function New-AutoCompleteComboBox {
                 $editable2 = $sender.Template.FindName("PART_EditableTextBox", $sender)
                 if ($editable2) {
                     $editable2.Add_KeyDown({
-                        if ($_.Key -eq [System.Windows.Input.Key]::Enter) {
-                            $sender.IsDropDownOpen = $false
-                            $_.Handled = $true
-                            # ここでは検索はしない。外側が sender.Text を使って実行する前提
+                        param($sender,$args)
+                        switch ($args.Key) {
+                            "Down" {
+                                if ($sender.Items.Count -gt 0) {
+                                    $sender.IsDropDownOpen = $true
+                                    $sender.Focus()
+                                    $sender.SelectedIndex = 0
+                                    $args.Handled = $true
+                                }
+                            }
+                            "Up" {
+                                if ($sender.IsDropDownOpen -and $sender.Items.Count -gt 0) {
+                                    $sender.Focus()
+                                    $args.Handled = $true
+                                }
+                            }
+                            "Tab" {
+                                if ($sender.IsDropDownOpen -and $sender.SelectedItem) {
+                                    $sender.Text = $sender.SelectedItem
+                                    $sender.IsDropDownOpen = $false
+                                    $args.Handled = $true
+                                }
+                            }
+                            "Enter" {
+                                $sender.IsDropDownOpen = $false
+                                $args.Handled = $true
+                                # 検索は外側が $sender.Text を使って実行する前提
+                            }
                         }
                     })
                 }
@@ -87,17 +110,41 @@ function New-AutoCompleteComboBox {
         }
         else {
             $editable.Add_KeyDown({
-                if ($_.Key -eq [System.Windows.Input.Key]::Enter) {
-                    $sender.IsDropDownOpen = $false
-                    $_.Handled = $true
-                    # ここでは検索はしない。外側が sender.Text を使って実行する前提
+                $keyEvent = $_
+                switch ($_.Key) {
+                    "Down" {
+                        if ($this.Items.Count -gt 0) {
+                            $this.IsDropDownOpen = $true
+                            $this.Focus()
+                            $this.SelectedIndex = 0
+                            $keyEvent.Handled = $true
+                        }
+                    }
+                    "Up" {
+                        if ($this.IsDropDownOpen -and $this.Items.Count -gt 0) {
+                            $this.Focus()
+                            $keyEvent.Handled = $true
+                        }
+                    }
+                    "Tab" {
+                        if ($this.IsDropDownOpen -and $this.SelectedItem) {
+                            $this.Text = $this.SelectedItem
+                            $this.IsDropDownOpen = $false
+                            $keyEvent.Handled = $true
+                        }
+                    }
+                    "Enter" {
+                        $this.IsDropDownOpen = $false
+                        $keyEvent.Handled = $true
+                        # 検索は外側が $sender.Text を使って実行する前提
+                    }
                 }
             })
         }
     })
 
     # 履歴追加（重複排除＋lastUsed更新＋最新順）
-    $comboBox.Tag.AddHistory = {
+        $comboBox.Tag.AddHistory = {
         param([System.Windows.Controls.ComboBox]$cb, [psobject]$Entry)
 
         $hf = $cb.Tag.HistoryFile
@@ -133,47 +180,3 @@ function New-AutoCompleteComboBox {
 
     return $comboBox
 }
-
-# --- テスト用 GUI ---
-$window = New-Object System.Windows.Window
-$window.Title = "AutoCompleteComboBox テスト"
-$window.Width = 420
-$window.Height = 260
-
-$stack = New-Object System.Windows.Controls.StackPanel
-$window.Content = $stack
-
-# 出発地コンボ
-$departureBox = New-AutoCompleteComboBox -Name "departure"
-$stack.Children.Add($departureBox)
-
-# 目的地コンボ
-$destinationBox = New-AutoCompleteComboBox -Name "destination"
-$stack.Children.Add($destinationBox)
-
-# 履歴追加ボタン（テスト用）
-$btnAdd = New-Object System.Windows.Controls.Button
-$btnAdd.Content = "履歴にサンプル追加"
-$btnAdd.Margin = "10"
-$btnAdd.Add_Click({
-    $entry = [pscustomobject]@{
-        keyword  = "函館駅"
-        selected = @(@{ lat = 41.773; lon = 140.726 })
-    }
-    $departureBox.Tag.AddHistory.Invoke($departureBox, $entry)
-    [System.Windows.MessageBox]::Show("履歴に追加しました")
-})
-$stack.Children.Add($btnAdd)
-
-# 確認ボタン（選択確認）
-$btnConfirm = New-Object System.Windows.Controls.Button
-$btnConfirm.Content = "選択確認"
-$btnConfirm.Margin = "10"
-$btnConfirm.Add_Click({
-    $msg = "出発地: $($departureBox.Text)`n目的地: $($destinationBox.Text)"
-    [System.Windows.MessageBox]::Show($msg)
-})
-$stack.Children.Add($btnConfirm)
-
-# 表示
-$window.ShowDialog() | Out-Null
