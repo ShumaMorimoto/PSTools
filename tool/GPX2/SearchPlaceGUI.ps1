@@ -7,7 +7,6 @@
     }
     return @()
 }
-
 function Save-History {
     param([string]$HistoryFile, [array]$History)
 
@@ -37,23 +36,79 @@ function Convert-History {
     # 1件でも必ず配列として返す
     return , $items
 }
+function Compare-PsObject {
+    param(
+        [psobject]$a,
+        [psobject]$b
+    )
+    # JSON化して全プロパティ一致を判定
+    return ((ConvertTo-Json $a -Compress) -eq (ConvertTo-Json $b -Compress))
+}
 function Add-History {
-    param([array]$History, [psobject]$Entry)
+    param(
+        [System.Windows.Controls.ComboBox]$cb,
+        [psobject]$Entry   # { keyword="函館駅"; selected=@{ lon=..; lat=..; name="函館駅" } }
+    )
 
-    $item = $History | Where-Object { $_.keyword -eq $Entry.keyword }
+    Write-Host "Add-History called for keyword=$($Entry.keyword)"
+
+    $hf = $cb.Tag.HistoryFile
+    $hist = @($cb.Tag.History)
+
+    # keyword一致する履歴を探す
+    $item = $hist | Where-Object { $_.keyword -eq $Entry.keyword }
+
     if ($item) {
-        foreach ($point in $Entry.selected) {
-            $exists = $item.selected | Where-Object { $_.lat -eq $point.lat -and $_.lon -eq $point.lon }
-            if (-not $exists) { $item.selected += $point }
+        # selected を List に変換
+        if (-not ($item.selected -is [System.Collections.Generic.List[object]])) {
+            $list = New-Object System.Collections.Generic.List[object]
+            foreach ($p in $item.selected) { $list.Add($p) }
+            $item.selected = $list
         }
+
+        $point = $Entry.selected
+
+        # === 汎用的な重複チェック ===
+        $exists = $false
+        foreach ($s in $item.selected) {
+            if (Compare-PsObject $s $point) { $exists = $true; break }
+        }
+
+        if (-not $exists) {
+            $item.selected.Add($point)
+            Write-Host "拠点追加: $($point | ConvertTo-Json -Compress)"
+        }
+        else {
+            Write-Host "既存拠点のため追加せず"
+        }
+
         $item.lastUsed = (Get-Date).ToString("s")
     }
     else {
+        # 新規エントリ
+        $list = New-Object System.Collections.Generic.List[object]
+        $list.Add($Entry.selected)
+        $Entry.selected = $list
         $Entry | Add-Member -NotePropertyName lastUsed -NotePropertyValue (Get-Date).ToString("s")
-        $History += $Entry
+        $hist += $Entry
     }
 
-    return $History | Sort-Object { [datetime]$_.lastUsed } -Descending
+    # 更新・保存
+    $hist = $hist | Sort-Object { [datetime]$_.lastUsed } -Descending
+    $hist | ConvertTo-Json -Depth 5 | Out-File $hf -Encoding UTF8
+
+    # ComboBox の ItemsSource 更新
+    $items = New-Object System.Collections.Generic.List[string]
+    foreach ($h in $hist) { if ($h.keyword) { $items.Add([string]$h.keyword) } }
+    $cb.ItemsSource = $items
+    $cb.Tag.History = $hist
+}
+function Get-History {
+    param(
+        [System.Windows.Controls.ComboBox]$cb,
+        [string]$Keyword
+    )
+    $cb.Tag.History | Where-Object { $_.keyword -eq $Keyword }
 }
 
 function New-SearchCombo {
@@ -65,13 +120,14 @@ function New-SearchCombo {
     $comboBox = New-Object System.Windows.Controls.ComboBox
     $comboBox.IsEditable = $true
     $comboBox.IsTextSearchEnabled = $false
-    $comboBox.Margin     = "5"
-    $comboBox.FontSize   = 16
+    $comboBox.Margin = "5"
+    $comboBox.FontSize = 16
 
     # 履歴ファイル名の決定
     if ([string]::IsNullOrWhiteSpace($HistoryName)) {
         $HistoryFile = "history_$Name.json"
-    } else {
+    }
+    else {
         $HistoryFile = "history_$HistoryName.json"
     }
 
@@ -92,74 +148,79 @@ function New-SearchCombo {
 
         AddHistory  = {
             param($Entry)
-            Add-HistoryEntry -cb $cbRef -Entry $Entry
+            Add-History -cb $cbRef -Entry $Entry
+        }.GetNewClosure()
+
+        GetHistory  = {
+            param($Keyword)
+            Get-History -cb $cbRef -Keyword $Keyword
         }.GetNewClosure()
     }
 
     # Loaded → 内部 TextBox の TextChanged / KeyDown をフック
     $comboBox.Add_Loaded({
-        param($sender, $args)
-        $sender.ApplyTemplate()
-        $editable = $sender.Template.FindName("PART_EditableTextBox", $sender)
-        if (-not $editable) { return }
+            param($sender, $args)
+            $sender.ApplyTemplate()
+            $editable = $sender.Template.FindName("PART_EditableTextBox", $sender)
+            if (-not $editable) { return }
 
-        # TextChanged → 入力修正のたびにリスト再生成
-        $editable.Add_TextChanged({
-            param($tbSender, $tbArgs)
-            $comboRef = [System.Windows.Controls.ComboBox]$tbSender.TemplatedParent
-            $comboRef.ItemsSource = Convert-History -History $comboRef.Tag.History -Keyword $comboRef.Text
-            $comboRef.SelectedIndex = -1
-            Write-Host "TextChanged(PART_EditableTextBox) → リスト再生成"
-        })
+            # TextChanged → 入力修正のたびにリスト再生成
+            $editable.Add_TextChanged({
+                    param($tbSender, $tbArgs)
+                    $comboRef = [System.Windows.Controls.ComboBox]$tbSender.TemplatedParent
+                    $comboRef.ItemsSource = Convert-History -History $comboRef.Tag.History -Keyword $comboRef.Text
+                    $comboRef.SelectedIndex = -1
+                    Write-Host "TextChanged(PART_EditableTextBox) → リスト再生成"
+                })
 
-        # KeyDown制御（TAB/Enter）
-        $editable.Add_KeyDown({
-            $e = $_
-            $comboRef = [System.Windows.Controls.ComboBox]$this.TemplatedParent
-            if (-not $comboRef) { return }
+            # KeyDown制御（TAB/Enter）
+            $editable.Add_KeyDown({
+                    $e = $_
+                    $comboRef = [System.Windows.Controls.ComboBox]$this.TemplatedParent
+                    if (-not $comboRef) { return }
 
-            switch ($e.Key) {
-                "Tab" {
-                    $e.Handled = $true
-                    if (-not $comboRef.IsDropDownOpen) {
-                        $comboRef.IsDropDownOpen = $true
-                        $comboRef.SelectedIndex = 0
+                    switch ($e.Key) {
+                        "Tab" {
+                            $e.Handled = $true
+                            if (-not $comboRef.IsDropDownOpen) {
+                                $comboRef.IsDropDownOpen = $true
+                                $comboRef.SelectedIndex = 0
+                            }
+                            else {
+                                $comboRef.SelectedIndex = ($comboRef.SelectedIndex + 1) % $comboRef.Items.Count
+                            }
+                        }
+                        "Return" {
+                            $e.Handled = $true
+                            $comboRef.IsDropDownOpen = $false
+                            $comboRef.Tag.Entered.Invoke($comboRef.Text)
+                        }
                     }
-                    else {
-                        $comboRef.SelectedIndex = ($comboRef.SelectedIndex + 1) % $comboRef.Items.Count
-                    }
-                }
-                "Return" {
-                    $e.Handled = $true
-                    $comboRef.IsDropDownOpen = $false
-                    $comboRef.Tag.Entered.Invoke($comboRef.Text)
-                }
-            }
+                })
         })
-    })
 
     # ComboBox側でDownキーを処理
     $comboBox.Add_KeyDown({
-        $e = $_
-        switch ($e.Key) {
-            "Down" {
-                if (-not $comboBox.IsDropDownOpen) {
-                    $comboBox.IsDropDownOpen = $true
-                    $comboBox.SelectedIndex = 0
-                    $e.Handled = $true
-                    Write-Host "ComboBox.Down → ドロップダウンを開いて先頭選択"
+            $e = $_
+            switch ($e.Key) {
+                "Down" {
+                    if (-not $comboBox.IsDropDownOpen) {
+                        $comboBox.IsDropDownOpen = $true
+                        $comboBox.SelectedIndex = 0
+                        $e.Handled = $true
+                        Write-Host "ComboBox.Down → ドロップダウンを開いて先頭選択"
+                    }
                 }
             }
-        }
-    })
+        })
 
     # SelectionChanged → Textにコピーのみ
     $comboBox.Add_SelectionChanged({
-        if ($comboBox.IsDropDownOpen -and $comboBox.SelectedItem) {
-            $comboBox.Text = [string]$comboBox.SelectedItem
-            Write-Host "候補選択 → Textにコピー"
-        }
-    })
+            if ($comboBox.IsDropDownOpen -and $comboBox.SelectedItem) {
+                $comboBox.Text = [string]$comboBox.SelectedItem
+                Write-Host "候補選択 → Textにコピー"
+            }
+        })
 
     return $comboBox
 }

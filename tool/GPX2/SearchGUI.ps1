@@ -1,6 +1,32 @@
 ﻿using module RouteOptimizer
 Add-Type -AssemblyName PresentationFramework
 
+function Promote-HistoryMatches {
+    param(
+        [array]$SearchResults,
+        [psobject]$HistoryEntry
+    )
+
+    if (-not $HistoryEntry) { return $SearchResults }
+
+    $priority = @()
+    $others = @()
+
+    foreach ($r in $SearchResults) {
+        $match = $HistoryEntry.selected | Where-Object {
+            Compare-PsObject $_ @{ lat = $r.緯度; lon = $r.経度 }
+        }
+        if ($match) {
+            $priority += $r
+        }
+        else {
+            $others += $r
+        }
+    }
+
+    return $priority + $others
+}
+
 function Write-PlaceLog {
     [CmdletBinding()]
     param (
@@ -76,16 +102,23 @@ function Start-KeywordListGui {
             }
 
             # 共通の表示処理
-            $results =@()
+            $results = @()
             $results += $trkpts | ForEach-Object {
                 [PSCustomObject]@{
                     拠点名    = $_.name
                     住所     = [GPXDocument]::GetTownName($_, 3)
                     緯度     = $_.lat
                     経度     = $_.lon
-                    _trkpt   = $_
+                    _trkpt = $_
                 }
             }
+            # 履歴を取得
+            $historyEntry = $keywordBox.Tag.GetHistory.Invoke($keyword)
+
+            # 履歴優先に並べ替え
+            $results = Promote-HistoryMatches -SearchResults $results -HistoryEntry $historyEntry
+
+            # DataGridに反映
             $datagrid.ItemsSource = $results
 
             if ($trkpts.Count -eq 1) {
@@ -96,7 +129,7 @@ function Start-KeywordListGui {
 
                 $entry = [pscustomobject]@{
                     keyword  = $keyword
-                    selected = @(@{ lat = $trkpt.lat; lon = $trkpt.lon })
+                    selected = @{ lat = [double]$trkpt.lat; lon = [double]$trkpt.lon }
                 }
                 $keywordBox.Tag.AddHistory.Invoke($entry)
 
@@ -119,22 +152,22 @@ function Start-KeywordListGui {
 
     # DataGrid選択イベント（クリックでコピー＋ログ保存＋履歴追加）
     $datagrid.Add_SelectionChanged({
-        $selected = $datagrid.SelectedItem
-        if ($selected) {
-            $text = "$($selected.緯度),$($selected.経度)"
-            Set-Clipboard -Value $text
-            [System.Windows.MessageBox]::Show("コピーしました: $text", "結果")
+            $selected = $datagrid.SelectedItem
+            if ($selected) {
+                $text = "$($selected.緯度),$($selected.経度)"
+                Set-Clipboard -Value $text
+                [System.Windows.MessageBox]::Show("コピーしました: $text", "結果")
 
-            if ($selected._trkpt) {
-                Write-PlaceLog -FilePath $FilePath -Trkpt $selected._trkpt
-                $entry = [pscustomobject]@{
-                    keyword  = $keywordBox.Text
-                    selected = @(@{ lat = $selected.緯度; lon = $selected.経度 })
+                if ($selected._trkpt) {
+                    Write-PlaceLog -FilePath $FilePath -Trkpt $selected._trkpt
+                    $entry = [pscustomobject]@{
+                        keyword  = $keywordBox.Text
+                        selected = @{ lat = [double]$selected.緯度; lon = [double]$selected.経度 }
+                    }
+                    $keywordBox.Tag.AddHistory.Invoke($entry)                
                 }
-                $keywordBox.Tag.AddHistory.Invoke($entry)
             }
-        }
-    })
+        })
 
     $window.ShowDialog() | Out-Null
 }
