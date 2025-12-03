@@ -1,4 +1,4 @@
-﻿function Load-History {
+function Load-History {
     param([string]$HistoryFile)
 
     if (Test-Path $HistoryFile) {
@@ -110,18 +110,26 @@ function Get-History {
     )
     $cb.Tag.History | Where-Object { $_.keyword -eq $Keyword }
 }
+# このファイルは、メインスクリプトからドットソース(. .\New-SearchComboBox.ps1)で読み込んで使います。
 
-function New-SearchCombo {
+function New-SearchComboBox {
     param(
         [string]$Name,
-        [string]$HistoryName = $null   # 履歴共有用の名前（オプション）
+        [string]$HistoryName = $null
     )
 
-    $comboBox = New-Object System.Windows.Controls.ComboBox
-    $comboBox.IsEditable = $true
-    $comboBox.IsTextSearchEnabled = $false
-    $comboBox.Margin = "5"
-    $comboBox.FontSize = 16
+    # --- 1. UserControlのXAMLを読み込んでインスタンス化 ---
+    [xml]$xaml = Get-Content -Path ".\SearchComboBox.xaml" -Raw
+    $reader = New-Object System.Xml.XmlNodeReader $xaml
+    $userControl = [System.Windows.Markup.XamlReader]::Load($reader)
+
+    # --- 2. UserControl内部のComboBoxコントロールを取得 ---
+    $comboBox = $userControl.FindName("innerCombo")
+    if (-not $comboBox) {
+        throw "SearchComboBox.xaml内に x:Name='innerCombo' が見つかりません。"
+    }
+
+    # --- 3. 取得したComboBoxにロジックを割り当て (以前のコードとほぼ同じ) ---
 
     # 履歴ファイル名の決定
     if ([string]::IsNullOrWhiteSpace($HistoryName)) {
@@ -131,61 +139,41 @@ function New-SearchCombo {
         $HistoryFile = "history_$HistoryName.json"
     }
 
-    # 履歴のロード
+    # 履歴のロードとTag設定
     $history = Load-History -HistoryFile $HistoryFile
     $comboBox.ItemsSource = Convert-History -History $history
 
-    # Tagに状態と処理をまとめる
     $cbRef = $comboBox
     $comboBox.Tag = @{
         HistoryFile = $HistoryFile
         History     = $history
-
-        Entered     = [Action[string]] {
-            param($kw)
-            Write-Host "Tag.Entered: $kw"
-        }
-
-        AddHistory  = {
-            param($Entry)
-            Add-History -cb $cbRef -Entry $Entry
-        }.GetNewClosure()
-
-        GetHistory  = {
-            param($Keyword)
-            Get-History -cb $cbRef -Keyword $Keyword
-        }.GetNewClosure()
+        Entered     = [Action[string]] { param($kw) Write-Host "Tag.Entered: $kw" }
+        AddHistory  = { param($Entry) Add-History -cb $cbRef -Entry $Entry }.GetNewClosure()
+        GetHistory  = { param($Keyword) Get-History -cb $cbRef -Keyword $Keyword }.GetNewClosure()
     }
 
-    # Loaded → 内部 TextBox の TextChanged / KeyDown をフック
+    # Loadedイベント (内部TextBoxへのアクセス)
     $comboBox.Add_Loaded({
-            $this.ApplyTemplate()
-            $editable = $this.Template.FindName("PART_EditableTextBox", $this)
+            param($sender, $e)
+            $sender.ApplyTemplate()
+            $editable = $sender.Template.FindName("PART_EditableTextBox", $sender)
             if (-not $editable) { return }
 
-            # TextChanged → 入力修正のたびにリスト再生成
             $editable.Add_TextChanged({
-                    $comboRef = $this.TemplatedParent
+                    param($sender, $e)
+                    $comboRef = $sender.TemplatedParent
                     $comboRef.ItemsSource = Convert-History -History $comboRef.Tag.History -Keyword $comboRef.Text
                     $comboRef.SelectedIndex = -1
-                    Write-Host "TextChanged(PART_EditableTextBox) → リスト再生成"
                 })
 
-            # KeyDown制御（TAB/Enter）
             $editable.Add_KeyDown({
-                    $e = $_
-                    $comboRef = $this.TemplatedParent
-
+                    param($sender, $e)
+                    $comboRef = $sender.TemplatedParent
                     switch ($e.Key) {
                         "Tab" {
                             $e.Handled = $true
-                            if (-not $comboRef.IsDropDownOpen) {
-                                $comboRef.IsDropDownOpen = $true
-                                $comboRef.SelectedIndex = 0
-                            }
-                            else {
-                                $comboRef.SelectedIndex = ($comboRef.SelectedIndex + 1) % $comboRef.Items.Count
-                            }
+                            $comboRef.IsDropDownOpen = !$comboRef.IsDropDownOpen
+                            if ($comboRef.IsDropDownOpen) { $comboRef.SelectedIndex = 0 }
                         }
                         "Return" {
                             $e.Handled = $true
@@ -196,28 +184,16 @@ function New-SearchCombo {
                 })
         })
 
-    # ComboBox側でDownキーを処理
+    # ComboBox自体のKeyDownイベント
     $comboBox.Add_KeyDown({
-            $e = $_
-            switch ($e.Key) {
-                "Down" {
-                    if (-not $this.IsDropDownOpen) {
-                        $this.IsDropDownOpen = $true
-                        $this.SelectedIndex = 0
-                        $e.Handled = $true
-                        Write-Host "ComboBox.Down → ドロップダウンを開いて先頭選択"
-                    }
-                }
+            param($sender, $e)
+            if ($e.Key -eq "Down" -and !$sender.IsDropDownOpen) {
+                $sender.IsDropDownOpen = $true
+                $sender.SelectedIndex = 0
+                $e.Handled = $true
             }
         })
 
-    # SelectionChanged → Textにコピーのみ
-    #    $comboBox.Add_SelectionChanged({
-    #            if ($this.SelectedItem) {
-    #                $this.Text = [string]$this.SelectedItem
-    #                Write-Host "候補選択 → Textにコピー"
-    #            }
-    #        })
-
-    return $comboBox
+    # --- 4. ロジックを割り当て済みのUserControlオブジェクトを返す ---
+    return $userControl
 }
