@@ -1,3 +1,0 @@
-OTOutlookDAO() {
-        $this.initialize()
-    }

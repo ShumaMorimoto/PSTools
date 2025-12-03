@@ -1,3 +1,0 @@
-GetRows() {
-        return $this.oRows
-    }

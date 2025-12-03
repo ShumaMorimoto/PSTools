@@ -1,3 +1,0 @@
-OTGMailDAO() {
-        $this.initialize()
-    }

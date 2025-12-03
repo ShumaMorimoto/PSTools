@@ -1,3 +1,0 @@
-Close() {
-        $this.book.Close()
-    }
