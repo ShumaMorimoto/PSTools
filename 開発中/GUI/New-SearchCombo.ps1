@@ -1,158 +1,166 @@
-function Load-History {
-    param([string]$HistoryFile)
+﻿Add-Type -AssemblyName PresentationFramework
 
-    if (Test-Path $HistoryFile) {
-        try { return Get-Content $HistoryFile -Raw | ConvertFrom-Json }
-        catch { return @() }
+# ================================
+# 基底クラス
+# ================================
+class EntryBase {
+    [string] $Code
+    [string] $Name
+
+    EntryBase([string]$code, [string]$name) {
+        $this.Code = $code
+        $this.Name = $name
     }
-    return @()
-}
-function Save-History {
-    param([string]$HistoryFile, [array]$History)
 
-    $History | ConvertTo-Json -Depth 5 | Out-File $HistoryFile -Encoding UTF8
-}
-function Convert-History {
-    param(
-        [array]$History,
-        [string]$Keyword = ""
-    )
-    $items = New-Object System.Collections.Generic.List[string]
+    [bool] Equals([object] $other) { throw "Equals must be implemented in derived class" }
+    [string] ToString() { throw "ToString must be implemented in derived class" }
 
-    foreach ($h in $History) {
-        if ($h.keyword) {
-            if ([string]::IsNullOrWhiteSpace($Keyword)) {
-                # キーワードが空なら全件
-                $items.Add([string]$h.keyword)
-            }
-            else {
-                # 前方一致 or 部分一致
-                if ($h.keyword -like "$Keyword*" -or $h.keyword -like "*$Keyword*") {
-                    $items.Add([string]$h.keyword)
+    [string] ToJson() { return ($this | ConvertTo-Json -Compress) }
+    static [EntryBase] FromJson([object]$obj) { throw "FromJson must be implemented in derived class" }
+}
+
+# ================================
+# 拠点クラス（具体）
+# ================================
+class Entry : EntryBase {
+    Entry([string]$code, [string]$name) : base($code, $name) {}
+
+    [bool] Equals([object] $other) {
+        if ($null -eq $other) { return $false }
+        if ($other -is [Entry]) { return ($this.Code -eq $other.Code -and $this.Name -eq $other.Name) }
+        return $false
+    }
+
+    [string] ToString() { return "$($this.Code):$($this.Name)" }
+
+    static [Entry] FromJson([object]$obj) { return [Entry]::new($obj.Code, $obj.Name) }
+}
+
+# ================================
+# 履歴操作関数群
+# ================================
+function Load-History {
+    param([System.Windows.Controls.ComboBox]$cb)
+
+    $file = $cb.Tag.HistoryFile
+    $entries = @()
+    if (Test-Path $file) {
+        try {
+            $json = Get-Content $file -Raw | ConvertFrom-Json
+            foreach ($o in $json) {
+                $cls = $cb.Tag.EntryClass
+                $selected = [System.Collections.Generic.List[object]]::new()
+                foreach ($s in $o.Selected) {
+                    $selected.Add($cls::FromJson($s))
+                }
+                $entries += @{
+                    Keyword  = $o.Keyword
+                    Selected = $selected
+                    lastUsed = $o.lastUsed
                 }
             }
         }
+        catch { $entries = @() }
     }
-    # 1件でも必ず配列として返す
-    return , $items
+    # return せずに直接設定
+    $cb.Tag.History = $entries
 }
-function Compare-PsObject {
-    param(
-        [psobject]$a,
-        [psobject]$b
-    )
-    # JSON化して全プロパティ一致を判定
-    return ((ConvertTo-Json $a -Compress) -eq (ConvertTo-Json $b -Compress))
+
+function Save-History {
+    param([System.Windows.Controls.ComboBox]$cb)
+
+    $file = $cb.Tag.HistoryFile
+    $hist = $cb.Tag.History
+
+    $jsonList = @()
+    foreach ($h in $hist) {
+        $selectedJson = @()
+        foreach ($s in $h.Selected) {
+            # Entryオブジェクトをハッシュ化して保存
+            $selectedJson += @{ Code = $s.Code; Name = $s.Name }
+        }
+        $jsonList += @{
+            Keyword  = $h.Keyword
+            Selected = $selectedJson
+            lastUsed = $h.lastUsed
+        }
+    }
+
+    $jsonList | ConvertTo-Json -Depth 10 -Compress | Out-File $file -Encoding UTF8
 }
+
+function Refresh-List {
+    param([System.Windows.Controls.ComboBox]$cb, [string]$Keyword = "")
+    $items = New-Object System.Collections.Generic.List[string]
+    foreach ($h in $cb.Tag.History) {
+        $kw = $h.Keyword
+        if ($kw) {
+            if ([string]::IsNullOrWhiteSpace($Keyword) -or $kw -like "$Keyword*" -or $kw -like "*$Keyword*") {
+                $items.Add($kw)
+            }
+        }
+    }
+    $cb.ItemsSource = $items
+}
+
 function Add-History {
-    param(
-        [System.Windows.Controls.ComboBox]$cb,
-        [psobject]$Entry   # { keyword="函館駅"; selected=@{ lon=..; lat=..; name="函館駅" } }
-    )
-
-    Write-Host "Add-History called for keyword=$($Entry.keyword)"
-
-    $hf = $cb.Tag.HistoryFile
+    param([System.Windows.Controls.ComboBox]$cb, [string]$Keyword, [object]$Entry)
     $hist = @($cb.Tag.History)
-
-    # keyword一致する履歴を探す
-    $item = $hist | Where-Object { $_.keyword -eq $Entry.keyword }
-
+    $item = $hist | Where-Object { $_.Keyword -eq $Keyword }
     if ($item) {
-        # selected を List に変換
-        if (-not ($item.selected -is [System.Collections.Generic.List[object]])) {
-            $list = New-Object System.Collections.Generic.List[object]
-            foreach ($p in $item.selected) { $list.Add($p) }
-            $item.selected = $list
-        }
-
-        $point = $Entry.selected
-
-        # === 汎用的な重複チェック ===
         $exists = $false
-        foreach ($s in $item.selected) {
-            if (Compare-PsObject $s $point) { $exists = $true; break }
-        }
-
-        if (-not $exists) {
-            $item.selected.Add($point)
-            Write-Host "拠点追加: $($point | ConvertTo-Json -Compress)"
-        }
-        else {
-            Write-Host "既存拠点のため追加せず"
-        }
-
+        foreach ($s in $item.Selected) { if ($s.Equals($Entry)) { $exists = $true; break } }
+        if (-not $exists) { $item.Selected.Add($Entry) }
         $item.lastUsed = (Get-Date).ToString("s")
     }
     else {
-        # 新規エントリ
-        $list = New-Object System.Collections.Generic.List[object]
-        $list.Add($Entry.selected)
-        $Entry.selected = $list
-        $Entry | Add-Member -NotePropertyName lastUsed -NotePropertyValue (Get-Date).ToString("s")
-        $hist += $Entry
+        $newItem = @{ Keyword = $Keyword; Selected = [System.Collections.Generic.List[object]]::new(); lastUsed = (Get-Date).ToString("s") }
+        $newItem.Selected.Add($Entry)
+        $hist += $newItem
     }
-
-    # 更新・保存
-    $hist = $hist | Sort-Object { [datetime]$_.lastUsed } -Descending
-    $hist | ConvertTo-Json -Depth 5 | Out-File $hf -Encoding UTF8
-
-    # ComboBox の ItemsSource 更新
-    $items = New-Object System.Collections.Generic.List[string]
-    foreach ($h in $hist) { if ($h.keyword) { $items.Add([string]$h.keyword) } }
-    $cb.ItemsSource = $items
-    $cb.Tag.History = $hist
+    $cb.Tag.History = $hist | Sort-Object { [datetime]$_.lastUsed } -Descending
+    Save-History $cb
+    Refresh-List -cb $cb
 }
+
 function Get-History {
-    param(
-        [System.Windows.Controls.ComboBox]$cb,
-        [string]$Keyword
-    )
-    $cb.Tag.History | Where-Object { $_.keyword -eq $Keyword }
+    param([System.Windows.Controls.ComboBox]$cb, [string]$Keyword)
+    $cb.Tag.History | Where-Object { $_.Keyword -eq $Keyword }
 }
-# このファイルは、メインスクリプトからドットソース(. .\New-SearchComboBox.ps1)で読み込んで使います。
 
-function New-SearchComboBox {
-    param(
-        [string]$Name,
-        [string]$HistoryName = $null
-    )
+# ================================
+# 検索用 ComboBox（削らず完全版）
+# ================================
+function New-SearchCombo {
+    param([string]$Name, [string]$HistoryName = $null)
 
-    # --- 1. UserControlのXAMLを読み込んでインスタンス化 ---
-    [xml]$xaml = Get-Content -Path ".\SearchComboBox.xaml" -Raw
-    $reader = New-Object System.Xml.XmlNodeReader $xaml
-    $userControl = [System.Windows.Markup.XamlReader]::Load($reader)
+    $comboBox = New-Object System.Windows.Controls.ComboBox
+    $comboBox.IsEditable = $true
+    $comboBox.IsTextSearchEnabled = $false
+    $comboBox.Margin = "5"
+    $comboBox.FontSize = 16
 
-    # --- 2. UserControl内部のComboBoxコントロールを取得 ---
-    $comboBox = $userControl.FindName("innerCombo")
-    if (-not $comboBox) {
-        throw "SearchComboBox.xaml内に x:Name='innerCombo' が見つかりません。"
-    }
-
-    # --- 3. 取得したComboBoxにロジックを割り当て (以前のコードとほぼ同じ) ---
-
-    # 履歴ファイル名の決定
-    if ([string]::IsNullOrWhiteSpace($HistoryName)) {
-        $HistoryFile = "history_$Name.json"
-    }
-    else {
-        $HistoryFile = "history_$HistoryName.json"
-    }
-
-    # 履歴のロードとTag設定
-    $history = Load-History -HistoryFile $HistoryFile
-    $comboBox.ItemsSource = Convert-History -History $history
+    $HistoryFile = if ([string]::IsNullOrWhiteSpace($HistoryName)) { "history_$Name.json" } else { "history_$HistoryName.json" }
 
     $cbRef = $comboBox
     $comboBox.Tag = @{
         HistoryFile = $HistoryFile
-        History     = $history
-        Entered     = [Action[string]] { param($kw) Write-Host "Tag.Entered: $kw" }
-        AddHistory  = { param($Entry) Add-History -cb $cbRef -Entry $Entry }.GetNewClosure()
+        History     = @()
+        EntryClass  = [Entry]  # 外から差し替え可能
+
+        LoadHistory = { Load-History $cbRef }.GetNewClosure()
+        SaveHistory = { Save-History $cbRef }.GetNewClosure()
+        RefreshList = { param($Keyword) Refresh-List -cb $cbRef -Keyword $Keyword }.GetNewClosure()
+        AddHistory  = { param($Keyword, $Entry) Add-History -cb $cbRef -Keyword $Keyword -Entry $Entry }.GetNewClosure()
         GetHistory  = { param($Keyword) Get-History -cb $cbRef -Keyword $Keyword }.GetNewClosure()
+
+        Entered     = [Action[string]] { param($kw) Write-Host "Tag.Entered: $kw" }
     }
 
-    # Loadedイベント (内部TextBoxへのアクセス)
+    $comboBox.Tag.LoadHistory.Invoke()
+    $comboBox.Tag.RefreshList.Invoke("")
+
+    # Loadedイベント（内部TextBoxアクセス）
     $comboBox.Add_Loaded({
             param($sender, $e)
             $sender.ApplyTemplate()
@@ -162,7 +170,7 @@ function New-SearchComboBox {
             $editable.Add_TextChanged({
                     param($sender, $e)
                     $comboRef = $sender.TemplatedParent
-                    $comboRef.ItemsSource = Convert-History -History $comboRef.Tag.History -Keyword $comboRef.Text
+                    $comboRef.Tag.RefreshList.Invoke($comboRef.Text)
                     $comboRef.SelectedIndex = -1
                 })
 
@@ -172,7 +180,7 @@ function New-SearchComboBox {
                     switch ($e.Key) {
                         "Tab" {
                             $e.Handled = $true
-                            $comboRef.IsDropDownOpen = !$comboRef.IsDropDownOpen
+                            $comboRef.IsDropDownOpen = -not $comboRef.IsDropDownOpen
                             if ($comboRef.IsDropDownOpen) { $comboRef.SelectedIndex = 0 }
                         }
                         "Return" {
@@ -184,16 +192,15 @@ function New-SearchComboBox {
                 })
         })
 
-    # ComboBox自体のKeyDownイベント
+    # ComboBox 自体の KeyDownイベント
     $comboBox.Add_KeyDown({
             param($sender, $e)
-            if ($e.Key -eq "Down" -and !$sender.IsDropDownOpen) {
+            if ($e.Key -eq "Down" -and -not $sender.IsDropDownOpen) {
                 $sender.IsDropDownOpen = $true
                 $sender.SelectedIndex = 0
                 $e.Handled = $true
             }
         })
 
-    # --- 4. ロジックを割り当て済みのUserControlオブジェクトを返す ---
-    return $userControl
+    return $comboBox
 }

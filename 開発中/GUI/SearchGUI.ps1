@@ -4,31 +4,6 @@ Add-Type -AssemblyName PresentationFramework
 Import-module ./New-SearchCombo.ps1
 
 
-function Promote-HistoryMatches {
-    param(
-        [array]$SearchResults,
-        [psobject]$HistoryEntry
-    )
-
-    if (-not $HistoryEntry) { return $SearchResults }
-
-    $priority = @()
-    $others = @()
-
-    foreach ($r in $SearchResults) {
-        $match = $HistoryEntry.selected | Where-Object {
-            Compare-PsObject $_ @{ lat = $r.緯度; lon = $r.経度 }
-        }
-        if ($match) {
-            $priority += $r
-        }
-        else {
-            $others += $r
-        }
-    }
-
-    return $priority + $others
-}
 
 function Write-PlaceLog {
     [CmdletBinding()]
@@ -118,9 +93,6 @@ function Start-KeywordListGui {
             # 履歴を取得
             $historyEntry = $keywordBox.Tag.GetHistory.Invoke($keyword)
 
-            # 履歴優先に並べ替え
-            $results = Promote-HistoryMatches -SearchResults $results -HistoryEntry $historyEntry
-
             # DataGridに反映
             $datagrid.ItemsSource = $results
 
@@ -132,7 +104,7 @@ function Start-KeywordListGui {
 
                 $entry = [pscustomobject]@{
                     keyword  = $keyword
-                    selected = @{ lat = [double]$trkpt.lat; lon = [double]$trkpt.lon }
+                    selected = [pscustomobject]@{ lat = [double]$trkpt.lat; lon = [double]$trkpt.lon }
                 }
                 $keywordBox.Tag.AddHistory.Invoke($entry)
 
@@ -165,7 +137,7 @@ function Start-KeywordListGui {
                     Write-PlaceLog -FilePath $FilePath -Trkpt $selected._trkpt
                     $entry = [pscustomobject]@{
                         keyword  = $keywordBox.Text
-                        selected = @{ lat = [double]$selected.緯度; lon = [double]$selected.経度 }
+                        selected = [pscustomobject]@{ lat = [double]$selected.緯度; lon = [double]$selected.経度 }
                     }
                     $keywordBox.Tag.AddHistory.Invoke($entry)                
                 }
