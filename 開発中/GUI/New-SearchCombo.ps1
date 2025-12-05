@@ -1,40 +1,4 @@
-﻿Add-Type -AssemblyName PresentationFramework
-
-# ================================
-# 基底クラス
-# ================================
-class EntryBase {
-    [string] $Code
-    [string] $Name
-
-    EntryBase([string]$code, [string]$name) {
-        $this.Code = $code
-        $this.Name = $name
-    }
-
-    [bool] Equals([object] $other) { throw "Equals must be implemented in derived class" }
-    [string] ToString() { throw "ToString must be implemented in derived class" }
-
-    [string] ToJson() { return ($this | ConvertTo-Json -Compress) }
-    static [EntryBase] FromJson([object]$obj) { throw "FromJson must be implemented in derived class" }
-}
-
-# ================================
-# 拠点クラス（具体）
-# ================================
-class Entry : EntryBase {
-    Entry([string]$code, [string]$name) : base($code, $name) {}
-
-    [bool] Equals([object] $other) {
-        if ($null -eq $other) { return $false }
-        if ($other -is [Entry]) { return ($this.Code -eq $other.Code -and $this.Name -eq $other.Name) }
-        return $false
-    }
-
-    [string] ToString() { return "$($this.Code):$($this.Name)" }
-
-    static [Entry] FromJson([object]$obj) { return [Entry]::new($obj.Code, $obj.Name) }
-}
+Add-Type -AssemblyName PresentationFramework
 
 # ================================
 # 履歴操作関数群
@@ -146,7 +110,7 @@ function New-SearchCombo {
     $comboBox.Tag = @{
         HistoryFile = $HistoryFile
         History     = @()
-        EntryClass  = [Entry]  # 外から差し替え可能
+        EntryClass  = [EntryBase]  # 外から差し替え可能
 
         LoadHistory = { Load-History $cbRef }.GetNewClosure()
         SaveHistory = { Save-History $cbRef }.GetNewClosure()
