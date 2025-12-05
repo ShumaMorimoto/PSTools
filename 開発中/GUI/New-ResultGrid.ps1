@@ -1,9 +1,7 @@
-﻿Add-Type -AssemblyName PresentationFramework
-
-# ===== EntryBase / Entry（既存定義を前提。簡易再掲） =====
+Add-Type -AssemblyName PresentationFramework
 
 # ================================
-# DataGrid生成関数（resultもEntry配列前提）
+# DataGrid生成関数（新しい設計）
 # ================================
 function New-ResultGrid {
     param([string]$Name)
@@ -17,90 +15,100 @@ function New-ResultGrid {
     $grid.SelectionMode = "Single"
     $grid.SelectionUnit = "FullRow"
 
-    # "_" 始まりの列はキャンセル
+    # "_" 始まりの列は表示しない
     $grid.Add_AutoGeneratingColumn({
             param($sender, $e)
             if ($e.PropertyName -match '^_') { $e.Cancel = $true }
         })
 
+    # $gridの参照をクロージャ内で使うための変数
     $gridref = $grid
+
+    # --- Tagの設計を刷新 ---
     $grid.Tag = @{
+        # --- 状態 ---
         Name           = $Name
+        Items          = @()
         HighlightBrush = [Windows.Media.Brushes]::LightYellow
         SelectionBrush = [Windows.Media.Brushes]::LightGreen
 
-        # UpdateGrid: Entry配列同士を突合せ
-        UpdateGrid     = {
-            param([EntryBase[]]$results, [EntryBase[]]$history)
+        # --- 操作 ---
+
+        # [メソッド1] 表示対象のデータをセットする (表示はまだしない)
+        SetData        = {
+            param(
+                [EntryBase[]]$items
+            )
+            $gridref.Tag.Items = @($items)
+        }.GetNewClosure()
+
+        # [メソッド2] 現在のデータと、引数の履歴を基に、グリッド表示を更新する
+        RefreshView    = {
+            param(
+                [EntryBase[]]$history = @()
+            )
+
+            $results = $gridref.Tag.Items
 
             foreach ($r in $results) {
                 $isMatch = $false
-                foreach ($h in $history) {
-                    if ($h.Equals($r)) { $isMatch = $true; break }
+                if ($null -ne $history) {
+                    foreach ($h in $history) {
+                        if ($h.Equals($r)) { $isMatch = $true; break }
+                    }
                 }
+                # 既存のプロパティを上書きするために -Force を付ける
                 $r | Add-Member -NotePropertyName _IsHistoryMatch -NotePropertyValue $isMatch -Force
             }
-
-            $sorted = $results | Sort-Object { -not $_._IsHistoryMatch }
-            $gridref.ItemsSource = @($sorted)
+            $sorted = $results | Sort-Object { -not $_._IsHistoryMatch }          
+            $gridref.ItemsSource = $sorted
+        }.GetNewClosure()
+        
+        # [メソッド3] グリッドをクリアする
+        Clear          = {
+            $gridref.Tag.Items = @()
+            $gridref.ItemsSource = $null
         }.GetNewClosure()
 
-        # 外部から差し替え可能な Selected スクリプト
+        # 外部から差し替え可能な Selected イベント用スクリプトブロック
         Selected       = { param($entry) Write-Host "Tag.Selected: $($entry.ToString())" }
     }
+
+    # --- イベントハンドラ (変更なし) ---
 
     # 履歴一致行を色付け
     $grid.Add_LoadingRow({
             param($sender, $e)
+            # 参照先を $item._IsHistoryMatch に修正 (元々正しかったが明記)
             $item = $e.Row.Item
-            if ($item._IsHistoryMatch) { $e.Row.Background = $sender.Tag.HighlightBrush }
+            if ($item -and $item._IsHistoryMatch) { $e.Row.Background = $sender.Tag.HighlightBrush }
+            else { $e.Row.Background = $null } # 色をリセットする処理も追加
         })
 
     # 選択イベント
     $grid.Add_SelectionChanged({
             param($sender, $e)
+        
+            # 以前選択されていた行の色をリセット
+            foreach ($removedItem in $e.RemovedItems) {
+                $row = $sender.ItemContainerGenerator.ContainerFromItem($removedItem)
+                if ($row -is [Windows.Controls.DataGridRow]) {
+                    # 履歴にマッチしていれば黄色、そうでなければデフォルト色
+                    $row.Background = if ($removedItem._IsHistoryMatch) { $sender.Tag.HighlightBrush } else { $null }
+                }
+            }
+
+            # 新しく選択された行を処理
             $selected = $sender.SelectedItem
             if ($selected) {
                 $row = $sender.ItemContainerGenerator.ContainerFromItem($selected)
                 if ($row -is [Windows.Controls.DataGridRow]) { $row.Background = $sender.Tag.SelectionBrush }
 
-                # 内部ログ
-                Write-Host "選択された: $($selected.ToString())"
-
-                # 外部スクリプト呼び出し（Invoke の挙動確認済み）
-                $sender.Tag.Selected.Invoke($selected)
+                # 外部スクリプト呼び出し
+                # & 演算子を使うことで、引数問題を気にせず堅牢に呼び出せる
+                & $sender.Tag.Selected $selected
             }
         })
 
     return $grid
 }
-
-# ================================
-# ダミーデータ（結果もEntry配列）
-# ================================
-$results = @(
-    [Entry]::new("41.773", "函館駅"),
-    [Entry]::new("43.068", "札幌駅"),
-    [Entry]::new("35.681", "東京駅")
-)
-
-# 履歴（Entry配列）
-$history = @(
-    [Entry]::new("41.773", "函館駅")  # 函館駅
-)
-
-# ================================
-# Grid生成と更新
-# ================================
-$datagrid = New-ResultGrid -Name "TestGrid"
-$datagrid.Tag.UpdateGrid.Invoke($results, $history)
-
-# ================================
-# ウィンドウ表示
-# ================================
-$window = New-Object Windows.Window
-$window.Title = "UpdateGrid テスト（Entry配列前提）"
-$window.Width = 500
-$window.Height = 400
-$window.Content = $datagrid
-#$window.ShowDialog() | Out-Null
