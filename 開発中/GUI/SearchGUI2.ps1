@@ -1,4 +1,4 @@
-﻿using module RouteOptimizer
+using module RouteOptimizer
 
 # 必要アセンブリをロード
 Add-Type -AssemblyName PresentationCore
@@ -7,13 +7,6 @@ Add-Type -AssemblyName WindowsBase
 Add-Type -AssemblyName System.Xaml
 
 # === ここまでに EntryBase/Entry, Load/Save/Refresh/Add/Get, New-SearchCombo, New-ResultGrid を定義済み前提 ===
-class EntryBase {
-    EntryBase() { }
-    [bool] Equals([object] $other) { throw "Equals must be implemented in derived class" }
-    [string] ToString() { throw "ToString must be implemented in derived class" }
-    [string] ToJson() { return ($this | ConvertTo-Json -Compress) }
-    static [EntryBase] FromJson([object]$obj) { throw "FromJson must be implemented in derived class" }
-}
 
 class PlaceEntry : EntryBase {
     [System.Xml.XmlElement] $_trkpt   # 元のXMLノードを保持
@@ -25,22 +18,22 @@ class PlaceEntry : EntryBase {
     PlaceEntry() { }
 
     PlaceEntry([System.Xml.XmlElement]$trkpt) {
-        $this._trkpt  = $trkpt
-        $this.拠点名  = $trkpt.name
-        $this.住所    = [GPXDocument]::GetTownName($trkpt, 3)
-        $this.緯度    = [double]$trkpt.GetAttribute("lat")
-        $this.経度    = [double]$trkpt.GetAttribute("lon")
+        $this._trkpt = $trkpt
+        $this.拠点名 = $trkpt.name
+        $this.住所 = [GPXDocument]::GetTownName($trkpt, 3)
+        $this.緯度 = [double]$trkpt.GetAttribute("lat")
+        $this.経度 = [double]$trkpt.GetAttribute("lon")
     }
 
     PlaceEntry([string] $name,
-               [string] $address,   
-               [double] $lat, 
-               [double] $lon ) {
-        $this._trkpt  = $null   # XMLから生成していない場合は null
-        $this.拠点名  = $name
-        $this.住所    = $address
-        $this.緯度    = $lat
-        $this.経度    = $lon
+        [string] $address,   
+        [double] $lat, 
+        [double] $lon ) {
+        $this._trkpt = $null   # XMLから生成していない場合は null
+        $this.拠点名 = $name
+        $this.住所 = $address
+        $this.緯度 = $lat
+        $this.経度 = $lon
     }
 
     [bool] Equals([object] $other) {
@@ -112,11 +105,11 @@ function Set-Status([string]$msg) { $statusText.Text = $msg }
 function Invoke-Search([string]$keyword) {
     $towns = ([GPXDocumentFactory]::Search($keyword)).GetTrkPts()
     $results = @()
-    foreach($town in $towns){
+    foreach ($town in $towns) {
         $pt = [PlaceEntry]::new($town)
         $results += $pt        
     }
-    return $results
+    return [PlaceEntry[]]$results
 }
 
 # --- コンボのイベント連動 ---
@@ -131,11 +124,12 @@ $combo.Tag.Entered = [Action[string]] {
 
     $results = Invoke-Search $kw
     # Grid部品のUpdateGridを利用
-    $dataGrid.Tag.UpdateGrid.Invoke($results, @())
+    & $dataGrid.Tag.SetData $results
+    & $dataGrid.Tag.RefreshView @()
 
     # 履歴に拠点オブジェクトを追加（ダミー）
-#    $cls = $combo.Tag.EntryClass
-#    $combo.Tag.AddHistory.Invoke($kw, $cls::new("X", "拠点X"))
+    #    $cls = $combo.Tag.EntryClass
+    #    $combo.Tag.AddHistory.Invoke($kw, $cls::new("X", "拠点X"))
 
     Set-Status "検索完了（件数: $($results.Count)）"
 }
