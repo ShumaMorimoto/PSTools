@@ -9,6 +9,8 @@ if (Test-Path "$PSScriptRoot\lib") {
 }
 
 # ─── クラス定義 ───
+Add-Type -AssemblyName PresentationFramework
+
 {{Classes}}
 
 # ─── 関数読み込み ───

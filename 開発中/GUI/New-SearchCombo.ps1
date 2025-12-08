@@ -67,6 +67,7 @@ function Refresh-List {
     $cb.ItemsSource = $items
 }
 
+
 function Add-History {
     param([System.Windows.Controls.ComboBox]$cb, [string]$Keyword, [object]$Entry)
     $hist = @($cb.Tag.History)
@@ -87,14 +88,6 @@ function Add-History {
     Refresh-List -cb $cb
 }
 
-function Get-History {
-    param([System.Windows.Controls.ComboBox]$cb, [string]$Keyword)
-    $cb.Tag.History | Where-Object { $_.Keyword -eq $Keyword }
-}
-
-# ================================
-# 検索用 ComboBox（削らず完全版）
-# ================================
 function New-SearchCombo {
     param([string]$Name, [string]$HistoryName = $null)
 
@@ -104,25 +97,36 @@ function New-SearchCombo {
     $comboBox.Margin = "5"
     $comboBox.FontSize = 16
 
-    $HistoryFile = if ([string]::IsNullOrWhiteSpace($HistoryName)) { "history_$Name.json" } else { "history_$HistoryName.json" }
-
-    $cbRef = $comboBox
-    $comboBox.Tag = @{
-        HistoryFile = $HistoryFile
-        History     = @()
-        EntryClass  = [EntryBase]  # 外から差し替え可能
-
-        LoadHistory = { Load-History $cbRef }.GetNewClosure()
-        SaveHistory = { Save-History $cbRef }.GetNewClosure()
-        RefreshList = { param($Keyword) Refresh-List -cb $cbRef -Keyword $Keyword }.GetNewClosure()
-        AddHistory  = { param($Keyword, $Entry) Add-History -cb $cbRef -Keyword $Keyword -Entry $Entry }.GetNewClosure()
-        GetHistory  = { param($Keyword) Get-History -cb $cbRef -Keyword $Keyword }.GetNewClosure()
-
-        Entered     = [Action[string]] { param($kw) Write-Host "Tag.Entered: $kw" }
+    # APPDATA\GUITools\data フォルダを基準にする
+    $baseDir = Join-Path $env:APPDATA "GUITools\data"
+    if (-not (Test-Path $baseDir)) {
+        New-Item -ItemType Directory -Path $baseDir | Out-Null
     }
 
-    $comboBox.Tag.LoadHistory.Invoke()
-    $comboBox.Tag.RefreshList.Invoke("")
+    $HistoryFile = if ([string]::IsNullOrWhiteSpace($HistoryName)) {
+        Join-Path $baseDir "history_$Name.json"
+    }
+    else {
+        Join-Path $baseDir "history_$HistoryName.json"
+    }
+    
+    $cbRef = $comboBox
+    $comboBox.Tag = @{
+        HistoryFile         = $HistoryFile
+        History             = @()
+        EntryClass          = [EntryBase]  # 外から差し替え可能
+
+        LoadHistory         = { Load-History $cbRef }.GetNewClosure()
+        SaveHistory         = { Save-History $cbRef }.GetNewClosure()
+        RefreshList         = { param($Keyword) Refresh-List -cb $cbRef -Keyword $Keyword }.GetNewClosure()
+        AddHistory          = { param($Keyword, $Entry) Add-History -cb $cbRef -Keyword $Keyword -Entry $Entry }.GetNewClosure()
+        GetHistory          = { param($Keyword) Get-History -cb $cbRef -Keyword $Keyword }.GetNewClosure()
+
+        Entered             = [Action[string]] { param($kw) Write-Host "Tag.Entered: $kw" }
+
+        # テキストボックス確定後の KeyUp(Return) を抑制するフラグ
+        SkipNextKeyUpReturn = $false
+    }
 
     # Loadedイベント（内部TextBoxアクセス）
     $comboBox.Add_Loaded({
@@ -131,38 +135,47 @@ function New-SearchCombo {
             $editable = $sender.Template.FindName("PART_EditableTextBox", $sender)
             if (-not $editable) { return }
 
-            $editable.Add_TextChanged({
+            # KeyUp: 文字入力時のリスト更新 + IME確定時(KeyUp:Return)の扱い
+            $editable.Add_KeyUp({
                     param($sender, $e)
                     $comboRef = $sender.TemplatedParent
-                    $comboRef.Tag.RefreshList.Invoke($comboRef.Text)
-                    $comboRef.SelectedIndex = -1
+                    # IME確定時は KeyUp(Return) が来るが、テキストボックス確定直後なら抑制
+                    if ($e.Key -eq "Return") {
+                        if ($comboRef.Tag.SkipNextKeyUpReturn) {
+                            $comboRef.Tag.SkipNextKeyUpReturn = $false
+                            return  # テキストボックス確定に伴う KeyUp(Return) は無視
+                        }
+                        # IME側の確定（KeyUpのみ）で来た Return はリフレッシュする
+                        $comboRef.Tag.RefreshList.Invoke($comboRef.Text)
+                        $comboRef.SelectedIndex = -1
+                        return
+                    }
                 })
 
             $editable.Add_KeyDown({
                     param($sender, $e)
                     $comboRef = $sender.TemplatedParent
                     switch ($e.Key) {
-                        "Tab" {
-                            $e.Handled = $true
-                            $comboRef.IsDropDownOpen = -not $comboRef.IsDropDownOpen
-                            if ($comboRef.IsDropDownOpen) { $comboRef.SelectedIndex = 0 }
-                        }
                         "Return" {
+                            # テキストボックスでの検索確定：直後の KeyUp(Return) は抑制
+                            $comboRef.Tag.SkipNextKeyUpReturn = $true
                             $e.Handled = $true
                             $comboRef.IsDropDownOpen = $false
                             $comboRef.Tag.Entered.Invoke($comboRef.Text)
                         }
                     }
                 })
+
+            # 履歴ロードは Loaded 時のみ呼ぶ
+            $sender.Tag.LoadHistory.Invoke()
+            $sender.Tag.RefreshList.Invoke("")
         })
 
-    # ComboBox 自体の KeyDownイベント
-    $comboBox.Add_KeyDown({
+    # ComboBox の SelectionChangedイベント
+    $comboBox.Add_SelectionChanged({
             param($sender, $e)
-            if ($e.Key -eq "Down" -and -not $sender.IsDropDownOpen) {
-                $sender.IsDropDownOpen = $true
-                $sender.SelectedIndex = 0
-                $e.Handled = $true
+            if ($sender.SelectedItem) {
+                $sender.Tag.Entered.Invoke($sender.SelectedItem)
             }
         })
 
