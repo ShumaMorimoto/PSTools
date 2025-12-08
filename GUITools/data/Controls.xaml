@@ -15,7 +15,23 @@
         AutoGenerateColumns="True"
         IsReadOnly="True"
         SelectionMode="Single"
-        SelectionUnit="FullRow" />
+        SelectionUnit="FullRow">
+
+        <DataGrid.RowStyle>
+            <Style TargetType="DataGridRow">
+                <Style.Triggers>
+                    <!-- 履歴一致行を黄色で -->
+                    <DataTrigger Binding="{Binding _IsHistoryMatch}" Value="True">
+                        <Setter Property="Background" Value="LightYellow" />
+                    </DataTrigger>
+                    <!-- 選択行を緑で -->
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="LightGreen" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+        </DataGrid.RowStyle>
+    </DataGrid>
 
     <!-- 詳細グリッド -->
     <DataGrid x:Key="DetailGrid"
@@ -34,15 +50,15 @@
 
     <!-- 詳細リスト -->
     <ListBox x:Key="DetailList"
-             FontSize="16"
-             SelectionMode="Extended"
-             Margin="4">
+        FontSize="16"
+        SelectionMode="Extended"
+        Margin="4">
         <ListBox.ItemTemplate>
             <DataTemplate>
                 <StackPanel Orientation="Horizontal" Margin="2">
                     <!-- 表示は「項目: 値」 -->
-                    <TextBlock Text="{Binding 項目}" FontWeight="Bold" Margin="0,0,8,0"/>
-                    <TextBlock Text="{Binding 値}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding 項目}" FontWeight="Bold" Margin="0,0,8,0" />
+                    <TextBlock Text="{Binding 値}" TextWrapping="Wrap" />
                 </StackPanel>
             </DataTemplate>
         </ListBox.ItemTemplate>

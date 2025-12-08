@@ -25,7 +25,12 @@
         Items          = @()
         HighlightBrush = [System.Windows.Media.Brushes]::LightYellow
         SelectionBrush = [System.Windows.Media.Brushes]::LightGreen
-        SetStatus      = $SetStatus
+
+        # SetStatus をラッパー化（呼び出しは2変数）
+        SetStatus      = [Action[string,string]] {
+            param($level,$message)
+            $SetStatus.Invoke($level,$control.Tag.Component,$message)
+        }.GetNewClosure()
 
         SetData        = {
             param([EntryBase[]]$items)
@@ -62,7 +67,7 @@
 
         Selected       = {
             param($entry)
-            $control.Tag.SetStatus.Invoke("Info", $control.Tag.Component, "選択: $($entry.ToString())")
+            $control.Tag.SetStatus.Invoke("Info","選択: $($entry.ToString())")
         }.GetNewClosure()
     }
 

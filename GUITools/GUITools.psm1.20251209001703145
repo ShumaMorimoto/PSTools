@@ -8,39 +8,26 @@ if (Test-Path "$PSScriptRoot\lib") {
     }
 }
 
-
-# ================================
-# モジュールスコープ定数
-# ================================
-$script:KeysToIgnore = @(
-    [System.Windows.Input.Key]::LeftShift, [System.Windows.Input.Key]::RightShift,
-    [System.Windows.Input.Key]::LeftCtrl,  [System.Windows.Input.Key]::RightCtrl,
-    [System.Windows.Input.Key]::LeftAlt,   [System.Windows.Input.Key]::RightAlt,
-    [System.Windows.Input.Key]::LWin,      [System.Windows.Input.Key]::RWin, [System.Windows.Input.Key]::Apps,
-    [System.Windows.Input.Key]::Up, [System.Windows.Input.Key]::Down, [System.Windows.Input.Key]::Left, [System.Windows.Input.Key]::Right,
-    [System.Windows.Input.Key]::Home, [System.Windows.Input.Key]::End, [System.Windows.Input.Key]::PageUp, [System.Windows.Input.Key]::PageDown,
-    [System.Windows.Input.Key]::F1, [System.Windows.Input.Key]::F2, [System.Windows.Input.Key]::F3, [System.Windows.Input.Key]::F4,
-    [System.Windows.Input.Key]::F5, [System.Windows.Input.Key]::F6, [System.Windows.Input.Key]::F7, [System.Windows.Input.Key]::F8,
-    [System.Windows.Input.Key]::F9, [System.Windows.Input.Key]::F10, [System.Windows.Input.Key]::F11, [System.Windows.Input.Key]::F12,
-    [System.Windows.Input.Key]::CapsLock, [System.Windows.Input.Key]::NumLock, [System.Windows.Input.Key]::Scroll,
-    [System.Windows.Input.Key]::Insert, [System.Windows.Input.Key]::PrintScreen, [System.Windows.Input.Key]::Pause,
-    [System.Windows.Input.Key]::Tab, [System.Windows.Input.Key]::Escape
-)
-
 # ─── クラス定義 ───
 Add-Type -AssemblyName PresentationFramework
 
 class EntryBase {
     EntryBase() { }
 
-    EntryBase([hashtable]$json) {
+    EntryBase([object]$json) {
         if ($null -eq $json) { return }
-        $this.ApplyHashtable($json)
-    }
 
-    EntryBase([psobject]$json) {
-        if ($null -eq $json) { return }
-        $this.ApplyPsObject($json)
+        switch ($json.GetType().Name) {
+            'Hashtable' {
+                $this.ApplyHashtable([hashtable]$json)
+            }
+            'PSCustomObject' {
+                $this.ApplyPsObject([psobject]$json)
+            }
+            default {
+                throw "Unsupported type: $($json.GetType().FullName)"
+            }
+        }
     }
 
     [void] ApplyHashtable([hashtable]$json) {
@@ -68,6 +55,7 @@ class EntryBase {
         return $ht
     }
 }
+
 
 
 # ─── 関数読み込み ───

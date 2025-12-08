@@ -54,7 +54,7 @@
                 $item.Tag     = @{ 項目 = $tpl.Key; 値 = $value } # 内部データ（項目＋値）
                 $lbRef.Items.Add($item) | Out-Null
             }
-            $SetStatus.Invoke("Info",$lbRef.Tag.Component,"データ設定完了")
+            $lbRef.Tag.SetStatus.Invoke("Info","データ設定完了")
         }.GetNewClosure()
 
         Entered = [Action[System.Collections.IList]] {
@@ -63,11 +63,15 @@
                 # 値だけコピー（Tagから値を参照）
                 $text = ($selected | ForEach-Object { $_.Tag.値 }) -join "`r`n"
                 [System.Windows.Clipboard]::SetText($text)
-                $SetStatus.Invoke("Info",$lbRef.Tag.Component,"コピー完了（値のみ）")
+                $lbRef.Tag.SetStatus.Invoke("Info","コピー完了（値のみ）")
             }
         }.GetNewClosure()
 
-        SetStatus = $SetStatus
+        # SetStatus をラッパー化（呼び出しは2変数）
+        SetStatus = [Action[string,string]] {
+            param($level,$message)
+            $SetStatus.Invoke($level,$lbRef.Tag.Component,$message)
+        }.GetNewClosure()
     }
 
     # --- イベント登録 ---

@@ -17,7 +17,7 @@
         </StackPanel>
 
         <!-- 右ペイン -->
-        <ContentControl x:Name="DetailGridHost" Grid.Column="1" Margin="10"/>
+        <ContentControl x:Name="DetailListHost" Grid.Column="1" Margin="10"/>
 
         <!-- ステータスバー -->
         <DockPanel VerticalAlignment="Bottom" LastChildFill="True" Margin="2,0,2,2">

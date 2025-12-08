@@ -1,6 +1,6 @@
-function Init-DetailGridLogic {
+﻿function Init-DetailListLogic {
     param(
-        [System.Windows.Controls.DataGrid]$control,
+        [System.Windows.Controls.ListBox]$control,
         [string]$Name,
         [string]$TemplateName = "default",
         [Action[string,string,string]]$SetStatus = $null
@@ -15,26 +15,8 @@ function Init-DetailGridLogic {
         }
     }
 
-    # --- DataGrid 基本設定 ---
-    $control.AutoGenerateColumns = $false
-    $control.IsReadOnly          = $true
-    $control.HeadersVisibility   = "Column"
-    $control.RowHeaderWidth      = 0
-    $control.SelectionMode       = "Extended"
-    $control.SelectionUnit       = "FullRow"
-
-    # --- 列定義追加（項目／値） ---
-    $control.Columns.Clear()
-
-    $col1 = New-Object System.Windows.Controls.DataGridTextColumn
-    $col1.Header = "項目"
-    $col1.Binding = New-Object System.Windows.Data.Binding "項目"
-    $control.Columns.Add($col1)
-
-    $col2 = New-Object System.Windows.Controls.DataGridTextColumn
-    $col2.Header = "値"
-    $col2.Binding = New-Object System.Windows.Data.Binding "値"
-    $control.Columns.Add($col2)
+    # --- ListBox 基本設定 ---
+    $control.SelectionMode = "Extended"
 
     # --- テンプレート読み込み ---
     $baseDir = Join-Path $env:APPDATA "GUITools\data"
@@ -54,35 +36,42 @@ function Init-DetailGridLogic {
     }
 
     # --- Tagにロジック注入 ---
-    $dgRef = $control
+    $lbRef = $control
     $control.Tag = @{
         Component  = $Name
         Template   = $tplRef
 
         SetData = {
             param($entry)
-            $items = @()
+            $lbRef.Items.Clear()
             foreach ($tpl in $tplRef.GetEnumerator()) {
                 $value = [string]$tpl.Value
                 foreach ($prop in $entry.PSObject.Properties.Name) {
                     $value = $value -replace "<$prop>", [string]$entry.$prop
                 }
-                $items += [PSCustomObject]@{ 項目 = $tpl.Key; 値 = $value }
+                $item = New-Object System.Windows.Controls.ListBoxItem
+                $item.Content = "$($tpl.Key): $value"   # 表示用（項目: 値）
+                $item.Tag     = @{ 項目 = $tpl.Key; 値 = $value } # 内部データ（項目＋値）
+                $lbRef.Items.Add($item) | Out-Null
             }
-            $dgRef.ItemsSource = $items
-            $SetStatus.Invoke("Info",$dgRef.Tag.Component,"データ設定完了")
+            $lbRef.Tag.SetStatus.Invoke("Info","データ設定完了")
         }.GetNewClosure()
 
         Entered = [Action[System.Collections.IList]] {
             param($selected)
             if ($selected.Count -gt 0) {
-                $text = ($selected | ForEach-Object { $_.値 }) -join "`r`n"
+                # 値だけコピー（Tagから値を参照）
+                $text = ($selected | ForEach-Object { $_.Tag.値 }) -join "`r`n"
                 [System.Windows.Clipboard]::SetText($text)
-                $SetStatus.Invoke("Info",$dgRef.Tag.Component,"コピー完了")
+                $lbRef.Tag.SetStatus.Invoke("Info","コピー完了（値のみ）")
             }
         }.GetNewClosure()
 
-        SetStatus = $SetStatus
+        # SetStatus をラッパー化（呼び出しは2変数）
+        SetStatus = [Action[string,string]] {
+            param($level,$message)
+            $SetStatus.Invoke($level,$lbRef.Tag.Component,$message)
+        }.GetNewClosure()
     }
 
     # --- イベント登録 ---

@@ -1,6 +1,6 @@
 @{
     RootModule        = 'GUITools.psm1'
-    ModuleVersion     = '1.0.12'
+    ModuleVersion     = '1.0.10'
     GUID              = 'ab2a5c2b-3def-4650-b9a2-9249742e9184'
     Author            = ''
     Description       = ''
@@ -11,9 +11,9 @@
     'Get-GUIToolsControl',
     'Get-GUIToolsWindow',
     'Get-History',
+    'Init-DetailGridLogic',
     'Init-DetailListLogic',
-    'Init-ResultGridLogic',
-    'Init-SearchComboLogic',
+    'Init-SearchCombo',
     'Load-History',
     'New-UIElement',
     'Refresh-List',

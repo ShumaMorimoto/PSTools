@@ -1,20 +1,14 @@
 class EntryBase {
     EntryBase() { }
 
-    EntryBase([object]$json) {
+    EntryBase([hashtable]$json) {
         if ($null -eq $json) { return }
+        $this.ApplyHashtable($json)
+    }
 
-        switch ($json.GetType().Name) {
-            'Hashtable' {
-                $this.ApplyHashtable([hashtable]$json)
-            }
-            'PSCustomObject' {
-                $this.ApplyPsObject([psobject]$json)
-            }
-            default {
-                throw "Unsupported type: $($json.GetType().FullName)"
-            }
-        }
+    EntryBase([psobject]$json) {
+        if ($null -eq $json) { return }
+        $this.ApplyPsObject($json)
     }
 
     [void] ApplyHashtable([hashtable]$json) {
@@ -42,4 +36,3 @@ class EntryBase {
         return $ht
     }
 }
-
