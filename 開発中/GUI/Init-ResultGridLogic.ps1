@@ -30,11 +30,7 @@
         # --- データセット（触らない） ---
         SetData        = {
             param([EntryBase[]]$items)
-            if ($items) {
                 $control.Tag.Items = ,$items
-            } else {
-                $control.Tag.Items = @()
-            }
         }.GetNewClosure()
 
         # --- 履歴突合せ＋並び替え ---
@@ -50,7 +46,7 @@
                 $r | Add-Member -NotePropertyName _IsHistoryMatch -NotePropertyValue $isMatch -Force
             }
 
-            $sorted = $results | Sort-Object { -not $_._IsHistoryMatch }
+            $sorted = @($results | Sort-Object { -not $_._IsHistoryMatch })
             $control.ItemsSource = $sorted
         }.GetNewClosure()
 
