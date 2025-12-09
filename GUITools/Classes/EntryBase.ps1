@@ -1,5 +1,6 @@
 class EntryBase {
     EntryBase() { }
+<<<<<<< Updated upstream
 
     EntryBase([hashtable]$json) {
         if ($null -eq $json) { return }
@@ -36,3 +37,9 @@ class EntryBase {
         return $ht
     }
 }
+=======
+    [bool] Equals([object] $other) { throw "Equals must be implemented in derived class" }
+    [string] ToJson() { return ($this | ConvertTo-Json -Compress) }
+    static [EntryBase] FromJson([object]$obj) { throw "FromJson must be implemented in derived class" }
+}
+>>>>>>> Stashed changes

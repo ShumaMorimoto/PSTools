@@ -8,6 +8,7 @@ if (Test-Path "$PSScriptRoot\lib") {
     }
 }
 
+<<<<<<< Updated upstream
 
 # ================================
 # モジュールスコープ定数
@@ -67,6 +68,19 @@ class EntryBase {
         }
         return $ht
     }
+=======
+# ─── クラス定義 ───
+Add-Type -AssemblyName PresentationCore
+Add-Type -AssemblyName PresentationFramework
+Add-Type -AssemblyName WindowsBase
+Add-Type -AssemblyName System.Xaml
+
+class EntryBase {
+    EntryBase() { }
+    [bool] Equals([object] $other) { throw "Equals must be implemented in derived class" }
+    [string] ToJson() { return ($this | ConvertTo-Json -Compress) }
+    static [EntryBase] FromJson([object]$obj) { throw "FromJson must be implemented in derived class" }
+>>>>>>> Stashed changes
 }
 
 

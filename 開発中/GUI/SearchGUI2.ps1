@@ -1,7 +1,59 @@
 ﻿using module RouteOptimizer
 using module GUITools
 
+<<<<<<< Updated upstream
 # === PlaceEntry クラス定義は省略（既存のまま） ===
+=======
+# 必要アセンブリをロード
+Add-Type -AssemblyName PresentationCore
+Add-Type -AssemblyName PresentationFramework
+Add-Type -AssemblyName WindowsBase
+Add-Type -AssemblyName System.Xaml
+
+# === ここまでに EntryBase/Entry, Load/Save/Refresh/Add/Get, New-SearchCombo, New-ResultGrid を定義済み前提 ===
+
+class PlaceEntry : EntryBase {
+    [System.Xml.XmlElement] $_trkpt   # 元のXMLノードを保持
+    [string] $拠点名   
+    [string] $住所   
+    [double] $緯度  
+    [double] $経度
+    
+    PlaceEntry() { }
+
+    PlaceEntry([System.Xml.XmlElement]$trkpt) {
+        $this._trkpt  = $trkpt
+        $this.拠点名  = $trkpt.name
+        $this.住所    = [GPXDocument]::GetTownName($trkpt, 3)
+        $this.緯度    = [double]$trkpt.GetAttribute("lat")
+        $this.経度    = [double]$trkpt.GetAttribute("lon")
+    }
+
+    PlaceEntry([string] $name,
+               [string] $address,   
+               [double] $lat, 
+               [double] $lon ) {
+        $this._trkpt  = $null   # XMLから生成していない場合は null
+        $this.拠点名  = $name
+        $this.住所    = $address
+        $this.緯度    = $lat
+        $this.経度    = $lon
+    }
+
+    [bool] Equals([object] $other) {
+        if ($null -eq $other) { return $false }
+        if ($other -is [PlaceEntry]) {
+            return ($this.経度 -eq $other.経度 -and $this.緯度 -eq $other.緯度)
+        }
+        return $false
+    }
+
+    static [PlaceEntry] FromJson([object]$obj) {
+        return [PlaceEntry]::new($obj.拠点名, $obj.住所, [double]$obj.緯度, [double]$obj.経度)
+    }
+ }
+
+>>>>>>> Stashed changes
 
 # メインWindow
 $window = New-Object System.Windows.Window
