@@ -15,7 +15,8 @@
         AutoGenerateColumns="True"
         IsReadOnly="True"
         SelectionMode="Single"
-        SelectionUnit="FullRow">
+        SelectionUnit="FullRow"
+        ColumnWidth="*">  <!-- ← この行を追加 -->
 
         <DataGrid.RowStyle>
             <Style TargetType="DataGridRow">
