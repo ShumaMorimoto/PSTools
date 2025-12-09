@@ -39,26 +39,29 @@ class ProjectEntry : EntryBase {
 }
 
 # ===============================
-# SRDWindow ロード
+# MainWindow とコントロール取得
 # ===============================
-$window      = Get-GUIToolsWindow -WindowName "SRDWindow"
+$window     = Get-GUIToolsWindow -WindowName "SRDWindow"
 $searchCombo = Get-GUIToolsControl -ControlName "SearchCombo"
 $resultGrid  = Get-GUIToolsControl -ControlName "ResultGrid"
 $detailList  = Get-GUIToolsControl -ControlName "DetailList"
 
+# 差し込み
 ($window.FindName("SearchComboHost")).Content = $searchCombo
 ($window.FindName("ResultGridHost")).Content  = $resultGrid
 ($window.FindName("DetailListHost")).Content  = $detailList
 
 # ===============================
-# ステータスバー更新
+# ステータスバー更新（3変数版）
 # ===============================
 $statusText = $window.FindName("StatusText")
-function Set-Status([string]$msg) { $statusText.Text = $msg }
-$SetStatus = { param($l,$c,$m) Set-Status "[$l][$c] $m" }
+$SetStatus = {
+    param([string]$level,[string]$component,[string]$message)
+    $statusText.Text = "[$level][$component] $message"
+}.GetNewClosure()
 
 # ===============================
-# コンポーネント初期化
+# コンポーネント初期化呼び出し
 # ===============================
 Init-SearchComboLogic -control $searchCombo -Name "Projects" -EntryClass ([ProjectEntry]) -SetStatus $SetStatus
 Init-ResultGridLogic  -control $resultGrid  -Name "ResultGrid"  -SetStatus $SetStatus
@@ -81,7 +84,7 @@ function Invoke-Search([string]$keyword) {
         })
     }
     catch {
-        Set-Status "履歴検索エラー: $($_.Exception.Message)"
+        & $searchCombo.Tag.SetStatus "ERROR" "履歴検索エラー: $($_.Exception.Message)"
         return @()
     }
 }
@@ -89,43 +92,31 @@ function Invoke-Search([string]$keyword) {
 # ===============================
 # イベント連動
 # ===============================
-
-# SearchCombo → 履歴検索 → ResultGridへ
 $searchCombo.Tag.Entered = [Action[string]] {
     param($kw)
-    Set-Status "履歴検索中…"
+    $searchCombo.Tag.SetStatus.Invoke("Info","検索中…")
     $results = Invoke-Search $kw
     & $resultGrid.Tag.SetData $results
     & $resultGrid.Tag.RefreshView @()
-    Set-Status "履歴検索完了（件数: $($results.Count)）"
+    $searchCombo.Tag.SetStatus.Invoke("Info","検索完了（件数: $($results.Count)）")
 }.GetNewClosure()
 
 # ResultGrid → 選択 → detailListへ ＋ 履歴追加
 $resultGrid.Tag.Selected = {
     param($entry)
     if (-not $entry) { return }
+
     & $detailList.Tag.SetData $entry
-    Set-Status "選択 → 詳細表示: $($entry.タイトル)"
+    $resultGrid.Tag.SetStatus.Invoke("Info","選択 → 詳細表示: $($entry.タイトル)")
     $searchCombo.Tag.AddHistory.Invoke($searchCombo.Text, $entry)
 }.GetNewClosure()
 
 # detailList → Entered: 選択中の Items 全部をクリップボードにコピー
-$detailList.Tag.Entered = {
-    param($entries)
-    if (-not $entries -or $entries.Count -eq 0) {
-        Set-Status "詳細グリッドに選択がありません"
-        return
-    }
-    $lines = foreach ($e in $entries) {
-        "項番:$($e.項番) 実施日:$($e.実施日) 場所:$($e.場所) タイトル:$($e.タイトル)"
-    }
-    $text = ($lines -join "`r`n")
-    try {
-        Set-Clipboard -Value $text
-        [System.Windows.MessageBox]::Show("コピーしました:`r`n$text", "詳細") | Out-Null
-    } catch { }
-    Set-Status "詳細コピー完了（件数: $($entries.Count)）"
-}.GetNewClosure()
+# DetailList → 詳細確定（必要なら有効化）
+#$detailList.Tag.Entered = {
+#    param($entry)
+#    $detailList.Tag.SetStatus.Invoke("Info","詳細表示完了: $($entry.名称)")
+#}.GetNewClosure()
 
 # ===============================
 # ウィンドウ表示
