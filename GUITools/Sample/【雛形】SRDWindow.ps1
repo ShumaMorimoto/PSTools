@@ -1,40 +1,33 @@
 ﻿using module D:\tool\Repository\PSTools\GUITools
 
 # ===============================
-# ProjectEntry クラス
+# テスト用 Entry クラス
 # ===============================
-class ProjectEntry : EntryBase {
-    [string]$実施日
-    [string]$時間
-    [string]$ステータス
-    [string]$種別
-    [string]$顧客略号
-    [string]$タイトル
-    [string]$ランク
-    [string]$PW担当
-    [string]$担当部
-    [string]$PM
-    [string]$P責
+class TESTEntry : EntryBase {
+    [string]$名称
+    [string]$住所
+    [string]$Keyword
 
-    ProjectEntry([object]$json) : base($json) {
-        $this.実施日 = $json.実施日
-        $this.時間 = $json.時間
-        $this.ステータス = $json.ステータス
-        $this.顧客略号 = $json.顧客略号
-        $this.タイトル = $json.タイトル
-        $this.ランク = $json.ランク
-        $this.PW担当 = $json.PW担当
-        $this.種別 = $json.種別
-        $this.担当部 = $json.担当部
-        $this.PM = $json.PM
-        $this.P責 = $json.P責
+    # 既存の文字列コンストラクタ
+    TESTEntry([string]$name, [string]$addr, [string]$kw) {
+        $this.名称    = $name
+        $this.住所    = $addr
+        $this.Keyword = $kw
     }
+
+    # PSObject コンストラクタを追加して EntryBase 側の処理に委譲
+    TESTEntry([psobject]$json) : base($json) { }
 
     [bool] Equals([object]$obj) {
         if ($null -eq $obj) { return $false }
-        if (-not ($obj -is [ProjectEntry])) { return $false }
-        return ($this.タイトル -eq $obj.タイトル -and
-                $this.実施日 -eq $obj.実施日)
+        if (-not ($obj -is [TESTEntry])) { return $false }
+        return ($this.Keyword -eq $obj.Keyword -and
+                $this.名称    -eq $obj.名称    -and
+                $this.住所    -eq $obj.住所)
+    }
+
+    [int] GetHashCode() {
+        return ($this.Keyword + $this.名称 + $this.住所).GetHashCode()
     }
 }
 
@@ -63,55 +56,56 @@ $SetStatus = {
 # ===============================
 # コンポーネント初期化呼び出し
 # ===============================
-Init-SearchComboLogic -control $searchCombo -Name "Projects" -EntryClass ([ProjectEntry]) -SetStatus $SetStatus
+Init-SearchComboLogic -control $searchCombo -Name "SearchCombo" -EntryClass ([TestEntry]) -SetStatus $SetStatus
 Init-ResultGridLogic  -control $resultGrid  -Name "ResultGrid"  -SetStatus $SetStatus
-Init-DetailListLogic  -control $detailList  -Name "Projects"  -Template "Projects" -SetStatus $SetStatus
+Init-DetailListLogic  -control $detailList  -Name "DetailList"  -SetStatus $SetStatus
 
 # ===============================
-# 履歴検索（GetHistoryの戻りは keyword+ProjectEntry×N）
+# 検索ロジック（ダミー）
 # ===============================
 function Invoke-Search([string]$keyword) {
-    if ([string]::IsNullOrWhiteSpace($keyword)) { return @() }
-
-    try {
-        $historyEntry = $searchCombo.Tag.GetHistory.Invoke($keyword)
-        if (-not $historyEntry) { return @() }
-
-        # selected は ProjectEntry の配列
-        return @(foreach ($e in $historyEntry.selected) {
-            if ($e -is [ProjectEntry]) { $e }
-            else { [ProjectEntry]::new($e) }
-        })
-    }
-    catch {
-        & $searchCombo.Tag.SetStatus "ERROR" "履歴検索エラー: $($_.Exception.Message)"
-        return @()
-    }
+    $results = @(
+        [TESTEntry]::new("ダミー拠点1", "東京都千代田区", $keyword),
+        [TESTEntry]::new("ダミー拠点2", "東京都港区",   $keyword)
+    )
+    return $results
 }
 
 # ===============================
 # イベント連動
 # ===============================
+
+# SearchCombo → キーワード確定 → 検索実行 → ResultGridへ
 $searchCombo.Tag.Entered = [Action[string]] {
     param($kw)
+
+    if ([string]::IsNullOrWhiteSpace($kw)) {
+        $searchCombo.Tag.SetStatus.Invoke("Warn","キーワードが空です")
+        return
+    }
+
     $searchCombo.Tag.SetStatus.Invoke("Info","検索中…")
     $results = Invoke-Search $kw
+
     & $resultGrid.Tag.SetData $results
     & $resultGrid.Tag.RefreshView @()
+
     $searchCombo.Tag.SetStatus.Invoke("Info","検索完了（件数: $($results.Count)）")
 }.GetNewClosure()
 
-# ResultGrid → 選択 → detailListへ ＋ 履歴追加
+# ResultGrid → 拠点選択 → DetailListへ ＋ SearchCombo履歴追加
 $resultGrid.Tag.Selected = {
     param($entry)
-    if (-not $entry) { return }
 
     & $detailList.Tag.SetData $entry
-    $resultGrid.Tag.SetStatus.Invoke("Info","選択 → 詳細表示: $($entry.タイトル)")
-    $searchCombo.Tag.AddHistory.Invoke($searchCombo.Text, $entry)
+    $resultGrid.Tag.SetStatus.Invoke("Info","拠点選択 → 詳細表示")
+
+    if ($entry.Keyword) {
+        & $searchCombo.Tag.AddHistory $entry.Keyword $entry
+        $resultGrid.Tag.SetStatus.Invoke("Info","履歴追加: $($entry.Keyword)")
+    }
 }.GetNewClosure()
 
-# detailList → Entered: 選択中の Items 全部をクリップボードにコピー
 # DetailList → 詳細確定（必要なら有効化）
 #$detailList.Tag.Entered = {
 #    param($entry)

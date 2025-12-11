@@ -65,7 +65,7 @@ $SetStatus = {
 # ===============================
 Init-SearchComboLogic -control $searchCombo -Name "Projects" -EntryClass ([ProjectEntry]) -SetStatus $SetStatus
 Init-ResultGridLogic  -control $resultGrid  -Name "ResultGrid"  -SetStatus $SetStatus
-Init-DetailListLogic  -control $detailList  -Name "Projects"  -Template "Projects" -SetStatus $SetStatus
+Init-DetailListLogic  -control $detailList  -Name "DetailList"  -SetStatus $SetStatus
 
 # ===============================
 # 履歴検索（GetHistoryの戻りは keyword+ProjectEntry×N）

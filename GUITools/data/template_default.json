@@ -1,0 +1,5 @@
+{
+  "Name": "{{ Name }}",
+  "Value": "{{ Value }}",
+  "Info": "Entry: {{ Name }} = {{ Value }}"
+}

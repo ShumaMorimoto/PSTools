@@ -7,7 +7,6 @@
     )
 
     if (-not $SetStatus) {
-        # デフォルト実装: 標準出力のみ
         $SetStatus = [Action[string,string,string]]{
             param($level,$component,$message)
             $prefix = "[$level][$component]"
@@ -19,39 +18,38 @@
     $control.SelectionMode = "Extended"
 
     # --- テンプレート読み込み ---
-    $baseDir = Join-Path $env:APPDATA "GUITools\data"
-    if (-not (Test-Path $baseDir)) { New-Item -ItemType Directory -Path $baseDir | Out-Null }
-    $file = Join-Path $baseDir "template_$TemplateName.json"
-
+    $file = Join-Path $script:ModuleRoot "\data\template_$TemplateName.json"
     $tplRef = $null
     if (Test-Path $file) {
-        try { $tplRef = Get-Content $file -Raw | ConvertFrom-Json -AsHashtable } catch { $tplRef = $null }
+        try {
+            $tplRef = Get-Content $file -Raw | ConvertFrom-Json -AsHashtable
+        }
+        catch {
+            $tplRef = $null
+        }
     }
     if (-not $tplRef) {
+        # デフォルトテンプレート
         $tplRef = @{
-            "位置" = "<緯度>,<経度>"
-            "名称" = "<拠点名>"
-            "住所" = "<住所>"
+            "ERROR" = "テンプレートがありません"
         }
     }
 
-    # --- Tagにロジック注入 ---
     $lbRef = $control
     $control.Tag = @{
-        Component  = $Name
-        Template   = $tplRef
+        Component = $Name
+        Template  = $tplRef
 
         SetData = {
             param($entry)
+
             $lbRef.Items.Clear()
+
             foreach ($tpl in $tplRef.GetEnumerator()) {
-                $value = [string]$tpl.Value
-                foreach ($prop in $entry.PSObject.Properties.Name) {
-                    $value = $value -replace "<$prop>", [string]$entry.$prop
-                }
+                $value = Invoke-Template -Template $tpl.Value -Data $entry
                 $item = New-Object System.Windows.Controls.ListBoxItem
-                $item.Content = "$($tpl.Key): $value"   # 表示用（項目: 値）
-                $item.Tag     = @{ 項目 = $tpl.Key; 値 = $value } # 内部データ（項目＋値）
+                $item.Content = "$($tpl.Key): $value"
+                $item.Tag     = @{ 項目 = $tpl.Key; 値 = $value }
                 $lbRef.Items.Add($item) | Out-Null
             }
             $lbRef.Tag.SetStatus.Invoke("Info","データ設定完了")
@@ -60,14 +58,12 @@
         Entered = [Action[System.Collections.IList]] {
             param($selected)
             if ($selected.Count -gt 0) {
-                # 値だけコピー（Tagから値を参照）
                 $text = ($selected | ForEach-Object { $_.Tag.値 }) -join "`r`n"
                 [System.Windows.Clipboard]::SetText($text)
                 $lbRef.Tag.SetStatus.Invoke("Info","コピー完了（値のみ）")
             }
         }.GetNewClosure()
 
-        # SetStatus をラッパー化（呼び出しは2変数）
         SetStatus = [Action[string,string]] {
             param($level,$message)
             $SetStatus.Invoke($level,$lbRef.Tag.Component,$message)
