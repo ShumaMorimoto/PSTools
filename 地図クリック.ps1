@@ -2,7 +2,7 @@ param(
     [string]$CenterKeyword,      # 住所／地名指定（例: "東京駅"）
     [double]$CenterLat,          # 緯度を直接指定する場合
     [double]$CenterLng,          # 経度を直接指定する場合
-    [int]$Zoom = 13,
+    [int]$Zoom = 14,
     [int]$Port = 5000,
     [string]$GpxPath = "selected_points.gpx"
 )

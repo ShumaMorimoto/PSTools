@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<gpx version="1.1" creator="PS-MapSelector"
+ xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>Selected Points</name>
+    <time>2025-12-12T20:45:55.8824364+09:00</time>
+  </metadata>  <wpt lat="36.6462794942653" lon="138.167452812195">
+    <name>Point1</name>
+    <time>2025-12-12T20:45:44.6195901+09:00</time>
+  </wpt>
+</gpx>

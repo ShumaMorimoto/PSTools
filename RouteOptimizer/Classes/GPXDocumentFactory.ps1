@@ -77,6 +77,52 @@ out body;
         }
         return $gpx
     }
+    static [GPXDocument] FromMap([string]$Keyword, [bool]$MunicipalityOnly = $false) {
+
+        # --- 1) 中心 Place の決定（既存 _ResolveCenterPoint を使う） ---
+        $place = $null
+        if ($Keyword) {
+            $place = [GPXDocumentFactory]::_ResolveCenterPoint($Keyword, $MunicipalityOnly)
+        }
+
+        # --- 2) Choice-Places を呼ぶ（Place を指定、デフォルト null） ---
+        $places = Choice-Places -Place $place
+
+        # --- 3) GPXDocument の rep を決定 ---
+        # Place が null の場合はデフォルト rep
+        $rep =
+        if ($place) {
+            @{
+                name    = $place.name
+                desc    = $place.desc
+                address = $place.address
+            }
+        }
+        else {
+            @{
+                name = "Selected Points"
+                desc = "Generated from map selection"
+            }
+        }
+
+        # --- 4) GPXDocument を生成 ---
+        $gpx = [GPXDocument]::new($rep)
+
+        # --- 5) Places を trkpt として追加 ---
+        foreach ($p in $places) {
+            $gpx.AppendTrkPt(@{
+                    lat  = $p.lat
+                    lon  = $p.lon
+                    name = $p.name
+                    desc = $p.desc
+                })
+        }
+
+        # --- 6) 統計更新 ---
+        $gpx.UpdateStats()
+
+        return $gpx
+    }
     static [GPXDocument] EnrichTrkPts(
         [GPXDocument]$gpx,
         [switch]$ForceUpdate
