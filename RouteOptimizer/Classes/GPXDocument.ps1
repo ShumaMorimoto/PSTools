@@ -2,6 +2,8 @@
     hidden static $creator = "GPXDocument クラス"
     hidden static [string] $GpxNamespace = "http://www.topografix.com/GPX/1/1"
     hidden static [System.Xml.XmlNamespaceManager] $NamespaceManager
+    hidden static [string] $xsdPath = (Join-Path $script:ModuleRoot "config/gpx.xsd")
+    static [hashtable] $TypeMap = @{}
 
     # 初期化: 名前空間マネージャを設定
     static [void] Initialize([System.Xml.XmlDocument]$doc) {
@@ -10,14 +12,74 @@
             [GPXDocument]::NamespaceManager.AddNamespace("gpx", $doc.DocumentElement.NamespaceURI)
         }
     }
+    # --- XSD を読み込んで TypeMap を構築 ---
+    static hidden [void] LoadSchema() {
+        $schemaSet = [System.Xml.Schema.XmlSchemaSet]::new()
+        $schemaSet.Add([GPXDocument]::GpxNamespace, [GPXDocument]::xsdPath) | Out-Null
+        $schemaSet.Compile()
 
+        $simpleTypes = @{}
+
+        # simpleType の継承関係を収集
+        foreach ($schema in $schemaSet.Schemas()) {
+            foreach ($item in $schema.Items) {
+                if ($item -is [System.Xml.Schema.XmlSchemaSimpleType]) {
+                    $simpleTypes[$item.Name] = $item.Content.BaseTypeName.Name
+                }
+            }
+        }
+        function ResolveBase([string]$type) {
+            while ($simpleTypes.ContainsKey($type)) {
+                $type = $simpleTypes[$type]
+            }
+            return $type
+        }
+
+        # element / attribute を TypeMap に登録
+        foreach ($schema in $schemaSet.Schemas()) {
+            foreach ($item in $schema.Items) {
+
+                # element
+                if ($item -is [System.Xml.Schema.XmlSchemaElement]) {
+                    $typeName = $item.SchemaTypeName.Name
+                    $base = $simpleTypes.ContainsKey($typeName) ? (ResolveBase $typeName) : $typeName
+
+                    [GPXDocument]::TypeMap[$item.Name] = @{
+                        BaseType    = $base
+                        IsAttribute = $false
+                    }
+                }
+
+                # complexType の属性
+                if ($item -is [System.Xml.Schema.XmlSchemaComplexType]) {
+                    foreach ($attr in $item.Attributes) {
+                        $typeName = $attr.SchemaTypeName.Name
+                        $base = $simpleTypes.ContainsKey($typeName) ? (ResolveBase $typeName) : $typeName
+
+                        [GPXDocument]::TypeMap[$attr.Name] = @{
+                            BaseType    = $base
+                            IsAttribute = $true
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    static GPXDocument() {
+        [GPXDocument]::LoadSchema()
+    }
     GPXDocument() { 
     }
 
     GPXDocument($rep) {
         # rep が文字列なら name にラップ、nullなら空ハッシュに
-        if ($rep -is [string]) { $rep = @{ name = $rep } }
-        elseif (-not $rep) { $rep = @{} }
+        if ($rep -is [string]) {
+            $rep = @{ name = $rep } 
+        }
+        elseif (-not $rep) {
+            $rep = @{} 
+        }
 
         $this.AppendChild($this.CreateXmlDeclaration("1.0", "UTF-8", $null))
 
@@ -36,7 +98,7 @@
             trk      = @{ trkseg = $null }  # 空タグを info 展開で生成
         }
 
-        $gpxRoot = $this.CreateElementFromPSO("gpx", $rootInfo, @("version", "creator"))
+        $gpxRoot = $this.CreateElementFromPSO("gpx", $rootInfo)
         $gpxRoot.SetAttribute("xmlns", [GPXDocument]::GpxNamespace)
         $this.AppendChild($gpxRoot)
 
@@ -114,7 +176,7 @@
                 desc       = $info.desc
                 extensions = $info.address
             }
-            $trkpt = $this.CreateElementFromPSO("trkpt", $info, @("lat", "lon"))
+            $trkpt = $this.CreateElementFromPSO("trkpt", $info)
             if ($trkpt) { $trkseg.AppendChild($trkpt) | Out-Null }
         }
     }
@@ -223,62 +285,116 @@
 
     # ------- 以下エレメント生成ヘルパ -------
     hidden [System.Xml.XmlElement] CreateElementFromPSO([string]$tagName) {
-        return $this.CreateElementFromPSO($tagName, $null, @())
+        return $this.CreateElementFromPSO($tagName, $null)
     }
-    hidden [System.Xml.XmlElement] CreateElementFromPSO([string]$tagName, [object]$info) {
-        return $this.CreateElementFromPSO($tagName, $info, @())
-    }
-    hidden [System.Xml.XmlElement] CreateElementFromPSO(
-        [string]$elementName,
-        [object]$pso,
-        [string[]]$attributes
-    ) {
-        $elem = $this.CreateElement($elementName, [GPXDocument]::GpxNamespace)
-
+    # ================================
+    #  PSO → XML
+    # ================================
+    hidden [System.Xml.XmlElement] CreateElementFromPSO([string]$name, [PSCustomObject]$pso) {
+        $elem = $this.CreateElement($name, [GPXDocument]::GpxNamespace)
         if (-not $pso) { return $elem }
 
-        if ($pso -is [hashtable]) {
-            foreach ($kv in $pso.GetEnumerator()) {
-                $name = $kv.Key
-                $value = $kv.Value
-                $this.ProcessPSOProperty($elem, $name, $value, $attributes, [GPXDocument]::GpxNamespace)
-            }
-        }
-        else {
-            foreach ($prop in $pso.PSObject.Properties) {
-                $name = $prop.Name
-                $value = $prop.Value
-                $this.ProcessPSOProperty($elem, $name, $value, $attributes, [GPXDocument]::GpxNamespace)
-            }
-        }
+        $pairs = ($pso -is [hashtable]) ? $pso.GetEnumerator() : $pso.PSObject.Properties
 
-        return $elem
-    }
+        foreach ($pair in $pairs) {
+            $key = $pair.Name
+            $value = $pair.Value
+            $typeInfo = [GPXDocument]::TypeMap[$key]
 
-    hidden [void] ProcessPSOProperty(
-        [System.Xml.XmlElement]$parent,
-        [string]$name,
-        [object]$value,
-        [string[]]$attributes,
-        [string]$ns
-    ) {
-        if ($attributes -contains $name) {
-            $parent.SetAttribute($name, "$($value ?? '')")
-        }
-        else {
-            if ($null -eq $value) {
-                $child = $this.CreateElement($name, $ns)
-                $parent.AppendChild($child) | Out-Null
-            }
-            elseif ($value -is [hashtable] -or $value -is [PSCustomObject]) {
-                $child = $this.CreateElementFromPSO($name, $value)
-                $parent.AppendChild($child) | Out-Null
+            if ($typeInfo.IsAttribute) {
+                $attr = $this.CreateAttribute($key)
+                $attr.Value = [GPXDocument]::ConvertToString($value, $typeInfo.BaseType)
+                $elem.Attributes.Append($attr) | Out-Null
             }
             else {
-                $child = $this.CreateElement($name, $ns)
-                $child.InnerText = "$value"
-                $parent.AppendChild($child) | Out-Null
+                $items = ($value -is [System.Collections.IEnumerable] -and -not ($value -is [string])) ? $value : @($value)
+
+                foreach ($item in $items) {
+                    if ($item -is [hashtable] -or $item -is [psobject]) {
+                        $child = $this.CreateElementFromPSO($key, $item)
+                        $elem.AppendChild($child) | Out-Null
+                    }
+                    else {
+                        $child = $this.CreateElement($key, [GPXDocument]::GpxNamespace)
+                        $child.InnerText = [GPXDocument]::ConvertToString($item, $typeInfo.BaseType)
+                        $elem.AppendChild($child) | Out-Null
+                    }
+                }
             }
         }
+        return $elem
+    }
+    # ================================
+    #  型変換（XML → PSO）
+    # ================================
+    hidden static [object] ConvertValue([string]$text, [string]$baseType) {
+
+        if ($null -eq $text -or $text -eq "") { return $null }
+
+        switch ($baseType) {
+            "decimal" { return [double]$text }
+            "int" { return [int]$text }
+            "integer" { return [int]$text }
+            "boolean" { return [bool]$text }
+            "dateTime" { return [datetime]$text }
+            default { return $text }
+        }
+        return $null
+    }
+
+    # ================================
+    #  型変換（PSO → XML）
+    # ================================
+    hidden static [string] ConvertToString($value, [string]$baseType) {
+
+        if ($null -eq $value) { return "" }
+
+        switch ($baseType) {
+            "decimal" { return $value.ToString("G") }
+            "int" { return $value.ToString() }
+            "integer" { return $value.ToString() }
+            "boolean" { return $value.ToString().ToLower() }
+            "dateTime" { return $value.ToString("o") }
+            default { return [string]$value }
+        }
+        return $null
+    }
+
+    # ================================
+    #  XML → PSO
+    # ================================
+    hidden static [object] ElementToPSO([System.Xml.XmlElement]$elem) {
+
+        if (-not $elem) { return $null }
+        $pso = @{}
+        # --- 属性 ---
+        foreach ($attr in $elem.Attributes) {
+            if ($attr.Name -eq "xmlns" -or $attr.Prefix -eq "xmlns") { continue }
+
+            $typeInfo = [GPXDocument]::TypeMap[$attr.Name]
+            $pso[$attr.Name] = [GPXDocument]::ConvertValue($attr.Value, $typeInfo.BaseType)
+        }
+        # --- 子ノードを LocalName でグループ化 ---
+        $groups = $elem.ChildNodes |
+        Where-Object { $_.NodeType -ne "Text" } |
+        Group-Object LocalName
+
+        foreach ($group in $groups) {
+            $name = $group.Name
+            $typeInfo = [GPXDocument]::TypeMap[$name]
+            $items = @(
+                foreach ($child in $group.Group) {
+                    if ($child.HasChildNodes -and $child.ChildNodes.Count -gt 1) {
+                        [GPXDocument]::ElementToPSO($child)
+                    }
+                    else {
+                        [GPXDocument]::ConvertValue($child.InnerText, $typeInfo.BaseType)
+                    }
+                }
+            )
+            $pso[$name] = ($items.Count -eq 1) ? $items[0] : $items
+        }
+
+        return $pso
     }
 }

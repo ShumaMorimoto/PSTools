@@ -1,0 +1,99 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>DistortableImage 実測版</title>
+
+    <!-- Leaflet -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- DistortableImage 0.21.9（vendor 必須） -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-distortableimage@0.21.9/dist/vendor.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-distortableimage@0.21.9/dist/leaflet.distortableimage.css"
+    />
+
+    <script src="https://unpkg.com/leaflet-distortableimage@0.21.9/dist/vendor.js"></script>
+    <script src="https://unpkg.com/leaflet-distortableimage@0.21.9/dist/leaflet.distortableimage.js"></script>
+
+    <style>
+      html,
+      body,
+      #map {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      #info {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        z-index: 1000;
+        background: white;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="info">実測縮尺: <span id="scale">未計測</span></div>
+    <div id="map"></div>
+
+    <script>
+      let map;
+      let imgLayer;
+
+      // ✅ 江戸城（皇居）近辺を初期表示
+      const edoCastle = [35.685175, 139.7528];
+
+      map = L.map("map").setView(edoCastle, 16);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+      }).addTo(map);
+
+      map.whenReady(function () {
+        imgLayer = L.distortableImageOverlay("shutsujin.png", {
+          actions: [
+            L.DragAction,
+            L.ScaleAction,
+            L.RotateAction,
+            L.FreeRotateAction,
+            L.OpacityAction,
+            L.RestoreAction,
+          ],
+        }).addTo(map);
+
+        // ✅ 編集確定（ハンドルを離した瞬間）で実測縮尺を計算
+        imgLayer.on("update", function () {
+          const corners = imgLayer.getCorners(); // 左上・右上・右下・左下
+
+          // 横幅（左上→右上）を実測
+          const dist = map.distance(corners[0], corners[1]); // m
+
+          // shutsujin.png のピクセル幅（修馬さんの環境で固定）
+          const photoWidthPx = 537;
+
+          const metersPerPixel = dist / photoWidthPx;
+
+          document.getElementById("scale").textContent =
+            metersPerPixel.toFixed(4) + " m/pixel";
+
+          console.log("corners:", corners);
+          console.log("実測横幅(m):", dist);
+          console.log("実測縮尺(m/pixel):", metersPerPixel);
+        });
+      });
+    </script>
+  </body>
+</html>

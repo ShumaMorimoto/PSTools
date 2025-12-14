@@ -17,7 +17,6 @@ class GPXDocument : System.Xml.XmlDocument {
     hidden static $creator = "GPXDocument クラス"
     hidden static [string] $GpxNamespace = "http://www.topografix.com/GPX/1/1"
     hidden static [System.Xml.XmlNamespaceManager] $NamespaceManager
-    hidden static [string] $xsdPath = (Join-Path $script:ModuleRoot "config/gpx.xsd")
     static [hashtable] $TypeMap = @{}
 
     # 初期化: 名前空間マネージャを設定
@@ -29,8 +28,9 @@ class GPXDocument : System.Xml.XmlDocument {
     }
     # --- XSD を読み込んで TypeMap を構築 ---
     static hidden [void] LoadSchema() {
+        $xsdPath = "D:\tool\Repository\PSTools\RouteOptimizer\config\gpx.xsd"
         $schemaSet = [System.Xml.Schema.XmlSchemaSet]::new()
-        $schemaSet.Add([GPXDocument]::GpxNamespace, [GPXDocument]::xsdPath) | Out-Null
+        $schemaSet.Add([GPXDocument]::GpxNamespace, $xsdPath) | Out-Null
         $schemaSet.Compile()
 
         $simpleTypes = @{}
@@ -312,7 +312,7 @@ class GPXDocument : System.Xml.XmlDocument {
         $pairs = ($pso -is [hashtable]) ? $pso.GetEnumerator() : $pso.PSObject.Properties
 
         foreach ($pair in $pairs) {
-            $key = $pair.Name
+            $key = $pair.Key
             $value = $pair.Value
             $typeInfo = [GPXDocument]::TypeMap[$key]
 
@@ -378,7 +378,7 @@ class GPXDocument : System.Xml.XmlDocument {
     # ================================
     #  XML → PSO
     # ================================
-    hidden static [object] ElementToPSO([System.Xml.XmlElement]$elem) {
+    hidden [object] ElementToPSO([System.Xml.XmlElement]$elem) {
 
         if (-not $elem) { return $null }
         $pso = @{}
@@ -400,7 +400,7 @@ class GPXDocument : System.Xml.XmlDocument {
             $items = @(
                 foreach ($child in $group.Group) {
                     if ($child.HasChildNodes -and $child.ChildNodes.Count -gt 1) {
-                        [GPXDocument]::ElementToPSO($child)
+                        $this.ElementToPSO($child)
                     }
                     else {
                         [GPXDocument]::ConvertValue($child.InnerText, $typeInfo.BaseType)

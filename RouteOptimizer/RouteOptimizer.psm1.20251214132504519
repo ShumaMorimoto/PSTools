@@ -312,7 +312,7 @@ class GPXDocument : System.Xml.XmlDocument {
         $pairs = ($pso -is [hashtable]) ? $pso.GetEnumerator() : $pso.PSObject.Properties
 
         foreach ($pair in $pairs) {
-            $key = $pair.Name
+            $key = $pair.Key
             $value = $pair.Value
             $typeInfo = [GPXDocument]::TypeMap[$key]
 
@@ -378,7 +378,7 @@ class GPXDocument : System.Xml.XmlDocument {
     # ================================
     #  XML → PSO
     # ================================
-    hidden static [object] ElementToPSO([System.Xml.XmlElement]$elem) {
+    hidden [object] ElementToPSO([System.Xml.XmlElement]$elem) {
 
         if (-not $elem) { return $null }
         $pso = @{}
@@ -400,7 +400,7 @@ class GPXDocument : System.Xml.XmlDocument {
             $items = @(
                 foreach ($child in $group.Group) {
                     if ($child.HasChildNodes -and $child.ChildNodes.Count -gt 1) {
-                        [GPXDocument]::ElementToPSO($child)
+                        $this.ElementToPSO($child)
                     }
                     else {
                         [GPXDocument]::ConvertValue($child.InnerText, $typeInfo.BaseType)

@@ -1,0 +1,32 @@
+﻿[
+  {
+    "Name": "都市周遊ルート作成",
+    "Script": "D:\\tool\\Repository\\PSTools\\RouteOptimizer\\Sample\\Export-TownsGpx.ps1",
+    "Args": []
+  },
+  {
+    "Name": "指定地点周遊ルート作成",
+    "Script": "D:\\tool\\Repository\\PSTools\\RouteOptimizer\\Sample\\Export-AreaTownsGpx.ps1",
+    "Args": []
+  },
+  {
+    "Name": "ルート分割",
+    "Script":  "D:\\tool\\Repository\\PSTools\\RouteOptimizer\\Sample\\Split-Gpx.ps1",
+    "Args": ["InputFile"]
+  },
+  {
+    "Name": "ルート抽出（GUI起動）",
+    "Script":  "D:\\tool\\Repository\\PSTools\\RouteOptimizer\\Sample\\Select-Gpx.ps1",
+    "Args": ["InputFile"],
+  },
+  {
+    "Name": "ルート編集",
+    "Script":  "D:\\tool\\Repository\\PSTools\\RouteOptimizer\\Sample\\Export-Gpx.ps1",
+    "Args": ["InputFile"]
+  },
+  {
+    "Name": "拠点検索（GUI起動）",
+    "Script": "Search-Base.ps1",
+    "Args": [],
+  }
+]

@@ -1,6 +1,6 @@
 @{
     RootModule        = 'RouteOptimizer.psm1'
-    ModuleVersion     = '1.0.37'
+    ModuleVersion     = '1.0.34'
     GUID              = '9d7ee62e-61c3-498b-ae57-fd1fd8eab36b'
     Author            = ''
     Description       = ''

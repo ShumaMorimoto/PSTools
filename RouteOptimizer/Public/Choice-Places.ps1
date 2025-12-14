@@ -1,12 +1,14 @@
 function Choice-Places {
     param(
-        [hashtable]$Place = $null
+        [System.Xml.XmlElement[]]$Places = $null
     )
 
-    # --- 中心座標 ---
-    if ($Place) {
-        $CenterLat = $Place.lat
-        $CenterLng = $Place.lon
+    # ============================
+    # 1. 中心座標
+    # ============================
+    if ($Places -and $Places.Count -gt 0) {
+        $CenterLat = $Places[0].lat
+        $CenterLng = $Places[0].lon
     }
     else {
         $CenterLat = 35.0
@@ -16,64 +18,177 @@ function Choice-Places {
     $Zoom = 14
     $Port = 5000
 
-    # --- HTMLテンプレート読み込み ---
-    # --- HTMLテンプレート読み込み ---
-    $templatePath = "D:\tool\Repository\PSTools\RouteOptimizer\data\map.html"
+    # ============================
+    # 2. HTML テンプレート
+    # ============================
+    $templatePath = Join-Path $script:ModuleRoot "data\map.html"
     $html = Get-Content $templatePath -Raw
 
-    # --- テンプレート変数置換 ---
+    # ============================
+    # 2.5. 新規ノード生成用 GPXDocument（毎回 new）
+    # ============================
+    $tempGpx = [GPXDocument]::new()
+
+    # ============================
+    # 3. XMLノード → JSON（ElementToPSO を使用）
+    # ============================
+    $jsonPoints = @()
+    $i = 0
+
+    foreach ($pt in ($Places ?? @())) {
+        # GPX → PSO（汎用）
+        $pso = [GPXDocument]::ElementToPSO($pt)
+
+        # UI 用の id を後付け（内部限定）
+        $pso["id"] = $i
+        $jsonPoints += [PSCustomObject]$pso
+        $i++
+    }
+    # Places が空のときも [] を埋め込む
+    $mapJson = if ($jsonPoints.Count -eq 0) { '[]' } else { $jsonPoints | ConvertTo-Json -Depth 10 }
+
+    # ============================
+    # 4. HTML 埋め込み
+    # ============================
     $html = $html.Replace('$CenterLat', $CenterLat)
     $html = $html.Replace('$CenterLng', $CenterLng)
     $html = $html.Replace('$Zoom', $Zoom)
+    $html = $html.Replace('$MapData', $mapJson)
 
-    # --- HTTP サーバ起動 ---
+    # ============================
+    # 5. HTTP サーバ
+    # ============================
     $listener = [System.Net.HttpListener]::new()
     $prefix = "http://localhost:$Port/"
     $listener.Prefixes.Add($prefix)
     $listener.Start()
 
-    # --- 選択点リスト ---
-    $points = [System.Collections.Generic.List[PSCustomObject]]::new()
+    $choice = $null
 
-    # --- ブラウザで開く ---
     Start-Process $prefix
 
-    # --- リッスンループ ---
     $stop = $false
     while (-not $stop) {
         $ctx = $listener.GetContext()
-        $req = $ctx.Request; $res = $ctx.Response
+        $req = $ctx.Request
+        $res = $ctx.Response
 
         if ($req.HttpMethod -eq 'GET' -and $req.Url.AbsolutePath -eq '/') {
+
             $bytes = [Text.Encoding]::UTF8.GetBytes($html)
             $res.ContentType = 'text/html; charset=utf-8'
             $res.OutputStream.Write($bytes, 0, $bytes.Length)
             $res.Close()
+
         }
-        elseif ($req.HttpMethod -eq 'POST' -and $req.Url.AbsolutePath -eq '/click') {
+        elseif ($req.HttpMethod -eq 'POST' -and $req.Url.AbsolutePath -eq '/choice') {
+
             $reader = [System.IO.StreamReader]::new($req.InputStream)
-            $body = $reader.ReadToEnd(); $reader.Close()
+            $body = $reader.ReadToEnd()
+            $reader.Close()
 
             if ($body) {
-                $data = $body | ConvertFrom-Json
-                $points.Add([PSCustomObject]@{
-                        Lat = [double]$data.lat
-                        Lon = [double]$data.lon   # ← GPX仕様に合わせて Lon
-                    })
+                $choice = $body | ConvertFrom-Json
             }
 
-            $res.StatusCode = 200; $res.Close()
+            $res.StatusCode = 200
+            $res.Close()
+
         }
         elseif ($req.HttpMethod -eq 'POST' -and $req.Url.AbsolutePath -eq '/done') {
+
             $stop = $true
-            $res.StatusCode = 200; $res.Close()
+            $res.StatusCode = 200
+            $res.Close()
+
         }
         else {
-            $res.StatusCode = 404; $res.Close()
+            $res.StatusCode = 404
+            $res.Close()
         }
     }
 
     try { $listener.Stop() } catch {}
 
-    return $points
+    # ============================
+    # 6. choice が無い → 元のノードを返す
+    # ============================
+    if (-not $choice) {
+        return , ($Places ?? @())
+    }
+
+    # ============================
+    # 8. 元ノード辞書
+    # ============================
+    $trkptIndex = @{}
+    $i = 0
+    foreach ($pt in ($Places ?? @())) {
+        $trkptIndex[$i] = $pt
+        $i++
+    }
+
+    # ============================
+    # 9. JSON → trkpt ノード再構築
+    # ============================
+    $newTrkpts = @()
+
+    foreach ($e in $choice) {
+
+        if ($e.id -ne $null -and $trkptIndex.ContainsKey($e.id)) {
+
+            # --- 既存ノード更新 ---
+            $orig = $trkptIndex[$e.id]
+            $new = $orig.CloneNode($true)
+
+            $new.SetAttribute("lat", $e.lat)
+            $new.SetAttribute("lon", $e.lon)
+
+            $nameNode = $new.SelectSingleNode("gpx:name", [GPXDocument]::NamespaceManager)
+            if (-not $nameNode) {
+                $nameNode = $new.OwnerDocument.CreateElement("name", [GPXDocument]::GpxNamespace)
+                $new.AppendChild($nameNode) | Out-Null
+            }
+            $nameNode.InnerText = $e.name
+
+            $descNode = $new.SelectSingleNode("gpx:desc", [GPXDocument]::NamespaceManager)
+            if (-not $descNode) {
+                $descNode = $new.OwnerDocument.CreateElement("desc", [GPXDocument]::GpxNamespace)
+                $new.AppendChild($descNode) | Out-Null
+            }
+            $descNode.InnerText = $e.desc
+
+            $extNode = $new.SelectSingleNode("gpx:extensions", [GPXDocument]::NamespaceManager)
+            if (-not $extNode) {
+                $extNode = $new.OwnerDocument.CreateElement("extensions", [GPXDocument]::GpxNamespace)
+                $new.AppendChild($extNode) | Out-Null
+            }
+
+            foreach ($key in $e.extended.Keys) {
+                $child = $extNode.SelectSingleNode("gpx:$key", [GPXDocument]::NamespaceManager)
+                if ($child) {
+                    $child.InnerText = $e.extended[$key]
+                }
+                else {
+                    $child = $new.OwnerDocument.CreateElement($key, [GPXDocument]::GpxNamespace)
+                    $child.InnerText = $e.extended[$key]
+                    $extNode.AppendChild($child) | Out-Null
+                }
+            }
+            $newTrkpts += $new
+        }
+        else {
+
+            # --- 新規追加（毎回 new GPXDocument() で生成） ---
+            $pso = [PSCustomObject]@{
+                lat        = $e.lat
+                lon        = $e.lon
+                name       = $e.name
+                desc       = $e.desc
+                extensions = $e.extended
+            }
+            $new = $tempGpx.CreateElementFromPSO("trkpt", $pso)
+            $newTrkpts += $new
+        }
+    }
+    return , $newTrkpts
 }

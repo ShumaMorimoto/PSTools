@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>DistortableImage 実測版（動作確認用）</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-distortableimage@0.21.9/dist/vendor.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-distortableimage@0.21.9/dist/leaflet.distortableimage.css" />
+
+    <script src="https://unpkg.com/leaflet-distortableimage@0.21.9/dist/vendor.js"></script>
+    <script src="https://unpkg.com/leaflet-distortableimage@0.21.9/dist/leaflet.distortableimage.js"></script>
+
+    <style>
+      html, body, #map { height: 100%; margin: 0; padding: 0; }
+      #btns { position: absolute; top: 10px; left: 10px; z-index: 1000; }
+      button { padding: 6px 12px; }
+    </style>
+  </head>
+
+  <body>
+    <div id="btns">
+      <!-- ✅ 修馬さんが検証したい倍率をここに入れる -->
+      <button onclick="resizeImage(8.628)">倍率で拡大</button>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+      let map;
+      let imgLayer;
+
+      map = L.map("map").setView([35.685175, 139.7528], 16);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+      }).addTo(map);
+
+      map.whenReady(function () {
+        imgLayer = L.distortableImageOverlay("shutsujin.png", {
+          actions: [
+            L.DragAction,
+            L.ScaleAction,
+            L.RotateAction,
+            L.FreeRotateAction,
+            L.OpacityAction,
+            L.RestoreAction,
+          ],
+        }).addTo(map);
+      });
+
+      // ✅ 修馬さんが「動いていた」と言ったロジックそのまま
+      function resizeImage(scale) {
+        const corners = imgLayer.getCorners();
+
+        // 中心点
+        const center = L.latLng(
+          (corners[0].lat + corners[2].lat) / 2,
+          (corners[0].lng + corners[2].lng) / 2
+        );
+
+        // scale倍した新しい corners
+        const newCorners = corners.map(c => {
+          return L.latLng(
+            center.lat + (c.lat - center.lat) * scale,
+            center.lng + (c.lng - center.lng) * scale
+          );
+        });
+
+        imgLayer.setCorners(newCorners);
+      }
+    </script>
+  </body>
+</html>

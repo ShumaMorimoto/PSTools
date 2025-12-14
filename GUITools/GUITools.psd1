@@ -1,6 +1,6 @@
 @{
     RootModule        = 'GUITools.psm1'
-    ModuleVersion     = '1.0.1'
+    ModuleVersion     = '1.0.4'
     GUID              = '011763c4-e11a-4976-9334-ed0f8a390919'
     Author            = ''
     Description       = ''

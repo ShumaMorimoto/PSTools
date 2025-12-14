@@ -1,0 +1,155 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Map Point Selector</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<!-- FontAwesome（ExtraMarkers の番号表示に必須） -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<!-- ExtraMarkers（番号付きマーカー） -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.2.1/dist/css/leaflet.extra-markers.min.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.2.1/dist/js/leaflet.extra-markers.min.js"></script>
+
+<!-- Leaflet Geocoder（検索 UI） -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+<style>
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#controls {
+    padding: 6px 8px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+#pointList,
+button {
+    font-size: 1rem;
+    height: 1.6em;
+    line-height: 1.6em;
+    padding: 0 4px;
+    box-sizing: border-box;
+}
+
+#pointList { flex: 1; }
+button { width: 80px; }
+
+#map { flex: 1; }
+</style>
+</head>
+
+<body>
+
+<div id="controls">
+    <select id="pointList"></select>
+    <button onclick="clearMarkers()">Clear</button>
+    <button onclick="finish()">Finish</button>
+</div>
+
+<div id="map"></div>
+
+<script>
+// ------- 初期化 -------
+var map = L.map("map").setView([$CenterLat, $CenterLng], $Zoom);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenStreetMap contributors",
+}).addTo(map);
+
+// 検索コントロール
+L.Control.geocoder({
+    defaultMarkGeocode: false
+}).on('markgeocode', function(e) {
+    var center = e.geocode.center;
+    map.setView(center, 15);
+}).addTo(map);
+
+var markers = [];
+var pointList = [];
+
+// ------- 番号付きマーカー生成（FontAwesome 必須） -------
+function createNumberedMarker(index) {
+    return L.ExtraMarkers.icon({
+        icon: 'fa-number',   // ← これで番号用のレイヤーが有効になる
+        number: index + 1,   // ← 表示番号
+        markerColor: 'blue',
+        shape: 'circle'
+    });
+}
+
+// ------- 地図クリックで追加 -------
+map.on("click", function (e) {
+    var coord = { lat: e.latlng.lat, lon: e.latlng.lng };
+    pointList.push(coord);
+
+    var icon = createNumberedMarker(pointList.length - 1);
+    var m = L.marker([coord.lat, coord.lon], { icon: icon }).addTo(map);
+    markers.push(m);
+
+    updatePointList();
+
+    fetch("/click", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(coord),
+    });
+});
+
+// ------- リスト更新 -------
+function updatePointList() {
+    var list = document.getElementById("pointList");
+    list.innerHTML = "";
+
+    pointList.forEach(function (p, idx) {
+        var opt = document.createElement("option");
+        opt.value = idx;
+        opt.textContent =
+            (idx + 1) + ": " + p.lat.toFixed(6) + ", " + p.lon.toFixed(6);
+        list.appendChild(opt);
+    });
+}
+
+// ------- リスト選択でジャンプ -------
+document.getElementById("pointList").onchange = function () {
+    var idx = this.value;
+    if (idx === "" || idx == null) return;
+    var p = pointList[idx];
+    map.setView([p.lat, p.lon], 17);
+};
+
+// ------- Clear -------
+function clearMarkers() {
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+
+    pointList = [];
+    updatePointList();
+}
+
+// ------- Finish -------
+function finish() {
+    fetch("/done", { method: "POST" }).then(function () {
+        alert("Finish requested. You can close this window.");
+    });
+}
+
+// ------- ブラウザ終了時 -------
+window.addEventListener("beforeunload", function () {
+    navigator.sendBeacon("/done");
+});
+</script>
+
+</body>
+</html>
