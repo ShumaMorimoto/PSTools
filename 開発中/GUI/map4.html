@@ -1,0 +1,60 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>MAP + Image Test</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- DistortableImageOverlay -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-distortableimage/dist/leaflet.distortableimage.css" />
+  <script src="https://unpkg.com/leaflet-distortableimage/dist/leaflet.distortableimage.js"></script>
+
+  <style>
+    #map { width: 100vw; height: 100vh; }
+    .btn {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 9999;
+      padding: 8px 12px;
+      background: white;
+      border: 1px solid #aaa;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="map"></div>
+<div class="btn" onclick="addImage()">写真を追加</div>
+
+<script>
+  // MAP を表示
+  const map = L.map('map').setView([35.0, 135.0], 5);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
+  }).addTo(map);
+
+  let imgLayer = null;
+
+  // ✅ 写真を MAP に追加する（初期サイズのまま）
+  function addImage() {
+    if (imgLayer) return; // 二重追加防止
+
+    imgLayer = L.distortableImageOverlay("shutsujin.png", {
+      // 初期サイズ（scale=1）で出す
+      // 位置合わせ・拡大縮小はすべて手動
+    }).addTo(map);
+
+    // MAP の中心に置く
+    imgLayer.setCenter(map.getCenter());
+  }
+</script>
+
+</body>
+</html>46

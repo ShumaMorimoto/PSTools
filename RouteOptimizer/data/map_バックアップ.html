@@ -1,0 +1,322 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Map Point Selector</title>
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <!-- ExtraMarkers -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.2.2/dist/css/leaflet.extra-markers.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.2.2/dist/js/leaflet.extra-markers.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"
+    />
+
+    <!-- Leaflet Geocoder -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"
+    />
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      #controls {
+        padding: 6px 8px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      #pointList,
+      button {
+        font-size: 1rem;
+        height: 1.6em;
+        line-height: 1.6em;
+        padding: 0 4px;
+        box-sizing: border-box;
+      }
+      #pointList {
+        flex: 1;
+      }
+      button {
+        width: 80px;
+      }
+      #map {
+        flex: 1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="controls">
+      <select id="pointList"></select>
+      <button onclick="clearMarkers()">Clear</button>
+      <button onclick="finish()">登録</button>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+      const points = $MapData;
+
+      var map;
+      var markers = [];
+      var pointList = [];
+      var selectedIndex = null;
+
+      // ★ 非同期キャンセル用
+      let requestSeq = 0;
+
+      // ★ 非同期住所取得（キャンセル対応）
+      function fetchAddressAsync(point, marker) {
+        const seq = ++requestSeq;
+        point._reqSeq = seq;
+
+        const url =
+          "https://nominatim.openstreetmap.org/reverse?format=json" +
+          "&lat=" +
+          point.lat +
+          "&lon=" +
+          point.lon +
+          "&zoom=18&addressdetails=1&extratags=1&namedetails=1";
+
+        fetch(url, { headers: { "User-Agent": "MapPointSelector/1.0" } })
+          .then((res) => res.json())
+          .then((data) => {
+            if (point._reqSeq !== seq) return;
+            if (!markers.includes(marker)) return;
+
+            point.name = data.name || "";
+            point.desc = data.display_name || point.desc;
+            point.extended = data.address || {};
+
+            updatePointList();
+            marker.bindPopup(point.name || point.desc).openPopup();
+          })
+          .catch(() => {});
+      }
+
+      // ------- ExtraMarkers で番号と色を更新 -------
+      function renumberMarkers() {
+        markers.forEach(function (m, idx) {
+          var icon = L.ExtraMarkers.icon({
+            icon: "fa-number",
+            number: idx + 1,
+            markerColor: idx === selectedIndex ? "red" : "blue",
+            shape: "circle",
+          });
+          m.setIcon(icon);
+        });
+      }
+
+      // ------- 共通：ポイント追加処理 -------
+      function addPoint(info) {
+        pointList.push(info);
+
+        var icon = L.ExtraMarkers.icon({
+          icon: "fa-number",
+          number: pointList.length,
+          markerColor: "blue",
+          shape: "circle",
+        });
+
+        var m = L.marker([info.lat, info.lon], {
+          draggable: true,
+          icon: icon,
+        }).addTo(map);
+
+        markers.push(m);
+
+        // 左クリックで選択
+        m.on("click", function (ev) {
+          L.DomEvent.stopPropagation(ev);
+          var idx = markers.indexOf(m);
+          if (idx >= 0) {
+            selectedIndex = idx;
+            document.getElementById("pointList").value = idx;
+            renumberMarkers();
+          }
+        });
+
+        // 右クリックで削除
+        m.on("contextmenu", function () {
+          var idx = markers.indexOf(m);
+          if (idx >= 0) {
+            map.removeLayer(markers[idx]);
+            markers.splice(idx, 1);
+            pointList.splice(idx, 1);
+
+            if (selectedIndex === idx) {
+              selectedIndex = null;
+            } else if (selectedIndex > idx) {
+              selectedIndex -= 1;
+            }
+
+            updatePointList();
+            renumberMarkers();
+          }
+        });
+
+        // ★ ドラッグ後は非同期で住所更新
+        m.on("dragend", function () {
+          var idx = markers.indexOf(m);
+          if (idx >= 0) {
+            var pos = m.getLatLng();
+
+            pointList[idx].lat = pos.lat;
+            pointList[idx].lon = pos.lon;
+
+            fetchAddressAsync(pointList[idx], m);
+          }
+        });
+
+        updatePointList();
+        renumberMarkers();
+      }
+
+      // ------- 初期化 -------
+      document.addEventListener("DOMContentLoaded", function () {
+        map = L.map("map").setView([$CenterLat, $CenterLng], $Zoom);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap contributors",
+        }).addTo(map);
+
+        L.Control.geocoder({
+          defaultMarkGeocode: false,
+        })
+          .on("markgeocode", function (e) {
+            map.setView(e.geocode.center, map.getZoom());
+          })
+          .addTo(map);
+
+        // 既存ポイントを描画
+        points.forEach((p) => addPoint(p));
+
+        // ★ クリック → 即時マーカー追加 → 非同期住所取得
+        map.on("click", function (e) {
+          const lat = e.latlng.lat;
+          const lon = e.latlng.lng;
+
+          const info = {
+            id: null,
+            lat: lat,
+            lon: lon,
+            name: "",
+            desc: "", // ★ 初期は空（座標は updatePointList が表示）
+            extended: {},
+          };
+
+          addPoint(info);
+
+          const marker = markers[markers.length - 1];
+          fetchAddressAsync(info, marker);
+        });
+      });
+
+      // ------- リスト更新（短い座標 + 名前 or 住所） -------
+      function updatePointList() {
+        var list = document.getElementById("pointList");
+        list.innerHTML = "";
+
+        pointList.forEach(function (p, idx) {
+          const latlon = `(${p.lat}, ${p.lon})`;
+
+          const label =
+            p.name && p.name.trim() !== ""
+              ? p.name
+              : p.desc && p.desc.trim() !== ""
+              ? p.desc
+              : latlon;
+
+          var opt = document.createElement("option");
+          opt.value = idx;
+
+          opt.textContent = `${idx + 1}: ${latlon} ${label}`;
+
+          list.appendChild(opt);
+        });
+
+        if (selectedIndex !== null && selectedIndex < pointList.length) {
+          list.value = selectedIndex;
+        }
+      }
+
+      // ------- リスト選択でジャンプ -------
+      document.getElementById("pointList").onchange = function () {
+        var idx = this.value;
+        if (idx === "" || idx == null) return;
+        idx = Number(idx);
+        selectedIndex = idx;
+
+        var p = pointList[idx];
+        map.setView([p.lat, p.lon], map.getZoom());
+
+        renumberMarkers();
+      };
+
+      // ------- Clear（何度でも押せる） -------
+      function clearMarkers() {
+        markers.forEach((m) => map.removeLayer(m));
+        markers = [];
+        pointList = [];
+        selectedIndex = null;
+
+        updatePointList();
+        renumberMarkers();
+      }
+
+      // ------- Finish（登録 → 完了 → 2回目押下で閉じる） -------
+      function finish() {
+        const btn = document.querySelector('button[onclick="finish()"]');
+
+        // ✅ 完了後の2回目押下 → ウィンドウを閉じる
+        if (btn.dataset.state === "done") {
+          window.close();
+          return;
+        }
+
+        // ✅ 初回押下 → 登録処理
+        btn.disabled = true;
+        btn.textContent = "処理中…";
+
+        fetch("/choice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(pointList),
+        })
+          .then(() => fetch("/done", { method: "POST" }))
+          .then(() => {
+            btn.textContent = "完了";
+            btn.disabled = false; // ★ 再度押せるようにする
+            btn.dataset.state = "done"; // ★ 完了フラグ
+          })
+          .catch(() => {
+            btn.disabled = false;
+            btn.textContent = "登録";
+            delete btn.dataset.state;
+          });
+      }
+
+      window.addEventListener("beforeunload", function () {
+        navigator.sendBeacon("/done");
+      });
+    </script>
+  </body>
+</html>
