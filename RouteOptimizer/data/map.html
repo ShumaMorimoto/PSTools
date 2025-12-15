@@ -1,132 +1,220 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
+  <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Map Selector + 画像重ね合わせツール（修正版）</title>
 
     <!-- Leaflet 本体（必ず最初） -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <!-- leaflet-toolbar（distortableimage の依存） -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.css"
+    />
     <script src="https://unpkg.com/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.js"></script>
 
     <!-- leaflet-distortableimage（toolbar の後に読み込む） -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-distortableimage@latest/dist/leaflet.distortableimage.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-distortableimage@latest/dist/leaflet.distortableimage.css"
+    />
     <script src="https://unpkg.com/leaflet-distortableimage@latest/dist/leaflet.distortableimage.js"></script>
 
     <!-- ExtraMarkers (マーカー装飾) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.2.2/dist/css/leaflet.extra-markers.min.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.2.2/dist/css/leaflet.extra-markers.min.css"
+    />
     <script src="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.2.2/dist/js/leaflet.extra-markers.min.js"></script>
 
     <!-- Geocoder -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"
+    />
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
     <!-- FontAwesome (アイコン) -->
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css" />
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"
+    />
 
     <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            font-family: sans-serif;
-        }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        font-family: sans-serif;
+      }
 
-        /* 上部操作パネル */
-        #controls {
-            padding: 8px;
-            background: #f0f0f0;
-            border-bottom: 1px solid #ccc;
-            display: flex;
-            gap: 10px;
-            height: 56px;
-            box-sizing: border-box;
-            align-items: center;
-            z-index: 1000;
-        }
+      /* 上部操作パネル */
+      #controls {
+        padding: 8px;
+        background: #f0f0f0;
+        border-bottom: 1px solid #ccc;
+        display: flex;
+        gap: 10px;
+        height: 56px;
+        box-sizing: border-box;
+        align-items: center;
+        z-index: 1000;
+      }
 
-        /* マップエリア */
-        #map {
-            flex: 1;
-            width: 100%;
-            background-color: #ddd;
-            cursor: crosshair;
-        }
+      /* マップエリア */
+      #map {
+        flex: 1;
+        width: 100%;
+        background-color: #ddd;
+        cursor: crosshair;
+      }
 
-        /* UIパーツ */
-        #pointList { flex: 1; padding: 5px; height: 34px; }
-        button, label.btn { padding: 6px 12px; cursor: pointer; border: none; background: #007bff; color: #fff; border-radius: 4px; display: inline-flex; align-items: center; gap: 6px; }
-        button:hover, label.btn:hover { background: #0056b3; }
-        button.locked { background: #dc3545; }
-        button.locked:hover { background: #c82333; }
+      /* UIパーツ */
+      #pointList {
+        flex: 1;
+        padding: 5px;
+        height: 34px;
+      }
+      button,
+      label.btn {
+        padding: 6px 12px;
+        cursor: pointer;
+        border: none;
+        background: #007bff;
+        color: #fff;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      button:hover,
+      label.btn:hover {
+        background: #0056b3;
+      }
+      button.locked {
+        background: #dc3545;
+      }
+      button.locked:hover {
+        background: #c82333;
+      }
 
-        input[type="file"] { display: none; }
+      input[type="file"] {
+        display: none;
+      }
 
-        #info-box { font-family: monospace; font-size: 13px; background: white; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; }
+      #info-box {
+        font-family: monospace;
+        font-size: 13px;
+        background: white;
+        padding: 6px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
 
-        /* ロックモード時の画像透過（地図クリックを優先） */
-        .map-locked .leaflet-distortable-image-overlay,
-        .map-locked img.leaflet-image-layer {
-            pointer-events: none !important;
-            cursor: crosshair !important;
-            opacity: 0.85 !important;
-            z-index: 200 !important;
-        }
+      /* ロックモード時の画像透過（地図クリックを優先） */
+      .map-locked .leaflet-distortable-image-overlay,
+      .map-locked img.leaflet-image-layer {
+        pointer-events: none !important;
+        cursor: crosshair !important;
+        opacity: 0.85 !important;
+        z-index: 200 !important;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
+    <div id="controls">
+      <!-- 画像追加 -->
+      <label for="imageInput" class="btn"
+        ><i class="fas fa-upload"></i> 画像を追加</label
+      >
+      <input type="file" id="imageInput" accept="image/*" />
 
-<div id="controls">
-    <!-- 画像追加 -->
-    <label for="imageInput" class="btn"><i class="fas fa-upload"></i> 画像を追加</label>
-    <input type="file" id="imageInput" accept="image/*">
-
-    <!-- 位置調整 / 確定切替 -->
-    <button id="toggleLockBtn" class="btn">
+      <!-- 位置調整 / 確定切替 -->
+      <button id="toggleLockBtn" class="btn">
         <i class="fas fa-lock-open"></i> <span>位置調整モード</span>
-    </button>
+      </button>
 
-    <!-- ポイントリスト / 操作 -->
-    <select id="pointList"><option>読み込み中...</option></select>
-    <button id="clearMarkersBtn">クリア</button>
-    <button id="finishBtn">登録</button>
+      <!-- ポイントリスト / 操作 -->
+      <select id="pointList">
+        <option>読み込み中...</option>
+      </select>
+      <button id="clearMarkersBtn">クリア</button>
+      <button id="finishBtn">登録</button>
 
-    <div id="info-box">座標: <span id="coords">マップをクリックしてください</span></div>
-</div>
+      <div id="info-box">
+        座標: <span id="coords">マップをクリックしてください</span>
+      </div>
+    </div>
 
-<div id="map"></div>
+    <div id="map"></div>
 
-<script type="module">
-    import MapSelector from '/js/map-selector.js';
+    <script type="module">
+      import MapSelector from "/js/map-selector.js";
 
-    const initialPoints = [
-        { lat: 35.6812, lon: 139.7671, name: "東京駅(テスト)", desc: "初期データ" }
-    ];
-    const initialLat = 35.677605;
-    const initialLng = 139.758496;
-    const initialZoom = 16;
+      // PowerShellで置換されるプレースホルダーを文字列として定義
+      const psLatPlaceholder = "$CenterLat";
+      const psLngPlaceholder = "$CenterLng";
+      const psZoomPlaceholder = "$Zoom";
+      const psMapDataPlaceholder = "$MapData"; // JSON文字列として取得
 
-    const mapSelector = new MapSelector({
-        mapId: 'map',
+      const DEFAULT_LAT = 35.677605;
+      const DEFAULT_LNG = 139.758496;
+      const DEFAULT_ZOOM = 16;
+      const DEFAULT_POINTS = [];
+
+      // Number()で数値に変換できない場合（つまり置換されなかった場合）はNaNになる
+      // NaNish（NaNまたはnull、undefined）であればデフォルト値を使用する
+      const initialLat = isNaN(Number(psLatPlaceholder))
+        ? DEFAULT_LAT
+        : Number(psLatPlaceholder);
+      const initialLng = isNaN(Number(psLngPlaceholder))
+        ? DEFAULT_LNG
+        : Number(psLngPlaceholder);
+      const initialZoom = isNaN(Number(psZoomPlaceholder))
+        ? DEFAULT_ZOOM
+        : Number(psZoomPlaceholder);
+
+      let initialPoints;
+      try {
+        // PowerShellが置換した場合（$MapDataが有効なJSON文字列）はパースを試みる
+        // 置換しなかった場合（'$MapData'という文字列のままの場合）はcatchされる
+        initialPoints = JSON.parse(psMapDataPlaceholder);
+        // JSON.parseが成功しても、それが配列であることを確認
+        if (!Array.isArray(initialPoints)) {
+          console.warn(
+            "Parsed map data was not an array, using default points."
+          );
+          initialPoints = DEFAULT_POINTS;
+        }
+      } catch (e) {
+        // パースに失敗した場合（置換されなかった場合など）はデフォルト値を使用
+        initialPoints = DEFAULT_POINTS;
+      }
+
+      const mapSelector = new MapSelector({
+        mapId: "map",
         controls: {
-            imageInputId: 'imageInput',
-            toggleLockBtnId: 'toggleLockBtn',
-            pointListId: 'pointList',
-            clearMarkersBtnId: 'clearMarkersBtn',
-            finishBtnId: 'finishBtn',
-            coordsId: 'coords'
+          imageInputId: "imageInput",
+          toggleLockBtnId: "toggleLockBtn",
+          pointListId: "pointList",
+          clearMarkersBtnId: "clearMarkersBtn",
+          finishBtnId: "finishBtn",
+          coordsId: "coords",
         },
         initialPoints,
-        initialView: [initialLat, initialLng, initialZoom]
-    });
+        initialView: [initialLat, initialLng, initialZoom],
+      });
 
-    mapSelector.init();
-</script>
-</body>
+      mapSelector.init();
+    </script>
+  </body>
 </html>

@@ -72,14 +72,35 @@ function Choice-Places {
         $ctx = $listener.GetContext()
         $req = $ctx.Request
         $res = $ctx.Response
+        $absPath = $req.Url.AbsolutePath
+        $localPath = $null # 追加
 
-        if ($req.HttpMethod -eq 'GET' -and $req.Url.AbsolutePath -eq '/') {
-
+        if ($absPath -eq '/') {
+            # map.html の処理（変更なし）
             $bytes = [Text.Encoding]::UTF8.GetBytes($html)
             $res.ContentType = 'text/html; charset=utf-8'
             $res.OutputStream.Write($bytes, 0, $bytes.Length)
             $res.Close()
+        }
+        elseif ($absPath.StartsWith('/js/') -and (-not $absPath.Contains('..'))) {
+            # 追加: /js/ ディレクトリ内のファイルをホストする汎用処理
+        
+            # URLパスをローカルファイルパスに変換
+            # 例: /js/your_script.js -> data\js\your_script.js
+            $relativePath = $absPath.Substring(1).Replace('/', '\')
+            $localPath = Join-Path $script:ModuleRoot "data\$relativePath"
 
+            if (Test-Path $localPath -PathType Leaf) {
+                $bytes = [System.IO.File]::ReadAllBytes($localPath)
+                $res.ContentType = 'application/javascript; charset=utf-8'
+                $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                $res.Close()
+            }
+            else {
+                # ファイルが見つからない場合
+                $res.StatusCode = 404
+                $res.Close()
+            }
         }
         elseif ($req.HttpMethod -eq 'POST' -and $req.Url.AbsolutePath -eq '/choice') {
 
