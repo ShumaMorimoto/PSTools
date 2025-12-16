@@ -15,7 +15,7 @@ function Choice-Places {
         $CenterLng = 135.0
     }
 
-    $Zoom = 14
+    $Zoom = 16
     $Port = 5000
 
     # ============================

@@ -1,10 +1,8 @@
 // marker-handler.js
 
 export default class MarkerHandler {
-  constructor(selector, gpxService) {
+  constructor(selector) {
     this.selector = selector;
-    this.gpxService = gpxService;
-
     this.markers = [];
     this.pointList = [];
     this.selectedIndex = null;
@@ -12,56 +10,53 @@ export default class MarkerHandler {
   }
 
   initMarkers() {
-    // 初期ポイントを描画
     this.selector.initialPoints.forEach((p) => this.addPoint(p));
-
-    // ✅ GPX入力ハンドラ（ファイル読み込み）
+    // GPX入力ハンドラの追加（MAP表示後、ボタンでファイル読み込み）
     document
       .getElementById(this.selector.controls.gpxInputId)
       .addEventListener("change", (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = (event) => {
-          const gpxText = event.target.result;
-          this.loadGpx(gpxText);   // ✅ GPXService を使う
+          this.loadGpxFromFile(event.target.result);
           e.target.value = "";
         };
         reader.readAsText(file);
       });
   }
+  
+  loadGpxFromFile(gpxContent) {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(gpxContent, "text/xml");
 
-  // -----------------------------
-  // ✅ GPX 読み込み（既存マーカーを消さずに追加）
-  // -----------------------------
-  loadGpx(gpxText) {
-    const points = this.gpxService.parseGpx(gpxText);
+    const trkpts = xmlDoc.getElementsByTagName("trkpt");
+    for (let i = 0; i < trkpts.length; i++) {
+      const lat = parseFloat(trkpts[i].getAttribute("lat"));
+      const lon = parseFloat(trkpts[i].getAttribute("lon"));
+      if (!isNaN(lat) && !isNaN(lon)) {
+        const info = {
+          lat,
+          lon,
+          name: `GPX Point ${i + 1}`,
+          desc: "",
+          extended: {},
+        };
+        this.addPoint(info); // 既存ポイントを保持して追加
 
-    points.forEach((p) => {
-      this.addPoint(p);
+        const newMarker = this.markers[this.markers.length - 1];
+        this.selector.fetchAddressAsync(info, newMarker);
+      }
+    }
 
-      // 住所補完（必要なら）
-      const marker = this.markers[this.markers.length - 1];
-      this.selector.fetchAddressAsync(p, marker);
-    });
-
-    // 最初の GPX ポイントにズーム（任意）
-    if (points.length > 0) {
-      this.selector.map.setView([points[0].lat, points[0].lon], 14);
+    // 最初のGPXポイントにズーム（オプション）
+    if (trkpts.length > 0) {
+      const firstLat = parseFloat(trkpts[0].getAttribute("lat"));
+      const firstLon = parseFloat(trkpts[0].getAttribute("lon"));
+      this.selector.map.setView([firstLat, firstLon], 14);
     }
   }
 
-  // -----------------------------
-  // ✅ GPX 保存（pointList → GPX）
-  // -----------------------------
-  exportGpx() {
-    return this.gpxService.generateGpx(this.pointList);
-  }
-
-  // -----------------------------
-  // マーカー追加
-  // -----------------------------
   addPoint(info) {
     this.pointList.push(info);
     const idx = this.pointList.length - 1;
@@ -77,7 +72,6 @@ export default class MarkerHandler {
       draggable: true,
       icon: icon,
     }).addTo(this.selector.map);
-
     this.markers.push(m);
 
     m.on("click", (ev) => {
@@ -93,7 +87,6 @@ export default class MarkerHandler {
       const pos = m.getLatLng();
       this.pointList[idx].lat = pos.lat;
       this.pointList[idx].lon = pos.lng;
-
       this.selector.uiManager.updateListUI();
       this.selector.fetchAddressAsync(this.pointList[idx], m);
     });
@@ -137,9 +130,16 @@ export default class MarkerHandler {
         markerColor: isSelected ? "red" : "blue",
         shape: "circle",
       });
-
-      try { m.setIcon(icon); } catch (e) {}
-      try { m.setZIndexOffset(isSelected ? 1000 : 0); } catch (e) {}
+      try {
+        m.setIcon(icon);
+      } catch (e) {
+        /* ignore */
+      }
+      try {
+        m.setZIndexOffset(isSelected ? 1000 : 0);
+      } catch (e) {
+        /* ignore */
+      }
     });
   }
 }

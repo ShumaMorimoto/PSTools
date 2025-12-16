@@ -5,28 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Map Selector + 画像重ね合わせツール（修正版）</title>
 
-    <!-- Leaflet 本体 -->
+    <!-- Leaflet 本体（必ず最初） -->
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <!-- leaflet-toolbar -->
+    <!-- leaflet-toolbar（distortableimage の依存） -->
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.css"
     />
     <script src="https://unpkg.com/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.js"></script>
 
-    <!-- leaflet-distortableimage -->
+    <!-- leaflet-distortableimage（toolbar の後に読み込む） -->
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet-distortableimage@latest/dist/leaflet.distortableimage.css"
     />
     <script src="https://unpkg.com/leaflet-distortableimage@latest/dist/leaflet.distortableimage.js"></script>
 
-    <!-- ExtraMarkers -->
+    <!-- ExtraMarkers (マーカー装飾) -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.2.2/dist/css/leaflet.extra-markers.min.css"
@@ -40,7 +40,7 @@
     />
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
-    <!-- FontAwesome -->
+    <!-- FontAwesome (アイコン) -->
     <link
       rel="stylesheet"
       href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"
@@ -57,6 +57,7 @@
         font-family: sans-serif;
       }
 
+      /* 上部操作パネル */
       #controls {
         padding: 8px;
         background: #f0f0f0;
@@ -69,6 +70,7 @@
         z-index: 1000;
       }
 
+      /* マップエリア */
       #map {
         flex: 1;
         width: 100%;
@@ -76,45 +78,12 @@
         cursor: crosshair;
       }
 
-      /* リストは元のまま（広め＋flex:1） */
-      #pointList {
-        flex: 1;
-        padding: 5px;
-        height: 34px;
-      }
-
-      /* すべての「ボタン見た目」の高さをガチ固定で揃える */
-      button,
-      label.btn {
-        box-sizing: border-box;
-        padding: 0 12px;
-        cursor: pointer;
-        border: none;
-        background: #007bff;
-        color: #fff;
-        border-radius: 4px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        height: 34px;
-        line-height: 34px; /* テキスト高さもボタンに合わせる */
-        font-size: 14px;
-        white-space: nowrap;
-      }
-
-      button:hover,
-      label.btn:hover {
-        background: #0056b3;
-      }
-
-      button.locked {
-        background: #dc3545;
-      }
-
-      button.locked:hover {
-        background: #c82333;
-      }
+  /* UIパーツ */
+        #pointList { flex: 1; padding: 5px; height: 34px; }
+        button, label.btn { padding: 6px 12px; cursor: pointer; border: none; background: #007bff; color: #fff; border-radius: 4px; display: inline-flex; align-items: center; gap: 6px; }
+        button:hover, label.btn:hover { background: #0056b3; }
+        button.locked { background: #dc3545; }
+        button.locked:hover { background: #c82333; }
 
       input[type="file"] {
         display: none;
@@ -129,6 +98,7 @@
         border-radius: 4px;
       }
 
+      /* ロックモード時の画像透過（地図クリックを優先） */
       .map-locked .leaflet-distortable-image-overlay,
       .map-locked img.leaflet-image-layer {
         pointer-events: none !important;
@@ -138,38 +108,29 @@
       }
     </style>
   </head>
-
   <body>
     <div id="controls">
       <!-- 画像追加 -->
-      <label for="imageInput" class="btn">
-        <i class="fas fa-upload"></i> 画像を追加
-      </label>
+      <label for="imageInput" class="btn"
+        ><i class="fas fa-upload"></i> 画像を追加</label
+      >
       <input type="file" id="imageInput" accept="image/*" />
 
-      <!-- 位置調整 -->
+      <!-- 位置調整 / 確定切替 -->
       <button id="toggleLockBtn" class="btn">
         <i class="fas fa-lock-open"></i> <span>位置調整モード</span>
       </button>
 
-      <!-- ポイントリスト（元の大きさのまま） -->
+      <!-- GPX追加 -->
+    <label for="gpxInput" class="btn"><i class="fas fa-map-marker-alt"></i> GPXを追加</label>
+    <input type="file" id="gpxInput" accept=".gpx">
+
+      <!-- ポイントリスト / 操作 -->
       <select id="pointList">
         <option>読み込み中...</option>
       </select>
-
-      <!-- GPX追加・保存（リストの右） -->
-      <label for="gpxInput" class="btn">
-        <i class="fas fa-map-marker-alt"></i> GPX追加
-      </label>
-      <input type="file" id="gpxInput" accept=".gpx" />
-
-      <button id="gpxSaveBtn" class="btn">
-        <i class="fas fa-save"></i> GPX保存
-      </button>
-
-      <!-- 操作 -->
-      <button id="clearMarkersBtn" class="btn">クリア</button>
-      <button id="finishBtn" class="btn">登録</button>
+      <button id="clearMarkersBtn">クリア</button>
+      <button id="finishBtn">登録</button>
 
       <div id="info-box">
         座標: <span id="coords">マップをクリックしてください</span>
@@ -179,18 +140,21 @@
     <div id="map"></div>
 
     <script type="module">
-      import MapSelector from "./js/map-selector.js";
+      import MapSelector from "/js/map-selector.js";
 
+      // PowerShellで置換されるプレースホルダーを文字列として定義
       const psLatPlaceholder = "$CenterLat";
       const psLngPlaceholder = "$CenterLng";
       const psZoomPlaceholder = "$Zoom";
-      const psMapDataPlaceholder = "$MapData";
+      const psMapDataPlaceholder = "$MapData"; // JSON文字列として取得
 
       const DEFAULT_LAT = 35.677605;
       const DEFAULT_LNG = 139.758496;
       const DEFAULT_ZOOM = 16;
       const DEFAULT_POINTS = [];
 
+      // Number()で数値に変換できない場合（つまり置換されなかった場合）はNaNになる
+      // NaNish（NaNまたはnull、undefined）であればデフォルト値を使用する
       const initialLat = isNaN(Number(psLatPlaceholder))
         ? DEFAULT_LAT
         : Number(psLatPlaceholder);
@@ -203,9 +167,18 @@
 
       let initialPoints;
       try {
+        // PowerShellが置換した場合（$MapDataが有効なJSON文字列）はパースを試みる
+        // 置換しなかった場合（'$MapData'という文字列のままの場合）はcatchされる
         initialPoints = JSON.parse(psMapDataPlaceholder);
-        if (!Array.isArray(initialPoints)) initialPoints = DEFAULT_POINTS;
+        // JSON.parseが成功しても、それが配列であることを確認
+        if (!Array.isArray(initialPoints)) {
+          console.warn(
+            "Parsed map data was not an array, using default points."
+          );
+          initialPoints = DEFAULT_POINTS;
+        }
       } catch (e) {
+        // パースに失敗した場合（置換されなかった場合など）はデフォルト値を使用
         initialPoints = DEFAULT_POINTS;
       }
 
@@ -214,8 +187,7 @@
         controls: {
           imageInputId: "imageInput",
           toggleLockBtnId: "toggleLockBtn",
-          gpxInputId: "gpxInput",
-          gpxSaveId: "gpxSaveBtn",
+          gpxInputId: 'gpxInput',
           pointListId: "pointList",
           clearMarkersBtnId: "clearMarkersBtn",
           finishBtnId: "finishBtn",

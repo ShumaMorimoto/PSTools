@@ -6,10 +6,104 @@ export default class UIManager {
     }
 
     initUIHandlers() {
-        document.getElementById(this.selector.controls.toggleLockBtnId).addEventListener('click', () => this.selector.imageHandler.toggleLockMode());
-        document.getElementById(this.selector.controls.clearMarkersBtnId).addEventListener('click', () => this.selector.markerHandler.clearMarkers());
-        document.getElementById(this.selector.controls.finishBtnId).addEventListener('click', () => this.finish());
-        document.getElementById(this.selector.controls.pointListId).addEventListener('change', () => this.handlePointListChange());
+        document.getElementById(this.selector.controls.toggleLockBtnId)
+            .addEventListener('click', () => this.selector.imageHandler.toggleLockMode());
+
+        document.getElementById(this.selector.controls.clearMarkersBtnId)
+            .addEventListener('click', () => this.selector.markerHandler.clearMarkers());
+
+        document.getElementById(this.selector.controls.finishBtnId)
+            .addEventListener('click', () => this.finish());
+
+        document.getElementById(this.selector.controls.pointListId)
+            .addEventListener('change', () => this.handlePointListChange());
+
+        // ✅ GPX 読み込みボタン
+        this.initGpxLoadButton();
+
+        // ✅ GPX 保存ボタン（保存ダイアログ対応）
+        this.initGpxSaveButton();
+    }
+
+    // -----------------------------
+    // ✅ GPX 読み込み
+    // -----------------------------
+    initGpxLoadButton() {
+        const input = document.getElementById(this.selector.controls.gpxInputId);
+        if (!input) return;
+
+        input.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const gpxText = ev.target.result;
+                this.selector.markerHandler.loadGpx(gpxText);
+                e.target.value = "";
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    // -----------------------------
+    // ✅ GPX 保存（保存ダイアログ対応）
+    // -----------------------------
+    initGpxSaveButton() {
+        const btn = document.getElementById(this.selector.controls.gpxSaveId);
+        if (!btn) return;
+
+        btn.addEventListener("click", async () => {
+            const gpx = this.selector.markerHandler.exportGpx();
+            await this.saveGpx("route.gpx", gpx);
+        });
+    }
+
+    // -----------------------------
+    // ✅ 保存ダイアログ（File System Access API）
+    // -----------------------------
+    async saveGpx(filename, text) {
+        // ✅ Chrome / Edge など対応ブラウザ
+        if (window.showSaveFilePicker) {
+            const opts = {
+                suggestedName: filename,
+                types: [
+                    {
+                        description: "GPXファイル",
+                        accept: { "application/gpx+xml": [".gpx"] }
+                    }
+                ]
+            };
+
+            try {
+                const handle = await window.showSaveFilePicker(opts);
+                const writable = await handle.createWritable();
+                await writable.write(text);
+                await writable.close();
+                return;
+            } catch (e) {
+                console.warn("保存キャンセル or エラー:", e);
+                return;
+            }
+        }
+
+        // ❌ 非対応ブラウザ → 従来のダウンロード方式
+        this.downloadText(filename, text);
+    }
+
+    // -----------------------------
+    // ✅ ダウンロード処理（fallback）
+    // -----------------------------
+    downloadText(filename, text) {
+        const blob = new Blob([text], { type: "application/gpx+xml" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+
+        URL.revokeObjectURL(url);
     }
 
     updateListUI() {
@@ -31,7 +125,8 @@ export default class UIManager {
             list.appendChild(opt);
         });
 
-        if (this.selector.markerHandler.selectedIndex !== null) list.value = this.selector.markerHandler.selectedIndex;
+        if (this.selector.markerHandler.selectedIndex !== null)
+            list.value = this.selector.markerHandler.selectedIndex;
     }
 
     handlePointListChange() {

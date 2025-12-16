@@ -5,9 +5,6 @@ import MarkerHandler from './marker-handler.js';
 import UIManager from './ui-manager.js';
 import { fetchAddressAsync } from './api-utils.js';
 
-// ✅ GPXService を js 配下から読み込む（services フォルダは作らない）
-import GPXService from './gpx-service.js';
-
 export default class MapSelector {
     constructor(options) {
         this.mapId = options.mapId;
@@ -19,12 +16,7 @@ export default class MapSelector {
         this.imgGroup = null;
         this.isLocked = false;
 
-        // ✅ GPXService を生成
-        this.gpxService = new GPXService();
-
-        // ✅ MarkerHandler に gpxService を渡す（ここだけ変更）
-        this.markerHandler = new MarkerHandler(this, this.gpxService);
-
+        this.markerHandler = new MarkerHandler(this);
         this.imageHandler = new ImageHandler(this);
         this.uiManager = new UIManager(this);
         this.mapInitializer = new MapInitializer(this);
