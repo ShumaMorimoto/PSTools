@@ -45,8 +45,8 @@ export default class ImageHandler {
     const bounds = this.selector.map.getBounds();
     const center = bounds.getCenter();
 
-    const height = 0.0303301719782 
-    const width =  0.0243544578550
+    const height = 0.0303301719782;
+    const width = 0.024354457855;
 
     const north = center.lat + height / 2;
     const south = center.lat - height / 2;
@@ -63,15 +63,19 @@ export default class ImageHandler {
     try {
       const img = L.distortableImageOverlay(url, {
         actions: [
-          L.RotateAction,
+          //          L.RotateAction,
           L.ScaleAction,
-          L.FreeRotateAction,
-          L.LockAction,
+          //          L.FreeRotateAction,
+          //          L.LockAction,
           L.OpacityAction,
           L.DeleteAction,
         ],
         corners: initialCorners, // 初期コーナーを指定（エラー回避）
         selected: true,
+      });
+
+      img.on("add", () => {
+        img.setOpacity(0.3); // 0.0～1.0 の範囲。0 が完全透明、1 が不透明
       });
 
       img.on("delete", () => {
@@ -82,13 +86,12 @@ export default class ImageHandler {
         }
       });
 
-     this.selector.imgGroup.addLayer(img);
+      this.selector.imgGroup.addLayer(img);
     } catch (e) {
       console.error("addImageToMap error", e);
       alert("画像追加に失敗しました（コンソールを確認してください）。");
     }
   }
-
 
   toggleLockMode() {
     this.selector.isLocked = !this.selector.isLocked;
@@ -96,8 +99,7 @@ export default class ImageHandler {
     const mapDiv = document.getElementById(this.selector.mapId);
 
     if (this.selector.isLocked) {
-      btn.innerHTML =
-        '<i class="fas fa-lock"></i> <span>確定済 (クリックで座標取得)</span>';
+      btn.innerHTML = '<i class="fas fa-lock"></i> <span>確定済</span>';
       btn.classList.add("locked");
       mapDiv.classList.add("map-locked");
 
