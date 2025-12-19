@@ -7,6 +7,7 @@ export default class MarkerHandler {
 
     this.markers = []; // Leaflet Marker instances (内部リスト)
     this.selectedMarkers = []; // 選択中マーカー
+    this.requestSeq = 0; //
   }
 
   // ---------------------------------------------------
@@ -183,6 +184,27 @@ export default class MarkerHandler {
       });
       m.setIcon(icon);
     });
+  }
+
+  // ---------------------------------------------------
+  // 指定したマーカーへズーム
+  // ---------------------------------------------------
+  zoomToMarker(marker) {
+    if (!marker) return;
+
+    // 現在のズームレベルを維持するか、少し寄るか決められます
+    // 例: ズームレベル15で移動
+    // this.selector.map.setView(marker.getLatLng(), 15);
+
+    // アニメーション付きで移動する場合 (flyTo)
+    // 最大ズームレベルなどを考慮して移動
+    this.selector.map.flyTo(marker.getLatLng(), 16, {
+      animate: true,
+      duration: 1.5, // 秒数
+    });
+
+    // 必要ならそのマーカーのポップアップを開く
+    marker.openPopup();
   }
 
   // ---------------------------------------------------
