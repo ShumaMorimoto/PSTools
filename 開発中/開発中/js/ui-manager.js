@@ -22,6 +22,10 @@ export default class UIManager {
       .getElementById(this.selector.controls.finishBtnId)
       .addEventListener("click", () => this.finish());
 
+    document
+      .getElementById(this.selector.controls.pointListId)
+      .addEventListener("change", () => this.handlePointListChange());
+
     // ✅ GPX 読み込み
     this.initGpxLoadButton();
 
@@ -154,13 +158,12 @@ export default class UIManager {
 
     const idx = parseInt(val, 10);
 
-    this.selector.markerHandler.setSelectedIndex(idx);
+    //    this.selector.markerHandler.setSelectedIndex(idx);
 
-    const pts = this.selector.gpxService.getTrkptList();
-    const p = pts[idx];
-    if (!p) return;
+    const marker = this.selector.markerHandler.markers[idx];
 
-    this.selector.map.setView([p.lat, p.lon], this.selector.map.getZoom());
+    if (!marker) return;
+    this.selector.markerHandler.zoomToMarker(marker);
   }
 
   // -----------------------------
