@@ -59,22 +59,13 @@ export default class MapInitializer {
           this.selector.controls.coordsId
         ).innerText = `${lat}, ${lng}`;
 
-        const info = {
+        this.selector.markerHandler.addPoint({
           lat: e.latlng.lat,
           lon: e.latlng.lng,
           name: "",
           desc: "",
           extended: {},
-        };
-
-        this.selector.markerHandler.addPoint(info);
-
-        const newMarker =
-          this.selector.markerHandler.markers[
-            this.selector.markerHandler.markers.length - 1
-          ];
-
-        this.selector.fetchAddressAsync(info, newMarker);
+        });
       }
     });
   }
