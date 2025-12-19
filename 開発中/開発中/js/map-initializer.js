@@ -49,6 +49,7 @@ export default class MapInitializer {
       };
     }
 
+    
     // ✅ 地図クリック → マーカー追加（ロック中のみ）
     this.selector.map.on("click", (e) => {
       if (this.selector.isLocked) {
