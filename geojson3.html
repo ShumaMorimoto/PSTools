@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <title>Leaflet 自治体境界動的 + 町字全マーク</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>#map { height: 100vh; }</style>
+</head>
+<body>
+    <div id="map"></div>
+    <button id="showTownsBtn" style="position:absolute;top:10px;right:10px;z-index:1000;padding:10px;background:white;">この自治体の全町字を表示</button>
+
+    <script>
+        const map = L.map('map').setView([35.6895, 139.6917], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        let municipalityLayer;   // 自治体境界レイヤー
+        let townLayers = L.layerGroup().addTo(map);  // 町字レイヤーグループ
+        let currentMunicipalityName = '';  // 現在の自治体名（ファイル名用）
+
+        // osmtogeojsonライブラリ
+        const osmScript = document.createElement('script');
+        osmScript.src = 'https://unpkg.com/osmtogeojson@3.0.0-beta.5/osmtogeojson.js';
+        document.head.appendChild(osmScript);
+
+        function updateMunicipalityBoundary() {
+            if (municipalityLayer) map.removeLayer(municipalityLayer);
+            townLayers.clearLayers();  // 町字もクリア
+            document.getElementById('showTownsBtn').disabled = true;
+
+            const center = map.getCenter();
+            const lat = center.lat.toFixed(6);
+            const lon = center.lng.toFixed(6);
+
+            const query = `
+                [out:json][timeout:25];
+                is_in(${lat},${lon})->.a;
+                rel(pivot.a)[boundary=administrative][admin_level=7];
+                out geom;
+            `;
+
+            fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.elements.length > 0) {
+                        const geojson = osmtogeojson(data);
+                        municipalityLayer = L.geoJSON(geojson, {
+                            style: { color: 'red', weight: 5, fillOpacity: 0.1 }
+                        }).addTo(map);
+
+                        // 自治体名取得（日本語名）
+                        currentMunicipalityName = geojson.features[0].properties.tags.name || '';
+                        document.getElementById('showTownsBtn').disabled = false;
+
+                        map.fitBounds(municipalityLayer.getBounds());
+                    }
+                });
+        }
+
+        // アクション: ボタンで町字全表示
+        document.getElementById('showTownsBtn').onclick = function() {
+            if (!currentMunicipalityName) return;
+            townLayers.clearLayers();
+
+            // 例: GeoJSONファイル名を自治体名やコードで対応（実際はコードマッピング推奨）
+            // ここでは仮にURLを直接指定（あなたのサーバーに合わせて変更）
+            const townGeoJSONUrl = `https://your-server.com/towns/${encodeURIComponent(currentMunicipalityName)}.geojson`;
+
+            fetch(townGeoJSONUrl)
+                .then(res => {
+                    if (!res.ok) throw new Error('データなし');
+                    return res.json();
+                })
+                .then(townData => {
+                    L.geoJSON(townData, {
+                        style: { color: 'blue', weight: 2, fillOpacity: 0.15 },
+                        onEachFeature: (feature, layer) => {
+                            const name = feature.properties.name || feature.properties.MOJI || '不明';
+                            layer.bindPopup(`町字: ${name}`);
+                        }
+                    }).addTo(townLayers);
+
+                    map.fitBounds(townLayers.getBounds());
+                    alert(`${currentMunicipalityName} の町字境界を表示しました`);
+                })
+                .catch(err => {
+                    alert('町字データが見つかりません（この自治体のGeoJSONを準備してください）');
+                    console.error(err);
+                });
+        };
+
+        // 地図移動で自治体境界更新
+        map.on('moveend', updateMunicipalityBoundary);
+        updateMunicipalityBoundary();  // 初回
+    </script>
+</body>
+</html>
