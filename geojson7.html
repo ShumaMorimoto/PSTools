@@ -122,4 +122,36 @@
           }
 
           try {
-            const townUrl = `https
+            const townUrl = `https://geolonia.github.io/japanese-addresses/api/ja/${pref}/${city}.json`;
+            console.log('町字データ取得中:', townUrl);
+            const townRes = await fetch(townUrl);
+            if (!townRes.ok) throw new Error('取得失敗');
+
+            const towns = await townRes.json();
+            console.log(`町字データ取得: ${towns.length}件`);
+
+            currentTownMarkers = L.layerGroup().addTo(map);
+            towns.forEach(t => {
+              if (t.lat && t.lng) {
+                L.circleMarker([t.lat, t.lng], {
+                  radius: 4,
+                  color: '#3388ff',
+                  fillOpacity: 0.8
+                })
+                .bindPopup(`${t.town}`)
+                .addTo(currentTownMarkers);
+              }
+            });
+            div.innerHTML = '町字解除';
+          } catch (err) {
+            console.error('町字データ取得エラー:', err);
+            alert('町字データの取得に失敗しました');
+          }
+        };
+        return div;
+      };
+      townButton.addTo(map);
+    });
+  </script>
+</body>
+</html>
