@@ -1,0 +1,38 @@
+map.on('click', async function(e) {
+  // 1. リバースジオコーディングで自治体名取得
+  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}&zoom=14`);
+  const data = await res.json();
+  const pref = data.address.state || data.address.province; // 都道府県
+  const city = data.address.city || data.address.town || data.address.village; // 市区町村
+
+  if (!city) return;
+
+  // 自治体名表示など
+  alert(`クリック地点: ${pref}${city}`);
+
+  // 2. 境界ポリゴン取得（sankichiサービス例。コードが必要なら別途取得）
+  // 仮にコードがわかっている場合
+  const cityCode = '13113'; // 例: 渋谷区のJISコード（事前マップやAPIで対応）
+  const boundaryRes = await fetch(`https://shikuchoson-boundaries.sankichi.app/${cityCode}.geojson`);
+  const boundaryGeoJSON = await boundaryRes.json();
+  L.geoJSON(boundaryGeoJSON, {style: {color: 'red', weight: 4}}).addTo(map);
+
+  // 3. カスタムボタン追加（例: L.control）
+  const button = L.control({position: 'topright'});
+  button.onAdd = function() {
+    const div = L.DomUtil.create('div', 'leaflet-control leaflet-bar');
+    div.innerHTML = '<a href="#" title="町字マーク">町</a>';
+    div.onclick = async () => {
+      const townRes = await fetch(`https://geolonia.github.io/japanese-addresses/api/ja/${pref}/${city}.json`);
+      const towns = await townRes.json();
+      const markers = L.layerGroup().addTo(map);
+      towns.forEach(t => {
+        if (t.lat && t.lng) {
+          L.marker([t.lat, t.lng]).bindPopup(t.town).addTo(markers);
+        }
+      });
+    };
+    return div;
+  };
+  button.addTo(map);
+});
