@@ -1,0 +1,64 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPXService Test</title>
+</head>
+<body>
+    <h1>GPXService Test Page</h1>
+    <p>Open the console to see the test results.</p>
+
+    <script type="module">
+        import GPXService from './js/gpx-service2.js';
+
+        // Test function
+        function runGPXTests() {
+            console.log('Starting GPXService tests...');
+
+            // Create instance
+            const service = new GPXService();
+
+            // Add track points without extensions
+            service.addTrkpt({ lat: 35.6895, lon: 139.6917, name: 'Tokyo', desc: 'Capital of Japan' });
+            service.addTrkpt({ lat: 34.6937, lon: 135.5022, name: 'Osaka', desc: 'City in Japan' });
+
+            // Add track point with extensions
+            service.addTrkpt({
+                lat: 35.6580,
+                lon: 139.7017,
+                name: 'Shibuya',
+                desc: 'Busy district in Tokyo',
+                extensions: {
+                    speed: 5.0,
+                    heartRate: 120
+                }
+            });
+
+            // Get model
+            const model = service.getModel();
+            console.log('Current Model:', model);
+
+            // Convert to XML
+            const xml = service.toXml();
+            console.log('Generated XML (with extensions):', xml);
+
+            // Load from XML (test round-trip)
+            const newService = new GPXService();
+            newService.loadFromXml(xml);
+            const loadedModel = newService.getModel();
+            console.log('Loaded Model from XML (with extensions):', loadedModel);
+
+            // Test update and remove
+            service.updateTrkpt(0, { name: 'Updated Tokyo' });
+            service.removeTrkpt(1);
+            console.log('Updated Model:', service.getModel());
+
+            console.log('Tests completed.');
+        }
+
+        // Run tests on load
+        window.addEventListener('load', runGPXTests);
+    </script>
+</body>
+</html>

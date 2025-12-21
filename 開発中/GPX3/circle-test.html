@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>領域選択 完全版（復元）</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    #map {
+      width: 100%;
+      height: calc(100% - 80px);
+    }
+    #panel {
+      height: 80px;
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      font-family: sans-serif;
+    }
+    .center-handle-ui {
+      width: 20px;
+      height: 20px;
+      background: #00aaff;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 0 4px rgba(0,0,0,0.4);
+    }
+    .radius-handle-ui {
+      width: 16px;
+      height: 16px;
+      background: #ff4444;
+      border-radius: 50%;
+      border: 2px solid white;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="panel">
+    <button id="mainBtn">領域追加</button>
+  </div>
+
+  <div id="map"></div>
+
+  <!-- Leaflet を先に読み込む -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // --------------------------------------------
+    // 状態管理
+    // --------------------------------------------
+    const UIState = {
+      mode: "add-area" // add-area / fetch / loading / confirm / done
+    };
+
+    function updateButton() {
+      const btn = document.getElementById("mainBtn");
+
+      switch (UIState.mode) {
+        case "add-area":
+          btn.textContent = "領域追加";
+          btn.disabled = false;
+          break;
+        case "fetch":
+          btn.textContent = "町字取得";
+          btn.disabled = false;
+          break;
+        case "loading":
+          btn.textContent = "処理中…";
+          btn.disabled = true;
+          break;
+        case "confirm":
+          btn.textContent = "領域確定";
+          btn.disabled = false;
+          break;
+        case "done":
+          btn.textContent = "領域追加";
+          btn.disabled = false;
+          break;
+      }
+    }
+
+    // --------------------------------------------
+    // Leaflet 初期化
+    // --------------------------------------------
+    const map = L.map("map", { center: [35.4, 139.6], zoom: 12 });
+
+    L.tileLayer(
+      "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png",
+      { attribution: "地理院タイル", maxZoom: 18 }
+    ).addTo(map);
+
+    // --------------------------------------------
+    // 状態
+    // --------------------------------------------
+    const state = {
+      center: null,
+      radius: 2000
+    };
+
+    // --------------------------------------------
+    // レイヤ
+    // --------------------------------------------
+    const tempMarkers = L.layerGroup().addTo(map);  // 仮マーカー（赤）
+    const finalMarkers = L.layerGroup().addTo(map); // 本マーカー（青）
+
+    let circle = null;
+    let centerHandle = null;
+    let radiusHandle = null;
+
+    // --------------------------------------------
+    // アイコン
+    // --------------------------------------------
+    const centerHandleIcon = L.divIcon({
+      className: "",
+      html: '<div class="center-handle-ui"></div>',
+      iconSize: [20, 20]
+    });
+
+    const radiusHandleIcon = L.divIcon({
+      className: "",
+      html: '<div class="radius-handle-ui"></div>',
+      iconSize: [16, 16]
+    });
+
+    const tempIcon = L.icon({
+      iconUrl: "https://maps.gstatic.com/mapfiles/ms2/micons/red-dot.png",
+      iconSize: [32, 32]
+    });
+
+    const finalIcon = L.icon({
+      iconUrl: "https://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png",
+      iconSize: [32, 32]
+    });
+
+// --------------------------------------------
+// 円周上の位置（正確版: 緯度を考慮した計算）
+function computeHandleLatLng(center, radius) {
+  const earthRadius = 6378137; // 地球半径 (m)
+  const latRad = center.lat * Math.PI / 180;
+  const deltaLon = (radius / (earthRadius * Math.cos(latRad))) * (180 / Math.PI); // 経度変化
+  return L.latLng(center.lat, center.lng + deltaLon); // 東方向
+}
+
+// --------------------------------------------
+// 円とハンドル生成（修正版）
+function createCircleAndHandles() {
+  if (!state.center) return;
+  if (!circle) {
+    circle = L.circle(state.center, {
+      radius: state.radius,
+      color: "#0078ff",
+      weight: 2,
+      fillColor: "#0078ff",
+      fillOpacity: 0.15
+    }).addTo(map);
+  } else {
+    circle.setLatLng(state.center);
+    circle.setRadius(state.radius);
+  }
+  if (!centerHandle) {
+    centerHandle = L.marker(state.center, {
+      draggable: true,
+      icon: centerHandleIcon
+    }).addTo(map);
+    centerHandle.setZIndexOffset(9999);
+    centerHandle.on("drag", e => {  // または "dragend" に変更
+      state.center = e.target.getLatLng();
+      createCircleAndHandles();
+      tempMarkers.clearLayers();
+      UIState.mode = "fetch";
+      updateButton();
+    });
+  } else {
+    centerHandle.setLatLng(state.center);
+  }
+  const pos = computeHandleLatLng(state.center, state.radius);
+  if (!radiusHandle) {
+    radiusHandle = L.marker(pos, {  // 初回のみ東方向に設定
+      draggable: true,
+      icon: radiusHandleIcon
+    }).addTo(map);
+    radiusHandle.setZIndexOffset(9998);
+    radiusHandle.on("drag", e => {  // または "dragend" に変更
+      state.radius = e.target.getLatLng().distanceTo(state.center);
+      createCircleAndHandles();  // ここでsetLatLng(pos) を呼ばない
+      tempMarkers.clearLayers();
+      UIState.mode = "fetch";
+      updateButton();
+    });
+  }  // else ブロックを削除: ドラッグ時は位置を保持
+}
+    // --------------------------------------------
+    // Overpass で町字取得（仮マーカー生成）
+    // --------------------------------------------
+    async function fetchTempMarkers() {
+      tempMarkers.clearLayers();
+
+      const lat = state.center.lat;
+      const lon = state.center.lng;
+      const r = Math.floor(state.radius);
+
+      const query = `
+        [out:json][timeout:25];
+        node["place"~"^(neighbourhood|quarter|locality)$"]
+          (around:${r},${lat},${lon});
+        out body;
+      `;
+
+      const url =
+        "https://overpass-api.de/api/interpreter?data=" +
+        encodeURIComponent(query);
+
+      const res = await fetch(url);
+      const json = await res.json();
+
+      json.elements.forEach(el => {
+        if (!el.tags || !el.tags.name) return;
+
+        L.marker([el.lat, el.lon], {
+          icon: tempIcon,
+          interactive: false
+        }).addTo(tempMarkers);
+      });
+    }
+
+    // --------------------------------------------
+    // 本確定（仮マーカー→本マーカー）
+    // --------------------------------------------
+    function confirmMarkers() {
+      tempMarkers.eachLayer(layer => {
+        const latlng = layer.getLatLng();
+        L.marker(latlng, { icon: finalIcon }).addTo(finalMarkers);
+      });
+
+      tempMarkers.clearLayers();
+    }
+
+    // --------------------------------------------
+    // ボタン押下
+    // --------------------------------------------
+    document.getElementById("mainBtn").onclick = async () => {
+      switch (UIState.mode) {
+        case "add-area":
+          UIState.mode = "fetch";
+          updateButton();
+          break;
+
+        case "fetch":
+          if (!state.center) {
+            // 中心未設定で押された場合は何もしない（動いていたときも事実上そうなっていた）
+            return;
+          }
+          UIState.mode = "loading";
+          updateButton();
+          await fetchTempMarkers();
+          UIState.mode = "confirm";
+          updateButton();
+          break;
+
+        case "confirm":
+          confirmMarkers();
+          UIState.mode = "done";
+          updateButton();
+          break;
+
+        case "done":
+          tempMarkers.clearLayers();
+          UIState.mode = "add-area";
+          updateButton();
+          break;
+      }
+    };
+
+    // --------------------------------------------
+    // 地図クリック
+    // --------------------------------------------
+    map.on("click", e => {
+      if (UIState.mode === "add-area" || UIState.mode === "done") {
+        // 初期状態・完了後 → 青マーカー追加のみ
+        L.marker(e.latlng, { icon: finalIcon }).addTo(finalMarkers);
+        return;
+      }
+
+      if (UIState.mode === "fetch") {
+        // 領域指定モード → 中心設定＆円＋ハンドラ生成
+        state.center = e.latlng;
+        createCircleAndHandles();
+      }
+    });
+
+    // 初期ボタン状態
+    updateButton();
+  </script>
+</body>
+</html>

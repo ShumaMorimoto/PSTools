@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>町字取得マップ</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+      #map {
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+      const map = L.map("map").setView([35.681, 139.767], 12); // 東京駅初期表示
+
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+      }).addTo(map);
+
+      let boundaryLayer = null;
+      let townLayer = null;
+
+      // チェックディジット計算（JIS X0402）
+      function calcCheckDigit(muniCd5) {
+        const weights = [6, 5, 4, 3, 2];
+        const sum = muniCd5
+          .split("")
+          .reduce((acc, d, i) => acc + parseInt(d) * weights[i], 0);
+        let cd = 11 - (sum % 11);
+        if (cd === 10 || cd === 11) cd = 0;
+        return muniCd5 + cd;
+      }
+
+      // 町字マーカー描画
+      function drawTowns(towns) {
+        if (townLayer) map.removeLayer(townLayer);
+        townLayer = L.layerGroup();
+        towns.forEach((t) => {
+          const marker = L.circleMarker([t.lat, t.lng], {
+            radius: 4,
+            color: "#f00",
+            fillOpacity: 0.6,
+          }).bindTooltip(t.town);
+          townLayer.addLayer(marker);
+        });
+        townLayer.addTo(map);
+        console.log(`✅ 町字数: ${towns.length}`);
+      }
+
+      // 境界表示
+      function drawBoundary(geojson) {
+        if (boundaryLayer) map.removeLayer(boundaryLayer);
+        boundaryLayer = L.geoJSON(geojson, {
+          style: { color: "#3388ff", weight: 2 },
+        }).addTo(map);
+        map.fitBounds(boundaryLayer.getBounds());
+        console.log("✅ 境界表示完了");
+      }
+
+      // 地図クリックイベント
+      map.on("click", async (e) => {
+        const { lat, lng } = e.latlng;
+        console.log(`🗺️ クリック位置: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+
+        // 1. GSI Reverse Geocoder
+        const gsiUrl = `https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${lat}&lon=${lng}`;
+        const gsiRes = await fetch(gsiUrl).then((res) => res.json());
+        const muniCd5 = gsiRes.results.muniCd;
+        const pref = gsiRes.results.lv01Nm;
+        const city = gsiRes.results.lv02Nm;
+        console.log(`✅ GSI: ${pref} ${city} / muniCd: ${muniCd5}`);
+
+        // 2. 境界取得
+        const geojsonUrl = `https://shikuchoson-boundaries.sankichi.app/${muniCd5}.geojson`;
+        try {
+          const geojson = await fetch(geojsonUrl).then((res) => res.json());
+          drawBoundary(geojson);
+        } catch {
+          console.warn(`❌ 境界取得失敗: ${geojsonUrl}`);
+        }
+
+        // 3. muniCd6 → チェックディジット付き
+        const muniCd6 = calcCheckDigit(muniCd5);
+
+        // 4. DFP APIで都道府県名・市区町村名取得
+        const dfpQuery = {
+          query: `{
+          municipalities(muniCodes: ["${muniCd6}"]) {
+            name
+            prefecture_code
+          }
+          prefecture {
+            code
+            name
+          }
+        }`,
+        };
+        //      const dfpRes = await fetch("https://www.mlit-data.jp/api/v1/graphql", {
+        //        method: "POST",
+        //        headers: {
+        //          "Content-Type": "application/json",
+        //          "apikey": "4ZiwH4ty7rcYPfye2sYP9DjX9BBjCOzY"
+        //        },
+        //        body: JSON.stringify(dfpQuery)
+        //      }).then(res => res.json());
+        // DFP API 呼び出し先をローカルプロキシに変更
+        const dfpRes = await fetch("http://localhost:3000/dfp", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: "4ZiwH4ty7rcYPfye2sYP9DjX9BBjCOzY",
+          },
+          body: JSON.stringify(dfpQuery),
+        }).then((res) => res.json());
+
+        const muni = dfpRes.data.municipalities[0];
+        const prefName = dfpRes.data.prefecture.find(
+          (p) => p.code === muni.prefecture_code
+        ).name;
+        const cityName = muni.name;
+        console.log(`✅ DFP: ${prefName} ${cityName}`);
+
+        // 5. Geolonia 町字取得
+        const townUrl = `https://geolonia.github.io/japanese-addresses/api/ja/${prefName}/${cityName}.json`;
+        try {
+          const towns = await fetch(townUrl).then((res) => res.json());
+          drawTowns(towns);
+        } catch {
+          console.warn(`❌ 町字取得失敗: ${townUrl}`);
+        }
+      });
+    </script>
+  </body>
+</html>

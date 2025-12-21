@@ -48,7 +48,8 @@
                 out ids;
             `;
 
-            fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(areaQuery)}`)
+//            fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(areaQuery)}`)
+            fetch(`https://overpass-api.de/api/interpreter?data=${areaQuery}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.elements.length === 0) {

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>GPXService XML ⇄ JSON テスト</title>
+    <style>
+      body {
+        font-family: monospace;
+        margin: 0;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        font-family: monospace;
+      }
+      #xmlInput {
+        height: 200px;
+      }
+      #jsonOutput {
+        height: 300px;
+      }
+      #xmlOutput {
+        height: 200px;
+      }
+      button {
+        padding: 4px 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>GPXService XML ⇄ JSON テスト</h3>
+
+    <div>
+      <input type="file" id="fileInput" accept=".gpx,.xml" />
+      <button id="parseBtn">XML → JSON 変換</button>
+      <button id="reverseBtn">JSON → XML 逆変換</button>
+    </div>
+
+    <div>
+      <p>XML 入力（ファイル選択後に中身もここに表示される）:</p>
+      <textarea id="xmlInput" placeholder="ここに GPX/XML を貼るか、上でファイル選択"></textarea>
+    </div>
+
+    <div>
+      <p>GPXService.xmlToJson の結果:</p>
+      <textarea id="jsonOutput" placeholder="XML → JSON の結果がここに出る"></textarea>
+    </div>
+
+    <div>
+      <p>GPXService.jsonToXml の結果（逆変換）:</p>
+      <textarea id="xmlOutput" readonly></textarea>
+    </div>
+
+    <script type="module">
+      import GPXService from "./js/gpx-service.js";
+
+      const fileInput = document.getElementById("fileInput");
+      const xmlInput = document.getElementById("xmlInput");
+      const jsonOutput = document.getElementById("jsonOutput");
+      const xmlOutput = document.getElementById("xmlOutput");
+      const parseBtn = document.getElementById("parseBtn");
+      const reverseBtn = document.getElementById("reverseBtn");
+
+      // ファイル選択 → XML テキストを textarea に表示
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          xmlInput.value = ev.target.result;
+        };
+        reader.readAsText(file);
+      });
+
+      // XML → JSON
+      parseBtn.addEventListener("click", () => {
+        const xml = xmlInput.value.trim();
+        if (!xml) {
+          alert("XML が空です");
+          return;
+        }
+        try {
+          const json = GPXService.xmlToJson(xml);
+          jsonOutput.value = JSON.stringify(json, null, 2);
+          console.log("xmlToJson result:", json);
+        } catch (err) {
+          console.error(err);
+          alert("変換中にエラー: " + err.message);
+        }
+      });
+
+      // JSON → XML（逆変換）
+      reverseBtn.addEventListener("click", () => {
+        const jsonText = jsonOutput.value.trim();
+        if (!jsonText) {
+          alert("JSON が空です");
+          return;
+        }
+        try {
+          const json = JSON.parse(jsonText);
+          const service = new GPXService(json);
+          const xml = service.toXml();
+          xmlOutput.value = xml;
+          console.log("jsonToXml result:", xml);
+        } catch (err) {
+          console.error(err);
+          alert("逆変換中にエラー: " + err.message);
+        }
+      });
+    </script>
+  </body>
+</html>

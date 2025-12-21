@@ -1,0 +1,75 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>POST テストツール</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    textarea { width: 100%; height: 200px; }
+    button { padding: 10px 20px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<h2>POST テストツール（map.html に送信）</h2>
+
+<label>
+  <strong>送信先 URL:</strong><br>
+  <input id="url" type="text" value="map.html" style="width:100%; padding:6px;">
+</label>
+
+<br><br>
+
+<label>
+  <strong>Content-Type:</strong><br>
+  <select id="ctype" style="padding:6px;">
+    <option value="application/json">application/json</option>
+    <option value="application/xml">application/xml</option>
+    <option value="text/xml">text/xml</option>
+  </select>
+</label>
+
+<br><br>
+
+<label>
+  <strong>POST Body:</strong><br>
+  <textarea id="body">
+{
+  "points": [
+    { "lat": 35.6, "lon": 139.7, "name": "A" },
+    { "lat": 35.61, "lon": 139.71, "name": "B" }
+  ]
+}
+  </textarea>
+</label>
+
+<br>
+
+<button id="sendBtn">POST 送信</button>
+
+<script>
+document.getElementById("sendBtn").addEventListener("click", () => {
+  const url = document.getElementById("url").value;
+  const ctype = document.getElementById("ctype").value;
+  const body = document.getElementById("body").value;
+
+  // ✅ フォームを動的に作って POST する
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = url;
+  form.enctype = ctype;
+
+  const input = document.createElement("input");
+  input.type = "hidden";
+  input.name = "payload";
+  input.value = body;
+
+  form.appendChild(input);
+  document.body.appendChild(form);
+
+  form.submit();
+});
+</script>
+
+</body>
+</html>
