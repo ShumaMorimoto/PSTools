@@ -15,9 +15,35 @@ param(
 # HttpListener を使うための型をロード
 Add-Type -AssemblyName System.Net.HttpListener
 
-# ---- 以降はあなたの既存コードをそのまま ----
+# ---- プロセス定義（ここをカスタマイズ） ----
+$Global:Processes = @(
+    @{
+        Name   = "default"
+        Action = {
+            param($data, $mode)
+            $data | Add-Member NoteProperty processedBy ($mode + "PS") -Force
+            $data | Add-Member NoteProperty processedAt (Get-Date).ToString("o") -Force
+            if ($data.lat) { $data.lat = [math]::Round([double]$data.lat, 6) }
+            if ($data.lon) { $data.lon = [math]::Round([double]$data.lon, 6) }
+            return $data
+        }
+    },
+    @{
+        Name   = "reverse"
+        Action = {
+            param($data, $mode)
+            $data | Add-Member NoteProperty processedBy ("reverse" + $mode + "PS") -Force
+            $data | Add-Member NoteProperty processedAt (Get-Date).ToString("o") -Force
+            if ($data.text) { $data.text = $data.text[-1..-$data.text.Length] -join '' }
+            return $data
+        }
+    }
+    # 追加のプロセスをここに @{Name="process3"; Action={param($data,$mode) ... }} の形で追加
+)
 
-$port = 8000
+# ---- 以降は既存コードを改良 ----
+
+$port = 8000  # 必要に応じて8080に変更
 $prefix = "http://localhost:$port/"
 
 $listener = [System.Net.HttpListener]::new()
@@ -35,15 +61,6 @@ else {
 }
 
 $Global:JobTable = @{}
-
-function Invoke-CustomProcess {
-    param([psobject]$data, [string]$mode)
-    $data | Add-Member NoteProperty processedBy ($mode + "PS") -Force
-    $data | Add-Member NoteProperty processedAt (Get-Date).ToString("o") -Force
-    if ($data.lat) { $data.lat = [math]::Round([double]$data.lat, 6) }
-    if ($data.lon) { $data.lon = [math]::Round([double]$data.lon, 6) }
-    return $data
-}
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
@@ -66,11 +83,14 @@ while ($listener.IsListening) {
         }
     }
 
+    Write-Host "Received request: Method=$($req.HttpMethod), Path=$path, Query=$($query | ConvertTo-Json -Compress)"  # サーバログ追加
+
     if ($path -eq "/") { $path = "/" + $PageName }
 
     switch -Regex ($path) {
         '^/fetchInitialData$' {
             # GET /fetchInitialData
+            Write-Host "Processing /fetchInitialData"
             $json = $Global:CurrentData | ConvertTo-Json -Depth 10
             $b = [Text.Encoding]::UTF8.GetBytes($json)
             $res.ContentType = "application/json; charset=utf-8"
@@ -82,6 +102,7 @@ while ($listener.IsListening) {
                 $res.StatusCode = 405; $res.Close(); break
             }
             # POST /upload
+            Write-Host "Processing /upload"
             $body = [IO.StreamReader]::new($req.InputStream, $req.ContentEncoding).ReadToEnd()
             try {
                 $obj = $body | ConvertFrom-Json -ErrorAction Stop
@@ -104,11 +125,22 @@ while ($listener.IsListening) {
             if ($req.HttpMethod -ne 'POST') {
                 $res.StatusCode = 405; $res.Close(); break
             }
-            # POST /processSync
+            # POST /processSync?name=xxx
+            $name = $query.name ?? "default"
+            $proc = $Global:Processes | Where-Object { $_.Name -eq $name }
+            if (-not $proc) {
+                $res.StatusCode = 404
+                $err = @{ error = "process not found"; name = $name } | ConvertTo-Json
+                $b = [Text.Encoding]::UTF8.GetBytes($err)
+                $res.ContentType = "application/json; charset=utf-8"
+                $res.OutputStream.Write($b, 0, $b.Length)
+                $res.Close(); break
+            }
+            Write-Host "Processing /processSync with name=$name"
             $body = [IO.StreamReader]::new($req.InputStream, $req.ContentEncoding).ReadToEnd()
             try {
                 $inObj = $body | ConvertFrom-Json -ErrorAction Stop
-                $outObj = Invoke-CustomProcess $inObj "sync"
+                $outObj = & $proc.Action $inObj "sync"
                 $json = $outObj | ConvertTo-Json -Depth 10
                 $b = [Text.Encoding]::UTF8.GetBytes($json)
                 $res.ContentType = "application/json; charset=utf-8"
@@ -127,21 +159,28 @@ while ($listener.IsListening) {
             if ($req.HttpMethod -ne 'POST') {
                 $res.StatusCode = 405; $res.Close(); break
             }
-            # POST /processAsync
+            # POST /processAsync?name=xxx
+            $name = $query.name ?? "default"
+            $proc = $Global:Processes | Where-Object { $_.Name -eq $name }
+            if (-not $proc) {
+                $res.StatusCode = 404
+                $err = @{ error = "process not found"; name = $name } | ConvertTo-Json
+                $b = [Text.Encoding]::UTF8.GetBytes($err)
+                $res.ContentType = "application/json; charset=utf-8"
+                $res.OutputStream.Write($b, 0, $b.Length)
+                $res.Close(); break
+            }
+            Write-Host "Processing /processAsync with name=$name"
             $body = [IO.StreamReader]::new($req.InputStream, $req.ContentEncoding).ReadToEnd()
             try {
                 $inObj = $body | ConvertFrom-Json -ErrorAction Stop
                 $jobId = [guid]::NewGuid().ToString()
                 $job = Start-Job -ScriptBlock {
-                    param($data)
-                    $data | Add-Member NoteProperty processedBy "asyncPS" -Force
-                    $data | Add-Member NoteProperty processedAt (Get-Date).ToString("o") -Force
-                    if ($data.lat) { $data.lat = [math]::Round([double]$data.lat, 6) }
-                    if ($data.lon) { $data.lon = [math]::Round([double]$data.lon, 6) }
-                    return $data
-                } -ArgumentList $inObj
+                    param($action, $data, $mode)
+                    & $action $data $mode
+                } -ArgumentList $proc.Action, $inObj, "async"
 
-                $Global:JobTable[$jobId] = @{ Job = $job; Status = 'pending'; Result = $null }
+                $Global:JobTable[$jobId] = @{ Job = $job; Status = 'pending'; Result = $null; ProcessName = $name }
                 $resp = @{ jobId = $jobId; status = 'pending' } | ConvertTo-Json
                 $b = [Text.Encoding]::UTF8.GetBytes($resp)
                 $res.ContentType = "application/json; charset=utf-8"
@@ -164,6 +203,7 @@ while ($listener.IsListening) {
             if (-not $Global:JobTable.ContainsKey($jobId)) {
                 $res.StatusCode = 404; $res.Close(); break
             }
+            Write-Host "Processing /processAsyncResult for jobId=$jobId"
             $rec = $Global:JobTable[$jobId]
             if ($rec.Status -eq 'pending' -and $rec.Job.State -eq 'Completed') {
                 $obj = Receive-Job -Job $rec.Job -ErrorAction SilentlyContinue
@@ -182,10 +222,24 @@ while ($listener.IsListening) {
             $res.OutputStream.Write($b, 0, $b.Length)
             $res.Close()
         }
+        '^/shutdown$' {
+            if ($req.HttpMethod -ne 'POST') {
+                $res.StatusCode = 405; $res.Close(); break
+            }
+            # POST /shutdown
+            Write-Host "Processing /shutdown - Stopping server"
+            $resp = @{ status = "shutting down" } | ConvertTo-Json
+            $b = [Text.Encoding]::UTF8.GetBytes($resp)
+            $res.ContentType = "application/json; charset=utf-8"
+            $res.OutputStream.Write($b, 0, $b.Length)
+            $res.Close()
+            $listener.Stop()  # リスナーを停止してループを終了
+        }
         default {
             # 静的ファイル配信 (HTML/JS/CSS)
             $filePath = Join-Path $scriptDir $path.TrimStart('/')
             if (Test-Path $filePath -PathType Leaf) {
+                Write-Host "Serving static file: $filePath"
                 $ext = [IO.Path]::GetExtension($filePath).ToLowerInvariant()
                 $ct = @{
                     '.html' = 'text/html; charset=utf-8'
@@ -199,9 +253,12 @@ while ($listener.IsListening) {
                 $res.OutputStream.Write($bytes, 0, $bytes.Length)
             }
             else {
+                Write-Host "404 Not Found: $path"
                 $res.StatusCode = 404
             }
             $res.Close()
         }
     }
 }
+
+Write-Host "Server stopped"

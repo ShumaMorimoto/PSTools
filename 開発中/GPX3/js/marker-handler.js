@@ -1,4 +1,5 @@
 // marker-handler.js
+import { fetchAddressAsync } from "./api-utils.js";
 
 export default class MarkerHandler {
   constructor(selector, gpxService) {
@@ -55,7 +56,7 @@ export default class MarkerHandler {
 
     // 1.5 住所情報取得（非同期）
     if (!tp.extensions && !tp.extended) {
-      this.selector.fetchAddressAsync(tp, marker, this);
+      fetchAddressAsync(tp, marker, this);
     }
 
     // 1.6 ハンドラ登録
@@ -178,7 +179,7 @@ export default class MarkerHandler {
 
     // 4.5 住所情報取得（非同期）：新座標で再取得
     const tp = this.gpxService.getTrkptList()[idx];
-    this.selector.fetchAddressAsync(tp, m, this);
+    fetchAddressAsync(tp, m, this);
 
     // 4.6 ハンドラ登録：済
 
@@ -220,7 +221,7 @@ export default class MarkerHandler {
       const entry = this.markers[idx];
       if (!entry) return;
       const marker = entry.m;
-      this.selector.fetchAddressAsync(tp, marker, this);
+      fetchAddressAsync(tp, marker, this);
     });
 
     this.debugModel();

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Map Selector + 画像重ね合わせツール（修正版）</title>
+    <title>MapSelector</title>
 
     <!-- Leaflet 本体 -->
     <link
@@ -176,6 +176,7 @@
     <script type="module">
       import MapSelector from "./js/map-selector.js";
       import GPXService from "./js/gpx-service.js";
+      import { initialize, uploadData, runSync, runAsync, pollUntilComplete, shutdown } from './js/api-utils.js'; 
 
       const params = new URLSearchParams(window.location.search);
 
@@ -189,27 +190,27 @@
 
       const gpxService = new GPXService();
 
-      try {
-        const ct = document.contentType;
-        const bodyText = document.body.textContent.trim();
-
-        if (ct.includes("json")) {
-          gpxService.loadFromJson(bodyText);
-        } else if (ct.includes("xml")) {
-          gpxService.loadFromXml(bodyText);
+      // 初期データの自動ロード
+      (async () => {
+        try {
+          const initialData = await initialize();
+          if (initialData) {
+            gpxService.loadFromJson(JSON.stringify(initialData));  // JSONとしてロード（必要に応じてXML対応）
+            console.log("Initial data loaded from server");
+          }
+        } catch (e) {
+          console.warn("Initial data load error:", e);
         }
-      } catch (e) {
-        console.warn("POST parse error:", e);
-      }
+      })();
 
       const mapSelector = new MapSelector({
         mapId: "map",
         controls: {
           imageInputId: "imageInput",
           imageActionBtnId: "imageActionBtn",
-          townActionBtnId: "townActionBtn", // TOWN ハンドラ用
-          areaActionBtnId: "areaActionBtn", // AREA ハンドラ用
-          cancelActionBtnId: "cancelActionBtn",   // ✅ これを追加
+          townActionBtnId: "townActionBtn",
+          areaActionBtnId: "areaActionBtn",
+          cancelActionBtnId: "cancelActionBtn",
 
           gpxInputId: "gpxInput",
           gpxSaveId: "gpxSaveBtn",
@@ -223,6 +224,11 @@
       });
 
       mapSelector.init();
+
+      // ブラウザ終了時に shutdown を呼ぶ
+      window.addEventListener('beforeunload', () => {
+        navigator.sendBeacon('/shutdown', '{}');
+      });
     </script>
   </body>
 </html>

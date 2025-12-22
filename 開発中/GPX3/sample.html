@@ -32,7 +32,10 @@
 
 <body>
   <h3>汎用APIデモ</h3>
-  <textarea id="txt">{ "example": "edit me or use init" }</textarea>
+  <textarea id="txt">{ "example": "edit me or use init", "text": "reverse me" }</textarea>
+  <div>
+    <input id="processName" type="text" placeholder="プロセス名 (default or reverse etc.)" style="width: 240px;">
+  </div>
   <div>
     <button id="btnInit">初期データを反映（initialize）</button>
     <button id="btnSync">Process (Sync)</button>
@@ -44,9 +47,10 @@
   <div id="log"></div>
 
   <script type="module">
-    import { initialize, uploadData, runSync, runAsync, pollResult, pollUntilComplete } from './js/api.js';
+    import { initialize, uploadData, runSync, runAsync, pollResult, pollUntilComplete, shutdown } from './js/api.js';
 
     const txt = document.getElementById('txt');
+    const processNameEl = document.getElementById('processName');
     const logEl = document.getElementById('log');
 
     function log(...args) {
@@ -73,8 +77,9 @@
     document.getElementById('btnSync').addEventListener('click', async () => {
       let obj;
       try { obj = JSON.parse(txt.value || '{}'); } catch (e) { log('JSON parse error'); return; }
+      const name = processNameEl.value.trim() || undefined;
       try {
-        const res = await runSync(obj);
+        const res = await runSync(obj, name);
         txt.value = JSON.stringify(res, null, 2);
         log('runSync: 完了', res);
       } catch (e) {
@@ -86,8 +91,9 @@
     document.getElementById('btnAsyncFire').addEventListener('click', async () => {
       let obj;
       try { obj = JSON.parse(txt.value || '{}'); } catch (e) { log('JSON parse error'); return; }
+      const name = processNameEl.value.trim() || undefined;
       try {
-        const resp = await runAsync(obj);
+        const resp = await runAsync(obj, name);
         log('runAsync: ジョブ開始', resp);
         // ここでは結果待ちせずに戻る（fire-and-forget）
       } catch (e) {
@@ -99,8 +105,9 @@
     document.getElementById('btnAsyncWait').addEventListener('click', async () => {
       let obj;
       try { obj = JSON.parse(txt.value || '{}'); } catch (e) { log('JSON parse error'); return; }
+      const name = processNameEl.value.trim() || undefined;
       try {
-        const { jobId } = await runAsync(obj);
+        const { jobId } = await runAsync(obj, name);
         log('runAsync: jobId=' + jobId + ' (ポーリングを開始します)');
         // 後続処理はブロックしない。Promise を使って完了時に処理する例：
         pollUntilComplete(jobId, 500, status => log('進捗:', status))
@@ -141,6 +148,11 @@
         log('auto-initialize error', e.message);
       }
     })();
+
+    // ブラウザ終了時に /shutdown を呼ぶ
+    window.addEventListener('beforeunload', () => {
+      navigator.sendBeacon('/shutdown', '{}');  // sendBeacon でバックグラウンド送信（POST, application/json）
+    });
   </script>
 </body>
 

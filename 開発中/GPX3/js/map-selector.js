@@ -5,7 +5,6 @@ import ImageHandler from "./image-handler.js";
 import TownHandler from "./town-handler.js";
 import AreaHandler from "./area-handler.js";
 import UIManager from "./ui-manager.js";
-import { fetchAddressAsync } from "./api-utils.js";
 import GPXService from "./gpx-service.js";
 
 export default class MapSelector {
@@ -97,7 +96,7 @@ export default class MapSelector {
     if (handler?.onCancel) {
       handler.onCancel();
     }
-    this.updateCancelButton();
+//    this.updateCancelButton();
   }
 
   // ---------------------------------------------------
@@ -120,7 +119,7 @@ export default class MapSelector {
   handleMapClick(e) {
     const handler = this._getHandlerForCurrentMode();
     handler.handleMapClick(e);
-    this.updateCancelButton();
+//    this.updateCancelButton();
   }
 
   // ---------------------------------------------------
@@ -165,9 +164,5 @@ export default class MapSelector {
     );
 
     this.updateCancelButton();
-  }
-
-  fetchAddressAsync(point, marker) {
-    return fetchAddressAsync(point, marker, this.markerHandler);
   }
 }

@@ -6,6 +6,154 @@ const addressCache = new Map(); // キャッシュ
 const requestQueue = [];
 let isProcessingQueue = false;
 
+
+// js/api.js
+const DEFAULT_POLL_INTERVAL = 1000;
+
+/**
+ * initialize: URL に ?init=true があれば /fetchInitialData を取得して返す
+ * @returns {Promise<object|null>}
+ */
+export async function initialize() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("init") !== "true") return null;
+  const res = await fetch("/fetchInitialData");
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+/**
+ * uploadData
+ * @param {object} obj
+ * @returns {Promise<object>}
+ */
+export async function uploadData(obj) {
+  const res = await fetch("/upload", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(obj),
+  });
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+/**
+ * runSync
+ * @param {object} obj
+ * @param {string=} name - プロセス名（省略時 "default"）
+ * @returns {Promise<object>}
+ */
+export async function runSync(obj, name) {
+  const url = name ? `/processSync?name=${encodeURIComponent(name)}` : "/processSync";
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(obj),
+  });
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+/**
+ * runAsync
+ * @param {object} obj
+ * @param {string=} name - プロセス名（省略時 "default"）
+ * @returns {Promise<{jobId:string, status:string}>}
+ */
+export async function runAsync(obj, name) {
+  const url = name ? `/processAsync?name=${encodeURIComponent(name)}` : "/processAsync";
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(obj),
+  });
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+/**
+ * shutdown
+ * @returns {Promise<object>}
+ */
+export async function shutdown() {
+  const res = await fetch("/shutdown", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+/**
+ * pollResult (コールバック版)
+ * @param {string} jobId
+ * @param {number} intervalMs
+ * @param {(status:string)=>void} onProgress
+ * @param {(err:Error|null, result:object|null)=>void} onComplete
+ * @returns {function():void} 停止用関数
+ */
+export function pollResult(
+  jobId,
+  intervalMs = DEFAULT_POLL_INTERVAL,
+  onProgress,
+  onComplete
+) {
+  const iv = setInterval(async () => {
+    try {
+      const res = await fetch(
+        `/processAsyncResult?jobId=${encodeURIComponent(jobId)}`
+      );
+      if (!res.ok) throw new Error(res.statusText);
+      const j = await res.json();
+      if (j.status === "completed") {
+        clearInterval(iv);
+        onComplete?.(null, j.result);
+      } else {
+        onProgress?.(j.status);
+      }
+    } catch (e) {
+      clearInterval(iv);
+      onComplete?.(e, null);
+    }
+  }, intervalMs);
+  return () => clearInterval(iv);
+}
+
+/**
+ * pollUntilComplete (Promise版)
+ * @param {string} jobId
+ * @param {number} intervalMs
+ * @param {(status:string)=>void} onProgress
+ * @returns {Promise<object>}
+ */
+export function pollUntilComplete(
+  jobId,
+  intervalMs = DEFAULT_POLL_INTERVAL,
+  onProgress
+) {
+  return new Promise((resolve, reject) => {
+    const iv = setInterval(async () => {
+      try {
+        const res = await fetch(
+          `/processAsyncResult?jobId=${encodeURIComponent(jobId)}`
+        );
+        if (!res.ok) throw new Error(res.statusText);
+        const j = await res.json();
+        if (j.status === "completed") {
+          clearInterval(iv);
+          resolve(j.result);
+        } else {
+          onProgress?.(j.status);
+        }
+      } catch (e) {
+        clearInterval(iv);
+        reject(e);
+      }
+    }, intervalMs);
+  });
+}
+
 export async function fetchAddressAsync(
   point,
   marker,
@@ -126,4 +274,74 @@ function processData(data, point, marker, markerHandler, seq) {
 
   // ✅ UIManager.updateListUI() でリスト更新
   markerHandler.selector.uiManager.updateListUI();
+}
+
+
+// 共通Overpass API関数（クラス外に切り出し、または別モジュールに）
+export async function fetchOverpassPlaces(lat, lon, radius, retries = 3, initialDelay = 1000) {
+  const r = Math.floor(radius);
+  const query = `
+    [out:json][timeout:180];  // デフォルトに近い適切なタイムアウト（180秒）
+    node["place"~"^(neighbourhood|quarter|locality)$"]
+      (around:${r},${lat},${lon});
+    out body;
+  `;
+  const url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
+
+  let attempt = 0;
+  while (attempt < retries) {
+    attempt++;
+    console.log(`[Overpass] Attempt ${attempt}/${retries}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);  // fetchのクライアント側タイムアウト: 30秒
+
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        if (res.status === 429 || res.status >= 500) {
+          // レートリミットやサーバーエラー: リトライ
+          const delay = initialDelay * Math.pow(2, attempt - 1);  // Exponential backoff
+          console.warn(`❌ Overpass error: ${res.status}. Retrying after ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        throw new Error(`Overpass HTTP error: ${res.status}`);
+      }
+
+      const json = await res.json();
+      console.log("[Overpass] fetched elements =", json.elements.length);
+
+      // フィルタリングして町字データを抽出
+      const towns = json.elements
+        .filter(el => el.tags && el.tags.name)
+        .map(el => ({
+          lat: el.lat,
+          lng: el.lon,
+          name: el.tags.name,
+        }));
+
+      return towns;
+    } catch (e) {
+      clearTimeout(timeoutId);
+      if (e.name === 'AbortError') {
+        console.error("❌ Fetch timeout: Aborted after 30s");
+      } else {
+        console.error("❌ Overpass error:", e);
+      }
+
+      if (attempt === retries) {
+        throw e;  // 最終リトライ失敗
+      }
+
+      const delay = initialDelay * Math.pow(2, attempt - 1);
+      console.warn(`Retrying after ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+
+  throw new Error("❌ Overpass max retries exceeded");
 }

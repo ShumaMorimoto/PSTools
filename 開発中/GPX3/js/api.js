@@ -31,10 +31,12 @@ export async function uploadData(obj) {
 /**
  * runSync
  * @param {object} obj
+ * @param {string=} name - プロセス名（省略時 "default"）
  * @returns {Promise<object>}
  */
-export async function runSync(obj) {
-  const res = await fetch("/processSync", {
+export async function runSync(obj, name) {
+  const url = name ? `/processSync?name=${encodeURIComponent(name)}` : "/processSync";
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(obj),
@@ -46,13 +48,29 @@ export async function runSync(obj) {
 /**
  * runAsync
  * @param {object} obj
+ * @param {string=} name - プロセス名（省略時 "default"）
  * @returns {Promise<{jobId:string, status:string}>}
  */
-export async function runAsync(obj) {
-  const res = await fetch("/processAsync", {
+export async function runAsync(obj, name) {
+  const url = name ? `/processAsync?name=${encodeURIComponent(name)}` : "/processAsync";
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(obj),
+  });
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+}
+
+/**
+ * shutdown
+ * @returns {Promise<object>}
+ */
+export async function shutdown() {
+  const res = await fetch("/shutdown", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
   });
   if (!res.ok) throw new Error(res.statusText);
   return res.json();
