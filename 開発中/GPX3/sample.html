@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <title>汎用APIデモ</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 12px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 180px;
+    }
+
+    button {
+      margin: 4px;
+    }
+
+    #log {
+      white-space: pre-wrap;
+      background: #f6f6f6;
+      padding: 8px;
+      border: 1px solid #ddd;
+      height: 120px;
+      overflow: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <h3>汎用APIデモ</h3>
+  <textarea id="txt">{ "example": "edit me or use init" }</textarea>
+  <div>
+    <button id="btnInit">初期データを反映（initialize）</button>
+    <button id="btnSync">Process (Sync)</button>
+    <button id="btnAsyncFire">Process (Async, Fire-and-forget)</button>
+    <button id="btnAsyncWait">Process (Async, Wait for completion)</button>
+    <button id="btnUpload">Upload</button>
+  </div>
+  <h4>ログ</h4>
+  <div id="log"></div>
+
+  <script type="module">
+    import { initialize, uploadData, runSync, runAsync, pollResult, pollUntilComplete } from './js/api.js';
+
+    const txt = document.getElementById('txt');
+    const logEl = document.getElementById('log');
+
+    function log(...args) {
+      const s = args.map(a => (typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a))).join(' ');
+      logEl.textContent = new Date().toLocaleTimeString() + ' ' + s + '\n' + logEl.textContent;
+    }
+
+    // 初期化（ページロード時に自動で行っても良いが、ボタンで明示的に実行）
+    document.getElementById('btnInit').addEventListener('click', async () => {
+      try {
+        const data = await initialize();
+        if (data) {
+          txt.value = JSON.stringify(data, null, 2);
+          log('initialize: 初期データ取得しました');
+        } else {
+          log('initialize: init=true が URL にありません。取得なし');
+        }
+      } catch (e) {
+        log('initialize error:', e.message);
+      }
+    });
+
+    // 同期処理
+    document.getElementById('btnSync').addEventListener('click', async () => {
+      let obj;
+      try { obj = JSON.parse(txt.value || '{}'); } catch (e) { log('JSON parse error'); return; }
+      try {
+        const res = await runSync(obj);
+        txt.value = JSON.stringify(res, null, 2);
+        log('runSync: 完了', res);
+      } catch (e) {
+        log('runSync error:', e.message);
+      }
+    });
+
+    // 非同期（fire-and-forget）
+    document.getElementById('btnAsyncFire').addEventListener('click', async () => {
+      let obj;
+      try { obj = JSON.parse(txt.value || '{}'); } catch (e) { log('JSON parse error'); return; }
+      try {
+        const resp = await runAsync(obj);
+        log('runAsync: ジョブ開始', resp);
+        // ここでは結果待ちせずに戻る（fire-and-forget）
+      } catch (e) {
+        log('runAsync error:', e.message);
+      }
+    });
+
+    // 非同期（完了待ち）: Promise 版
+    document.getElementById('btnAsyncWait').addEventListener('click', async () => {
+      let obj;
+      try { obj = JSON.parse(txt.value || '{}'); } catch (e) { log('JSON parse error'); return; }
+      try {
+        const { jobId } = await runAsync(obj);
+        log('runAsync: jobId=' + jobId + ' (ポーリングを開始します)');
+        // 後続処理はブロックしない。Promise を使って完了時に処理する例：
+        pollUntilComplete(jobId, 500, status => log('進捗:', status))
+          .then(result => {
+            log('完了:', result);
+            txt.value = JSON.stringify(result, null, 2);
+          })
+          .catch(err => {
+            log('ポーリングエラー:', err.message);
+          });
+        log('ポーリング開始後、ここはすぐ実行されます（完了を待たない）');
+      } catch (e) {
+        log('runAsync/ポーリング開始エラー:', e.message);
+      }
+    });
+
+    // UPLOAD
+    document.getElementById('btnUpload').addEventListener('click', async () => {
+      let obj;
+      try { obj = JSON.parse(txt.value || '{}'); } catch (e) { log('JSON parse error'); return; }
+      try {
+        const resp = await uploadData(obj);
+        log('uploadData:', resp);
+      } catch (e) {
+        log('uploadData error:', e.message);
+      }
+    });
+
+    // optional: ページロード時、自動で initialize を試す（URL に ?init=true がある場合）
+    (async () => {
+      try {
+        const data = await initialize();
+        if (data) {
+          txt.value = JSON.stringify(data, null, 2);
+          log('auto-initialize: 初期データ適用');
+        }
+      } catch (e) {
+        log('auto-initialize error', e.message);
+      }
+    })();
+  </script>
+</body>
+
+</html>
