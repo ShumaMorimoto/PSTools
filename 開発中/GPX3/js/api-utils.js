@@ -154,6 +154,69 @@ export function pollUntilComplete(
   });
 }
 
+// api-utils.js
+
+let muniCache = null;
+
+// municipalities.json を内部キャッシュでロード
+async function loadMunicipalitiesInternal() {
+  if (muniCache) return muniCache;
+
+  const res = await fetch("./municipalities.json");
+  muniCache = await res.json();
+  return muniCache;
+}
+
+// ----------------------------------------
+// ★ 座標 → muniInfo（最終形）
+// ----------------------------------------
+export async function fetchMuniInfo(lat, lng) {
+  // 1. GSI 逆ジオで muniCd5 を取得
+  const url = `https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${lat}&lon=${lng}`;
+  let muniCd5 = null;
+
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    muniCd5 = json.results.muniCd;
+  } catch {
+    return null;
+  }
+
+  // 2. municipalities.json をロードして muniInfo を返す
+  const muniData = await loadMunicipalitiesInternal();
+  return muniData.municipalities.find(m => m.muniCd5 === muniCd5) || null;
+}
+
+// ----------------------------------------
+// 自治体境界 GeoJSON
+// ----------------------------------------
+export async function fetchBoundary(muniInfo) {
+  const url = `https://shikuchoson-boundaries.sankichi.app/${muniInfo.muniCd5}.geojson`;
+  try {
+    const res = await fetch(url);
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+// ----------------------------------------
+// 町字データ
+// ----------------------------------------
+export async function fetchTowns(muniInfo) {
+  const pref = muniInfo.prefecture;
+  const muni = muniInfo.name;
+  const url = `https://geolonia.github.io/japanese-addresses/api/ja/${pref}/${muni}.json`;
+
+  try {
+    const res = await fetch(url);
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchAddressAsync(
   point,
   marker,

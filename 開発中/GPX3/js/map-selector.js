@@ -4,8 +4,8 @@ import MarkerHandler from "./marker-handler.js";
 import ImageHandler from "./image-handler.js";
 import TownHandler from "./town-handler.js";
 import AreaHandler from "./area-handler.js";
+import TrkptHandler from "./trkpt-handler.js";
 import UIManager from "./ui-manager.js";
-import GPXService from "./gpx-service.js";
 
 export default class MapSelector {
   static Mode = {
@@ -32,6 +32,7 @@ export default class MapSelector {
     this.imageHandler = new ImageHandler(this);
     this.townHandler = new TownHandler(this);
     this.areaHandler = new AreaHandler(this);
+    this.trkptHandler = new TrkptHandler(this);
 
     this.uiManager = new UIManager(this);
     this.mapInitializer = new MapInitializer(this);
@@ -71,6 +72,13 @@ export default class MapSelector {
         this.areaHandler.onAreaButtonClick();
       });
 
+    // ✅ TRK処理ボタン
+    document
+      .getElementById(this.controls.processTrkptsBtnId)
+      .addEventListener("click", () =>
+        this.trkptHandler.onProcessButtonClick()
+      );
+
     // ✅ 共通キャンセルボタン
     document
       .getElementById(this.controls.cancelActionBtnId)
@@ -96,7 +104,7 @@ export default class MapSelector {
     if (handler?.onCancel) {
       handler.onCancel();
     }
-//    this.updateCancelButton();
+    //    this.updateCancelButton();
   }
 
   // ---------------------------------------------------
@@ -119,7 +127,7 @@ export default class MapSelector {
   handleMapClick(e) {
     const handler = this._getHandlerForCurrentMode();
     handler.handleMapClick(e);
-//    this.updateCancelButton();
+    //    this.updateCancelButton();
   }
 
   // ---------------------------------------------------

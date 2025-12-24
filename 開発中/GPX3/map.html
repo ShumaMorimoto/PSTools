@@ -128,46 +128,68 @@
     <div id="controls">
       <!-- 画像 -->
       <button id="imageActionBtn" class="btn">
-        <i class="fas fa-upload"></i> <span>画像追加</span>
+        <i class="fas fa-upload"></i>
+        <span class="label">画像追加</span>
       </button>
       <input type="file" id="imageInput" accept="image/*" />
 
-      <!-- 町字（既存 TOWN ハンドラ） -->
+      <!-- 町字 -->
       <button id="townActionBtn" class="btn">
-        <i class="fas fa-map"></i> 町字追加
+        <i class="fas fa-map"></i>
+        <span class="label">町字追加</span>
       </button>
 
-      <!-- 領域（新規 AREA ハンドラ）★これが今回追加すべきもの -->
+      <!-- 領域 -->
       <button id="areaActionBtn" class="btn">
-        <i class="fas fa-draw-polygon"></i> 領域追加
+        <i class="fas fa-draw-polygon"></i>
+        <span class="label">領域追加</span>
       </button>
-      <!-- ✅ 共通キャンセルボタン -->
+
+      <!-- PowerShell処理 -->
+      <button id="processTrkptsBtn" class="btn">
+        <i class="fas fa-cogs"></i>
+        <span class="label">PS処理</span>
+      </button>
+
+      <!-- キャンセル -->
       <button id="cancelActionBtn" class="btn">
-        <i class="fas fa-times"></i> キャンセル
+        <i class="fas fa-times"></i>
+        <span class="label">キャンセル</span>
       </button>
 
       <select id="pointList">
         <option>読み込み中...</option>
       </select>
 
+      <!-- GPX追加 -->
       <label for="gpxInput" class="btn">
-        <i class="fas fa-map-marker-alt"></i> GPX追加
+        <i class="fas fa-map-marker-alt"></i>
+        <span class="label">GPX追加</span>
       </label>
       <input type="file" id="gpxInput" accept=".gpx" />
 
+      <!-- GPX保存 -->
       <button id="gpxSaveBtn" class="btn">
-        <i class="fas fa-save"></i> GPX保存
+        <i class="fas fa-save"></i>
+        <span class="label">GPX保存</span>
       </button>
+
+      <!-- 住所更新 -->
       <button id="reFetchBtn" class="btn">
-        <i class="fas fa-sync-alt"></i> 住所更新
+        <i class="fas fa-sync-alt"></i>
+        <span class="label">住所更新</span>
       </button>
 
+      <!-- クリア -->
       <button id="clearMarkersBtn" class="btn">
-        <i class="fas fa-trash"></i> クリア
+        <i class="fas fa-trash"></i>
+        <span class="label">クリア</span>
       </button>
 
+      <!-- 登録 -->
       <button id="finishBtn" class="btn">
-        <i class="fas fa-check"></i> 登録
+        <i class="fas fa-check"></i>
+        <span class="label">登録</span>
       </button>
     </div>
 
@@ -176,7 +198,14 @@
     <script type="module">
       import MapSelector from "./js/map-selector.js";
       import GPXService from "./js/gpx-service.js";
-      import { initialize, uploadData, runSync, runAsync, pollUntilComplete, shutdown } from './js/api-utils.js'; 
+      import {
+        initialize,
+        uploadData,
+        runSync,
+        runAsync,
+        pollUntilComplete,
+        shutdown,
+      } from "./js/api-utils.js";
 
       const params = new URLSearchParams(window.location.search);
 
@@ -195,7 +224,7 @@
         try {
           const initialData = await initialize();
           if (initialData) {
-            gpxService.loadFromJson(JSON.stringify(initialData));  // JSONとしてロード（必要に応じてXML対応）
+            gpxService.loadFromJson(JSON.stringify(initialData)); // JSONとしてロード（必要に応じてXML対応）
             console.log("Initial data loaded from server");
           }
         } catch (e) {
@@ -218,6 +247,7 @@
           pointListId: "pointList",
           clearMarkersBtnId: "clearMarkersBtn",
           finishBtnId: "finishBtn",
+          processTrkptsBtnId: "processTrkptsBtn", // 新規追加
         },
         gpxService,
         initialView: [initialLat, initialLng, initialZoom],
@@ -226,8 +256,8 @@
       mapSelector.init();
 
       // ブラウザ終了時に shutdown を呼ぶ
-      window.addEventListener('beforeunload', () => {
-        navigator.sendBeacon('/shutdown', '{}');
+      window.addEventListener("beforeunload", () => {
+        navigator.sendBeacon("/shutdown", "{}");
       });
     </script>
   </body>

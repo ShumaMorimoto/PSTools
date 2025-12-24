@@ -17,6 +17,16 @@ export default class MapInitializer {
       maxZoom: 19,
     }).addTo(this.selector.map);
 
+
+    // ✅ Geocoder
+    if (L.Control && L.Control.geocoder) {
+      L.Control.geocoder({ defaultMarkGeocode: false })
+        .on("markgeocode", (e) => {
+          this.selector.map.setView(e.geocode.center, 16);
+        })
+        .addTo(this.selector.map);
+    }
+
     // ✅ Coordinate Control（Geocoder より先に追加）
     if (L.Control) {
       L.Control.coordinates = L.Control.extend({
@@ -48,14 +58,6 @@ export default class MapInitializer {
       L.control.coordinates({ position: "topright" }).addTo(this.selector.map);
     }
 
-    // ✅ Geocoder
-    if (L.Control && L.Control.geocoder) {
-      L.Control.geocoder({ defaultMarkGeocode: false })
-        .on("markgeocode", (e) => {
-          this.selector.map.setView(e.geocode.center, 16);
-        })
-        .addTo(this.selector.map);
-    }
 
     // ✅ distortableCollection
     try {

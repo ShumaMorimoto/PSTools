@@ -34,10 +34,10 @@ export default class UIManager {
   // -----------------------------
   // ✅ 任意ボタンのラベルを変更（汎用）
   // -----------------------------
-  setButtonLabel(buttonId, label) {
-    const btn = document.getElementById(buttonId);
-    if (!btn) return;
-    btn.textContent = label;
+  setButtonLabel(id, text) {
+    const btn = document.getElementById(id);
+    const label = btn.querySelector(".label");
+    if (label) label.textContent = text;
   }
 
   // -----------------------------

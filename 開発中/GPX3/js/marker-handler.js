@@ -9,6 +9,8 @@ export default class MarkerHandler {
     // markers: { m: Leaflet.Marker, selected: boolean }[]
     this.markers = [];
     this.requestSeq = 0;
+
+    this.polyline = L.polyline([], { color: "blue", weight: 3 });
   }
 
   // ---------------------------------------------------
@@ -62,6 +64,7 @@ export default class MarkerHandler {
     // 1.6 ハンドラ登録
     this._bindMarkerHandlers(marker);
 
+    this._updatePolyline();
     this.debugModel();
     return tp;
   }
@@ -149,6 +152,7 @@ export default class MarkerHandler {
     // 3.5 住所情報取得：なし
     // 3.6 ハンドラ登録：不要（削除済み）
 
+    this._updatePolyline();
     this.debugModel();
   }
 
@@ -183,6 +187,7 @@ export default class MarkerHandler {
 
     // 4.6 ハンドラ登録：済
 
+    this._updatePolyline();
     this.debugModel();
   }
 
@@ -261,6 +266,15 @@ export default class MarkerHandler {
 
     // 必要ならそのマーカーのポップアップを開く
     marker.openPopup();
+  }
+
+  _updatePolyline() {
+    const latlngs = this.markers.map((entry) => entry.m.getLatLng());
+    this.polyline.setLatLngs(latlngs);
+
+    if (!this.selector.map.hasLayer(this.polyline)) {
+      this.polyline.addTo(this.selector.map);
+    }
   }
 
   // ---------------------------------------------------
