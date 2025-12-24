@@ -21,6 +21,7 @@
 
         $this.PS = [powershell]::Create()
         $this.PS.Runspace = $this.Runspace
+        $this.State.Places = $Places   # ★追加
         $this.initialPlaces = $Places
 
         $script = {
@@ -39,10 +40,9 @@
 
     [hashtable] Status() {
         return @{
-            BestDist   = $this.State.BestDist
-            BestRoute  = $this.State.BestRoute
             Generation = $this.State.Generation
             UpdatedAt  = $this.State.UpdatedAt
+            BestDist = $this.State.BestDist
         }
     }
 
@@ -51,7 +51,6 @@
         # $BestRoute  : 並び順を示す int[] （$Places のインデックス）
 
         $SortedPlaces = $this.State.BestRoute | ForEach-Object { $this.initialPlaces[$_] }
-
         return $SortedPlaces
     }
 

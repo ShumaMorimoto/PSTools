@@ -39,6 +39,83 @@ function Get-RouteDistance {
     return $s
 }
 
+function Get-GreedyRoute {
+    param(
+        [Parameter(Mandatory)]
+        [double[, ]]$DistanceMatrix,
+
+        [int[]]$Route = $null,
+        [Nullable[int]]$StartPos = $null,
+        [Nullable[int]]$EndPos = $null
+    )
+    function Invoke-GreedyOrder {
+        param(
+            [double[, ]]$DistanceMatrix,
+            [int[]]$Nodes,
+            [int]$StartIndex = 0
+        )
+
+        $n = $Nodes.Count
+        $visited = [bool[]]::new($n)
+
+        $visited[$StartIndex] = $true
+        $currentNode = $Nodes[$StartIndex]
+
+        $result = New-Object System.Collections.Generic.List[int]
+        $result.Add($currentNode)
+
+        for ($step = 1; $step -lt $n; $step++) {
+
+            $nearest = -1
+            $minDist = [double]::PositiveInfinity
+
+            for ($i = 0; $i -lt $n; $i++) {
+                if (-not $visited[$i]) {
+                    $candidate = $Nodes[$i]
+                    $d = $DistanceMatrix[$currentNode, $candidate]
+
+                    if ($d -lt $minDist) {
+                        $minDist = $d
+                        $nearest = $i
+                    }
+                }
+            }
+            $visited[$nearest] = $true
+            $currentNode = $Nodes[$nearest]
+            $result.Add($currentNode)
+        }
+        return $result.ToArray()
+    }
+
+    # --- 1. Route が null → 全体 Greedy ---
+    if ($Route -eq $null) {
+        $n = $DistanceMatrix.GetLength(0)
+        $nodes = 0..($n - 1)
+        return Invoke-GreedyOrder $DistanceMatrix $nodes 0
+    }
+    # --- 2. Route 全体 Greedy ---
+    if ($StartPos -eq $null -and $EndPos -eq $null) {
+        return Invoke-GreedyOrder $DistanceMatrix $Route 0
+    }
+    # --- 3. 区間 Greedy ---
+    if ($StartPos -ne $null -and $EndPos -ne $null) {
+        if ($StartPos -lt 0 -or $EndPos -ge $Route.Count -or $StartPos -ge $EndPos) {
+            throw "StartPos / EndPos が不正です。"
+        }
+        $segment = $Route[$StartPos..$EndPos]
+        $newSegment = Invoke-GreedyOrder $DistanceMatrix $segment 0
+
+        $newRoute = @()
+        if ($StartPos -gt 0) { $newRoute += $Route[0..($StartPos - 1)] }
+        $newRoute += $newSegment
+        if ($EndPos -lt $Route.Count - 1) { $newRoute += $Route[($EndPos + 1)..($Route.Count - 1)] }
+
+        return $newRoute
+    }
+    throw "パラメータの組み合わせが不正です。"
+}
+
+
 # -----------------------
 # 簡易クラスタ（ランダム分割）
 # -----------------------
@@ -54,7 +131,6 @@ function Cluster-Random {
     }
     return $clusters
 }
-
 function Get-SubMatrix {
     param($globalDist, $indices)
     $m = $indices.Count; $sub = [double[, ]]::new($m, $m)
@@ -94,7 +170,7 @@ function GenerateNextPopulation {
         # 親選択（ランダム） — 単純化。拡張でトーナメント等に変更可
         $parent = Get-Random -InputObject $Population
         $child = $parent.Clone()
-        #       $child = Mutate-2Opt $child
+        $child = Mutate-Swap $child
         $next += , $child
     }
     $SortedPopulation = $next | Sort-Object { Get-RouteDistance $_ $Dist }
@@ -116,7 +192,7 @@ function Build-ClusterDistMatrix {
             $mat[$i, $j] = $globalDist[$exitGlobal, $entryGlobal]
         }
     }
-    return $mat
+    return , $mat
 }
 
 # -----------------------
@@ -129,29 +205,36 @@ function RunGALogic {
     param(
         [array]     $Places,
         [hashtable] $State,          # 呼び出し側で作成して渡す
-        [int]       $NumClusters = 5,
         [int]       $PopSizePerCluster = 50,
         [int]       $PopSizeClustersOrder = 50,
         [int]       $MaxGen = 1000
     )
+
+    # --- フェーズ: 初期化開始 ---
+    $State.Phase = "Init"
 
     # グローバル距離行列（初期化）
     if (-not $State.ContainsKey('GlobalDist')) {
         $State.GlobalDist = New-DistanceMatrix $Places
     }
 
-    # 初回クラスタ化と各クラスタの初期集団生成
+    # --- フェーズ: クラスタ初期化 ---
     if (-not $State.ContainsKey('ClusterData')) {
-        $clusters = Cluster-Random -k $NumClusters -Places $Places
+        $State.Phase = "ClusterInit"
+
+        $clusters = Cluster-Mesh -Places $Places
         $cd = @()
+
         for ($ci = 0; $ci -lt $clusters.Count; $ci++) {
             $inds = $clusters[$ci]
             $sub = Get-SubMatrix $State.GlobalDist $inds
+
             # 初期 Population: ランダム順列ローカルインデックス
             $pop = @()
             for ($p = 0; $p -lt $PopSizePerCluster; $p++) {
                 $pop += , ((0..($inds.Count - 1)) | Sort-Object { Get-Random })
             }
+
             $cd += , @{
                 Indices         = $inds
                 SubDist         = $sub
@@ -161,9 +244,10 @@ function RunGALogic {
                 BestDist        = [double]::PositiveInfinity
             }
         }
+
         $State.ClusterData = $cd
 
-        # クラスタ間順序を最適化するための Population（各個体は cluster-index の順列）
+        # クラスタ順序 GA の初期集団
         $orderPop = @()
         for ($p = 0; $p -lt $PopSizeClustersOrder; $p++) {
             $orderPop += , ((0..($clusters.Count - 1)) | Sort-Object { Get-Random })
@@ -177,33 +261,38 @@ function RunGALogic {
         $State.BestDist = [double]::PositiveInfinity
     }
 
-    # 世代ループ（外部で Stop を true にすれば抜けられる）
+    # --- フェーズ: GA 実行 ---
     while (-not $State.Stop) {
-        # 1) 各クラスタ内の世代交代（1 世代分）
+
+        # 1) クラスタ内 GA
+        $State.Phase = "ClusterGA"
         for ($ci = 0; $ci -lt $State.ClusterData.Count; $ci++) {
             $c = $State.ClusterData[$ci]
+
             $c.Population = GenerateNextPopulation -Population $c.Population -Dist $c.SubDist
-            # 更新：ベスト個体（ローカルインデックス）
+
             $bestLocal = $c.Population[0]
             $c.BestRouteLocal = $bestLocal
-            # ローカル->グローバル変換
             $c.BestRouteGlobal = $bestLocal | ForEach-Object { $c.Indices[$_] }
             $c.BestDist = Get-RouteDistance $c.BestRouteGlobal $State.GlobalDist
         }
 
-        # 2) クラスタ間距離行列を構築（各クラスタの現在ベストルートを使用）
+        # 2) クラスタ間距離行列
+        $State.Phase = "OrderGA"
         $clusterDist = Build-ClusterDistMatrix $State.ClusterData $State.GlobalDist
 
-        # 3) クラスタ間の世代交代（Cluster-order Population に対して）
+        # 3) クラスタ順序 GA
         $State.ClusterOrderPopulation = GenerateNextPopulation -Population $State.ClusterOrderPopulation -Dist $clusterDist
 
-        # 4) 現在のクラスタ順序ベストを用いて全体ルートを接続して評価
-        $bestOrder = $State.ClusterOrderPopulation[0]  # 例: array of cluster indices
-        # 連結
+        # 4) 全体ルート評価
+        $State.Phase = "Evaluate"
+        $bestOrder = $State.ClusterOrderPopulation[0]
+
         $finalRoute = @()
         foreach ($ci in $bestOrder) {
             $finalRoute += $State.ClusterData[$ci].BestRouteGlobal
         }
+
         $finalDist = Get-RouteDistance $finalRoute $State.GlobalDist
 
         # 5) State 更新
@@ -214,9 +303,11 @@ function RunGALogic {
 
         # 6) 終了判定
         if ($State.Generation -ge $MaxGen) { break }
-    } # end while
+    }
 
-    # 保存して戻る（State は参照渡しなので呼び出し元にも反映される）
+    # --- フェーズ: 完了 ---
+    $State.Phase = "Finished"
+
     return $State
 }
 
@@ -225,8 +316,8 @@ function RunGALogic {
 # -----------------------
 function TestGAWithClusters {
     param(
-        [int] $N = 100,
-        [int] $NumClusters = 5,
+        [int] $N = 500,
+        [int] $NumClusters = 50,
         [int] $PopSizePerCluster = 50,
         [int] $PopSizeClustersOrder = 100,
         [int] $MaxGen = 50
