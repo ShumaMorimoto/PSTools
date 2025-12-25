@@ -1,4 +1,4 @@
-﻿class GAOptimizer {
+class GAOptimizer {
     [hashtable]$State
     [System.Management.Automation.PowerShell]$PS
     [System.Management.Automation.Runspaces.Runspace]$Runspace
@@ -16,20 +16,18 @@
     }
 
     [void] Start([array]$Places) {
-        $this.Runspace = [runspacefactory]::CreateRunspace()
+        $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+        $iss.ImportPSModule('H:\tool\Repositories\PSTools\開発中\GPX3\GA\galogic.ps1')  # この一行で Runspace 内に GALogic をロード
+
+        $this.Runspace = [runspacefactory]::CreateRunspace($iss)
         $this.Runspace.Open()
 
         $this.PS = [powershell]::Create()
         $this.PS.Runspace = $this.Runspace
         $this.State.Places = $Places   # ★追加
-        $this.initialPlaces = $Places
 
         $script = {
             param($State, $Places)
-
-            # ロジック関数をロード（べた書き不要）
-            . D:\tool\tmp\開発中\GA\galogic.ps1
-
             # RunGA を呼ぶだけ
             RunGALogic -Places $Places -State $State
         }
@@ -42,7 +40,7 @@
         return @{
             Generation = $this.State.Generation
             UpdatedAt  = $this.State.UpdatedAt
-            BestDist = $this.State.BestDist
+            BestDist   = $this.State.BestDist
         }
     }
 
@@ -50,7 +48,7 @@
         # $Places     : オブジェクトの配列
         # $BestRoute  : 並び順を示す int[] （$Places のインデックス）
 
-        $SortedPlaces = $this.State.BestRoute | ForEach-Object { $this.initialPlaces[$_] }
+        $SortedPlaces = $this.State.BestRoute | ForEach-Object { $this.State.Places[$_] }
         return $SortedPlaces
     }
 
@@ -62,7 +60,7 @@
     }
 }
 
-$N = 10
+$N = 100
 $places = 1..$N | ForEach-Object {
     [PSCustomObject]@{
         lat = Get-Random -Minimum 0 -Maximum 100
