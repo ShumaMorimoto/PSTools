@@ -5,7 +5,7 @@
 #>
 param(
     [Parameter(Position = 0)]
-    [string]$PageName = "map.html",
+    [string]$PageName = "sample2.html",
     [Parameter(Position = 1)]
     [PSObject]$InitialData = $null
 )

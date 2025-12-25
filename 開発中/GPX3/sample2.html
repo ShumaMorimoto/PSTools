@@ -1,0 +1,139 @@
+﻿<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GA Optimizer App</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      #status {
+        margin-bottom: 20px;
+      }
+      button {
+        margin-right: 10px;
+        padding: 10px 20px;
+      }
+      #bestResult {
+        margin-top: 20px;
+        border: 1px solid #ccc;
+        padding: 15px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>GA Optimizer Sample App</h1>
+    <div id="status">Status: Initializing...</div>
+    <button id="startBtn">Start GA</button>
+    <button id="getBestBtn" disabled>Get Best Route</button>
+    <button id="stopBtn" disabled>Stop GA</button>
+    <div id="bestResult">
+      <h2>Best Route</h2>
+      <pre id="bestOutput"></pre>
+    </div>
+    <script type="module">
+      import { initialize, runSync } from "./js/api.js";
+
+      let initialData = null;
+      let pollingInterval = null;
+
+      async function init() {
+        try {
+          initialData = await initialize();
+          if (initialData) {
+            document.getElementById("status").textContent =
+              "Initial Data Loaded: " + JSON.stringify(initialData);
+            // 初期データを渡してスタート (要件2)
+            await startGA(initialData);
+          } else {
+            document.getElementById("status").textContent =
+              "No initial data. Click Start to begin.";
+          }
+        } catch (error) {
+          document.getElementById("status").textContent =
+            "Error: " + error.message;
+        }
+      }
+
+      async function startGA(data) {
+        try {
+          const result = await runSync(data, "startGA");
+          document.getElementById("status").textContent =
+            "GA Started: " + JSON.stringify(result);
+          document.getElementById("startBtn").disabled = true;
+          document.getElementById("getBestBtn").disabled = false;
+          document.getElementById("stopBtn").disabled = false;
+          startPolling();
+        } catch (error) {
+          document.getElementById("status").textContent =
+            "Start Error: " + error.message;
+        }
+      }
+
+      function startPolling() {
+        if (pollingInterval) clearInterval(pollingInterval);
+        pollingInterval = setInterval(async () => {
+          try {
+            const state = await runSync({}, "getGAState");
+            document.getElementById("status").textContent =
+              "Current State: " + JSON.stringify(state);
+            if (state.status === "not running") {
+              clearInterval(pollingInterval);
+              document.getElementById("startBtn").disabled = false;
+              document.getElementById("getBestBtn").disabled = true;
+              document.getElementById("stopBtn").disabled = true;
+            }
+          } catch (error) {
+            document.getElementById("status").textContent =
+              "Polling Error: " + error.message;
+          }
+        }, 2000); // 2秒ごとチェック
+      }
+
+      async function getBest() {
+        try {
+          const best = await runSync({}, "getBest");
+          document.getElementById("bestOutput").textContent = JSON.stringify(
+            best,
+            null,
+            2
+          );
+          document.getElementById("bestResult").style.display = "block";
+        } catch (error) {
+          alert("Get Best Error: " + error.message);
+        }
+      }
+
+      async function stopGA() {
+        try {
+          const result = await runSync({}, "stopGA");
+          document.getElementById("status").textContent =
+            "GA Stopped: " + JSON.stringify(result);
+          clearInterval(pollingInterval);
+          document.getElementById("startBtn").disabled = false;
+          document.getElementById("getBestBtn").disabled = true;
+          document.getElementById("stopBtn").disabled = true;
+        } catch (error) {
+          document.getElementById("status").textContent =
+            "Stop Error: " + error.message;
+        }
+      }
+
+      document
+        .getElementById("startBtn")
+        .addEventListener("click", () => startGA({})); // データなしでスタート可能
+      document.getElementById("getBestBtn").addEventListener("click", getBest);
+      document.getElementById("stopBtn").addEventListener("click", stopGA);
+
+      init();
+
+      // ブラウザ終了時に /shutdown を呼ぶ
+      window.addEventListener("beforeunload", () => {
+        navigator.sendBeacon("/shutdown", "{}"); // sendBeacon でバックグラウンド送信（POST, application/json）
+      });
+      
+    </script>
+  </body>
+</html>

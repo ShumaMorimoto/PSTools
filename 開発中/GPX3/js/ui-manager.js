@@ -1,4 +1,7 @@
 import GPXService from "./gpx-service.js";
+import {
+  fetchMuniInfo
+} from "./api-utils.js";
 
 export default class UIManager {
   constructor(selector) {
@@ -82,7 +85,17 @@ export default class UIManager {
 
     btn.addEventListener("click", async () => {
       const gpx = this.selector.gpxService.toXml();
-      await this.saveGpx("route.gpx", gpx);
+
+      // 地図の中心座標
+      const center = this.selector.map.getCenter();
+
+      // 自治体情報を取得（あなたの関数）
+      const muni = await fetchMuniInfo(center.lat, center.lng);
+
+      // ファイル名生成（name を使う）
+      const filename = muni ? `【周辺】${muni.name}.gpx` : "route.gpx";
+
+      await this.saveGpx(filename, gpx);
     });
   }
 
