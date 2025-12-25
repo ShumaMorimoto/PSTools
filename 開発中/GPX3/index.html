@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>GA デモ（単一ファイル）</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 12px;
+            max-width: 900px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 160px;
+            font-family: monospace;
+        }
+
+        button {
+            margin: 6px 6px 6px 0;
+        }
+
+        #log {
+            white-space: pre-wrap;
+            background: #f6f6f6;
+            padding: 8px;
+            border: 1px solid #ddd;
+            height: 120px;
+            overflow: auto;
+        }
+
+        #state {
+            white-space: pre-wrap;
+            background: #fff;
+            padding: 8px;
+            border: 1px solid #eee;
+            margin-top: 8px;
+        }
+
+        #best {
+            white-space: pre-wrap;
+            background: #fff;
+            padding: 8px;
+            border: 1px dashed #ccc;
+            min-height: 60px;
+        }
+
+        .row {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h3>GA デモ（単一 HTML）</h3>
+
+    <div class="row">
+        <button id="btnStart" disabled>Start GA (manual)</button>
+        <button id="btnStop" disabled>Stop GA</button>
+        <button id="btnGetBest" disabled>Get Best</button>
+    </div>
+
+    <label>初期データ（編集可）</label>
+    <textarea id="txt">
+{ "Places": [ /* ここに初期データがあれば自動で Start GA が呼ばれます */ ] }
+  </textarea>
+
+    <div class="row">
+        <button id="btnUpload">Upload (update server current data)</button>
+    </div>
+
+    <h4>GA 状態 (getGAState ポーリング)</h4>
+    <div id="state">Not started</div>
+
+    <h4>最良解 (getBest)</h4>
+    <div id="best">---</div>
+
+    <h4>ログ</h4>
+    <div id="log"></div>
+
+    <script>
+        (async () => {
+            const txt = document.getElementById('txt');
+            const btnUpload = document.getElementById('btnUpload');
+            const btnStart = document.getElementById('btnStart');
+            const btnStop = document.getElementById('btnStop');
+            const btnGetBest = document.getElementById('btnGetBest');
+            const stateEl = document.getElementById('state');
+            const bestEl = document.getElementById('best');
+            const logEl = document.getElementById('log');
+
+            let pollTimer = null;
+            const pollingInterval = 1000;
+            let gaRunning = false;
+
+            function log(...args) {
+                const s = args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ');
+                logEl.textContent = new Date().toLocaleTimeString() + ' ' + s + '\n' + logEl.textContent;
+            }
+
+            function setUIRunning(running) {
+                gaRunning = running;
+                btnStart.disabled = running;
+                btnStop.disabled = !running;
+                btnGetBest.disabled = !running;
+            }
+
+            async function fetchJsonOrNull(url, opts) {
+                try {
+                    const res = await fetch(url, opts);
+                    if (!res.ok) {
+                        log(`HTTP ${res.status} ${res.statusText} for ${url}`);
+                        return null;
+                    }
+                    return await res.json();
+                } catch (e) {
+                    log('fetch error', e.message);
+                    return null;
+                }
+            }
+
+            async function initialize() {
+                const data = await fetchJsonOrNull('/fetchInitialData');
+                if (data && Object.keys(data).length) {
+                    txt.value = JSON.stringify(data, null, 2);
+                    log('initialize: 初期データ取得');
+                    return data;
+                }
+                log('initialize: データなし');
+                return null;
+            }
+
+            async function startGAWith(data) {
+                return fetchJsonOrNull('/processSync?name=startGA', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify(data || {})
+                });
+            }
+
+            async function getGAState() {
+                return fetchJsonOrNull('/processSync?name=getGAState', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({})
+                });
+            }
+
+            async function getBest() {
+                return fetchJsonOrNull('/processSync?name=getBest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({})
+                });
+            }
+
+            async function stopGA() {
+                return fetchJsonOrNull('/processSync?name=stopGA', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({})
+                });
+            }
+
+            async function uploadData(data) {
+                return fetchJsonOrNull('/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify(data || {})
+                });
+            }
+
+            function startPolling() {
+                if (pollTimer) return;
+                pollTimer = setInterval(async () => {
+                    const st = await getGAState();
+                    if (st) {
+                        stateEl.textContent = JSON.stringify(st, null, 2);
+                    } else {
+                        log('getGAState returned null');
+                    }
+                }, pollingInterval);
+                log('ポーリング開始');
+            }
+
+            function stopPolling() {
+                if (!pollTimer) return;
+                clearInterval(pollTimer);
+                pollTimer = null;
+                log('ポーリング停止');
+            }
+
+            // 自動初期化 & Start
+            try {
+                const init = await initialize();
+                if (init) {
+                    const resp = await startGAWith(init);
+                    log('startGA response:', resp);
+                    setUIRunning(true);
+                    startPolling();
+                } else {
+                    setUIRunning(false);
+                }
+            } catch (e) {
+                log('auto-init error', e.message);
+                setUIRunning(false);
+            }
+
+            // Upload
+            btnUpload.addEventListener('click', async () => {
+                let obj;
+                try { obj = JSON.parse(txt.value || '{}'); }
+                catch { log('JSON parse error'); return; }
+                const r = await uploadData(obj);
+                log('upload:', r);
+            });
+
+            // Manual Start
+            btnStart.addEventListener('click', async () => {
+                let obj;
+                try { obj = JSON.parse(txt.value || '{}'); }
+                catch { log('JSON parse error'); return; }
+                const r = await startGAWith(obj);
+                log('startGA (manual):', r);
+                setUIRunning(true);
+                startPolling();
+            });
+
+            // GetBest
+            btnGetBest.addEventListener('click', async () => {
+                const b = await getBest();
+                if (b) {
+                    bestEl.textContent = JSON.stringify(b, null, 2);
+                    log('getBest:', b);
+                } else {
+                    log('getBest failed or returned null');
+                }
+            });
+
+            // Stop GA
+            btnStop.addEventListener('click', async () => {
+                const r = await stopGA();
+                log('stopGA:', r);
+                setUIRunning(false);
+                stopPolling();
+            });
+
+            // beforeunload
+            window.addEventListener('beforeunload', () => {
+                if (gaRunning) navigator.sendBeacon('/processSync?name=stopGA', '{}');
+                navigator.sendBeacon('/shutdown', '{}');
+            });
+        })();
+    </script>
+
+</body>
+
+</html>
