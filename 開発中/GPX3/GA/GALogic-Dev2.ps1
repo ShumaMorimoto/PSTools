@@ -212,27 +212,66 @@ function New-InitialPopulation {
 }
 
 function New-NextGeneration {
-    # 旧: GenerateNextPopulation
+    <#
+    .SYNOPSIS
+      進化計算の次世代生成。エリート保存戦略付き。
+    .PARAMETER Population
+      現世代の個体群（各個体は経路を表す配列など）
+    .PARAMETER Dist
+      都市間距離行列
+    .PARAMETER MutationRate
+      突然変異率（0～1の間で指定）
+    .PARAMETER EliteReserveRate
+      エリート保存率（世代サイズに対する割合、0～1の間で指定）
+    .OUTPUTS
+      次世代の個体群（評価はソート済み：適応度の高い（距離の小さい）順）
+    #>
     param(
         [array]$Population,
         [double[, ]]$Dist,
-        [double]$MutationRate = 0.5
+        [double]$MutationRate = 0.5,
+        [double]$EliteReserveRate = 0.1
     )
-    
+
     $popSize = $Population.Count
+
+    # 1. 現世代を評価してソート（距離が小さい＝良い個体が先頭）
+    $sortedCurrent = $Population | Sort-Object { Get-RouteDistance $_ $Dist }
+
+    # 2. エリート個体数を決定
+    #    少なくとも1個体は残したい場合は Ceiling にするか、Min 1 を強制
+    $eliteCount = [math]::Floor($popSize * $EliteReserveRate)
+    if ($eliteCount -lt 1) {
+        $eliteCount = 1
+    }
+
+    # 3. 上位 eliteCount 個体をそのまま next 世代にコピー
+    $elites = $sortedCurrent[0..($eliteCount - 1)]
     $next = @()
-       
-    for ($i = 0; $i -lt $popSize; $i++) {
-        # 親選択（ランダム）
+    foreach ($e in $elites) {
+        # Clone して別インスタンスにしておく（念のため）
+        $next += , ($e.Clone())
+    }
+
+    # 4. 残りスロットを親選択＋突然変異で埋める
+    while ($next.Count -lt $popSize) {
+        # (A) 親選択（ここではランダムセレクションを使用）
         $parent = Get-Random -InputObject $Population
+
+        # (B) コピー
         $child = $parent.Clone()
-        # 突然変異実行
-        $child = Invoke-MutationSwap $child
+
+        # (C) 突然変異実行（MutationRate に基づいて実行／スキップ）
+        if ((Get-Random) -lt $MutationRate) {
+            $child = Invoke-MutationSwap $child
+        }
+
         $next += , $child
     }
-    # 評価してソート
-    $SortedPopulation = $next | Sort-Object { Get-RouteDistance $_ $Dist }
-    return $SortedPopulation
+
+    # 5. 完成した next 世代もソートして返却（任意ですが、次の世代の評価を簡単にするため）
+    $sortedNext = $next | Sort-Object { Get-RouteDistance $_ $Dist }
+    return $sortedNext
 }
     
 function Invoke-GASimulation {
