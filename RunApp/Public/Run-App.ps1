@@ -3,7 +3,7 @@ function Run-App {
         [string]$ModulePath,        # 1. ロジックの物理パス
         [scriptblock]$StartScript,  # 2. ロジックのエントリーポイント
         [object]$InitialData,       # 3. 起動時に指定する初期データ
-        [hashtable]$Routes,         # 4. API
+        [hashtable]$Routes,         # 4. API（省略可）
         [string]$PageName           # 5. UI
     )
 
@@ -18,8 +18,28 @@ function Run-App {
     # --- RunspaceHost 作成 ---
     $rh = [RunspaceHost]::new($ModulePath, $StartScript)
 
-    # --- InitialData を保持（HTML に渡すため） ---
+    # --- InitialData を保持 ---
     $initData = $InitialData
+
+    # ------------------------------------------------------------
+    # Routes が指定されていなければ標準 API を自動生成
+    # ------------------------------------------------------------
+    if (-not $Routes) {
+        $Routes = @{
+            Start  = { param($d, $rh) $rh.Start($d) }
+            Stop   = { param($d, $rh) $rh.Stop() }
+
+            Status = {
+                param($d, $rh)
+                return @{
+                    Generation = $rh.State.Generation
+                    UpdatedAt  = $rh.State.UpdatedAt
+                    Phase      = $rh.State.Phase      # ★追加
+                    Result     = $rh.State.Result
+                }
+            }        
+        }
+    }
 
     # --- Web サーバ開始 ---
     $port = 8000
@@ -31,7 +51,7 @@ function Run-App {
 
     Write-Host "Listening on $prefix"
 
-    # --- ブラウザ起動 URL を決定 ---
+    # --- ブラウザ起動 URL ---
     if ($InitialData) {
         $url = "${prefix}${topFile}?init=true"
     }
@@ -99,7 +119,7 @@ function Run-App {
             }
 
             # --------------------------------------------------------
-            # 初期データ取得エンドポイント
+            # 初期データ取得
             # --------------------------------------------------------
             '^/fetchInitialData$' {
                 $json = $initData | ConvertTo-Json -Depth 10
@@ -128,7 +148,26 @@ function Run-App {
             }
 
             # --------------------------------------------------------
-            # 静的ファイル配信
+            # lib/js 配信
+            # --------------------------------------------------------
+            '^/runapp/lib/js/(.+)$' {
+                $file = $Matches[1]
+                $libPath = Join-Path $ModulePath "lib/js/$file"
+
+                if (Test-Path $libPath -PathType Leaf) {
+                    $bytes = [IO.File]::ReadAllBytes($libPath)
+                    $res.ContentType = "application/javascript; charset=utf-8"
+                    $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                }
+                else {
+                    $res.StatusCode = 404
+                }
+
+                $res.Close()
+            }
+
+            # --------------------------------------------------------
+            # 静的ファイル
             # --------------------------------------------------------
             default {
                 $filePath = Join-Path $rootDir $path.TrimStart('/')

@@ -145,12 +145,18 @@
         <span class="label">領域追加</span>
       </button>
 
+      <!-- GA（最適化） -->
+      <button id="gaActionBtn" class="btn">
+        <i class="fas fa-route"></i>
+        <span class="label">GA処理</span>
+      </button>
+
       <!-- PowerShell処理 -->
       <button id="processTrkptsBtn" class="btn">
         <i class="fas fa-cogs"></i>
-        <span class="label">PS処理</span>
+        <span class="label">最適処理</span>
       </button>
-      
+
       <!-- 分割処理 -->
       <button id="splitActionBtn" class="btn">
         <i class="fas fa-cut"></i>
@@ -198,14 +204,7 @@
     <script type="module">
       import MapSelector from "./js/map-selector.js";
       import GPXService from "./js/gpx-service.js";
-      import {
-        initialize,
-        uploadData,
-        runSync,
-        runAsync,
-        pollUntilComplete,
-        shutdown,
-      } from "./js/api-utils.js";
+      import { callApi, pollApi, initialize, shutdown } from "/runapp/lib/js/api.js";
 
       const params = new URLSearchParams(window.location.search);
 
@@ -219,18 +218,16 @@
 
       const gpxService = new GPXService();
 
-      // 初期データの自動ロード
-      (async () => {
-        try {
-          const initialData = await initialize();
-          if (initialData) {
-            gpxService.loadFromJson(JSON.stringify(initialData)); // JSONとしてロード（必要に応じてXML対応）
-            console.log("Initial data loaded from server");
-          }
-        } catch (e) {
-          console.warn("Initial data load error:", e);
+      // -----------------------------
+      // ページロード時に初期データを反映
+      // -----------------------------
+      window.addEventListener("load", async () => {
+        const initData = await initialize();
+        if (initData) {
+          gpxService.setModel(initData); // JSONとしてロード（必要に応じてXML対応）
+          console.log("Initial data loaded from server");
         }
-      })();
+      });
 
       const mapSelector = new MapSelector({
         mapId: "map",
@@ -240,14 +237,14 @@
           townActionBtnId: "townActionBtn",
           areaActionBtnId: "areaActionBtn",
           splitActionBtnId: "splitActionBtn",
+          gaActionBtnId: "gaActionBtn",
           cancelActionBtnId: "cancelActionBtn",
-
           gpxInputId: "gpxInput",
           gpxSaveId: "gpxSaveBtn",
           reFetchBtnId: "reFetchBtn",
           pointListId: "pointList",
           clearMarkersBtnId: "clearMarkersBtn",
-          processTrkptsBtnId: "processTrkptsBtn", // 新規追加
+          processTrkptsBtnId: "processTrkptsBtn",
         },
         gpxService,
         initialView: [initialLat, initialLng, initialZoom],

@@ -45,6 +45,7 @@ $DummyRoutes = @{
         }
     }
     Optimize    = {
+        
         param($data, $rh)
         Optimize-AreaRoute $data
     }
@@ -53,4 +54,6 @@ $DummyRoutes = @{
 $towns = [GPXDocumentFactory]::FromCItyTOwns("葉山町", $false)
 $pso = $towns.GetTrkPts() | ForEach-Object { [GPXDocument]::ElementToPSO($_) }
 
-Run-App -StartScript $DummyLogic -Routes $DummyRoutes -PageName D:\tool\Repository\PSTools\開発中\GPX3\sample3.html -InitialData $pso
+#Run-App -StartScript $DummyLogic -Routes $DummyRoutes -PageName D:\tool\Repository\PSTools\開発中\GPX4\map.html -InitialData $pso
+
+Run-App -StartScript $DummyLogic -Routes $DummyRoutes -PageName D:\tool\Repository\PSTools\RunApp\lib\sample.html -InitialData $pso

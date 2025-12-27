@@ -1,0 +1,75 @@
+function New-NextGeneration {
+    param(
+        [array]$Population,
+        [double[, ]]$Dist,
+        [double]$MutationRate = 0.3,
+        [double]$EliteReserveRate = 0.1,
+        [double]$GreedyMutationRate = 0.1
+    )
+
+    # ★ 拠点が 1 個なら GA は無意味 → スキップ
+    if ($Population.Count -eq 0 -or $Population[0].Count -le 1) {
+        return $Population
+    }
+
+    $popSize = $Population.Count
+
+    # 1. 評価してソート
+    $sortedCurrent = $Population | Sort-Object { Get-RouteDistance $_ $Dist }
+
+    # 2. エリート数
+    $eliteCount = [math]::Floor($popSize * $EliteReserveRate)
+    if ($eliteCount -lt 1) { $eliteCount = 1 }
+
+    # 3. エリートコピー
+    $next = @()
+    $elites = $sortedCurrent[0..($eliteCount - 1)]
+    foreach ($e in $elites) {
+        $next += , ($e.Clone())
+    }
+
+    # 3.5 エリート改善（部分 Greedy）
+    for ($idx = 1; $idx -lt $eliteCount; $idx++) {
+        $route = $next[$idx]
+
+        ($i, $j) = Get-Random -Minimum 0 -Maximum $route.Count | Sort-Object
+
+        if ($i -lt $j) {
+            $next[$idx] = Get-GreedyRoute `
+                -DistanceMatrix $Dist `
+                -Route $route `
+                -StartPos $i `
+                -EndPos $j
+        }
+    }
+
+    # 4. 残りを生成
+    while ($next.Count -lt $popSize) {
+        # 親選択
+        $parentA = Select-Tournament $Population $Dist
+        $parentB = Select-Tournament $Population $Dist
+
+        # 交叉
+        $child = Invoke-CrossoverOX $parentA $parentB
+
+        # Swap Mutation
+        if ((Get-Random) -lt $MutationRate) {
+            $child = Invoke-MutationSwap $child
+        }
+
+        # Greedy Mutation（局所改善）
+        if ((Get-Random) -lt $GreedyMutationRate) {
+            ($i, $j) = Get-Random -Minimum 0 -Maximum $child.Count | Sort-Object
+            if ($i -lt $j) {
+                $child = Get-GreedyRoute `
+                    -DistanceMatrix $Dist `
+                    -Route $child `
+                    -StartPos $i `
+                    -EndPos $j
+            }
+        }
+        $next += , $child
+    }
+    # 5. 次世代をソートして返す
+    return ($next | Sort-Object { Get-RouteDistance $_ $Dist })
+}

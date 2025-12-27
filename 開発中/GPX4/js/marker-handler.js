@@ -43,13 +43,12 @@ export default class MarkerHandler {
     // 1.1 モデル更新：trkpt 追加（呼び出し側で済んでいる）
 
     // 1.2 マーカリスト更新：生成 -> 内部配列登録 -> リナンバー
-    const idx = this.markers.length;
-    const marker = this._buildMarkerInstance(tp, idx);
+    const marker = this._buildMarkerInstance(tp);
     this.markers.push({ m: marker, point: tp, selected: false });
-    this.renumberMarkers();
 
     // 1.3 地図更新
     marker.addTo(this.selector.map);
+    this.renumberMarkers();
 
     // 1.4 UI更新
     this.selector.uiManager.updateListUI();
@@ -61,7 +60,6 @@ export default class MarkerHandler {
 
     // 1.6 ハンドラ登録
     this._bindMarkerHandlers(marker);
-
     this._updatePolyline();
     this.debugModel();
     return tp;
@@ -70,11 +68,11 @@ export default class MarkerHandler {
   // ---------------------------------------------------
   // マーカー生成（生成のみ）
   // ---------------------------------------------------
-  _buildMarkerInstance(tp, idx) {
+  _buildMarkerInstance(tp) {
     // 初期アイコン（あとで renumberMarkers で上書きされるが初期値として設定）
     const icon = L.ExtraMarkers.icon({
       icon: "fa-number",
-      number: idx + 1,
+      number: 0,
       markerColor: "blue",
       shape: "circle",
     });
@@ -133,46 +131,35 @@ export default class MarkerHandler {
     this.removeMarker(m);
   }
 
+  // ---------------------------------------------------
+  // 削除（通常 / split 共通化）
+  // ---------------------------------------------------
   removeMarker(m, split = false) {
     const idx = this.markers.findIndex((e) => e.m === m);
     if (idx === -1) return;
 
-    // -------------------------
-    // 分岐なしで削除範囲を決定
-    // -------------------------
-    const start = split ? 0 : idx;
-    const end = idx + 1; // ★ 選択地点も削除
-    const count = end - start;
+    // 1. 削除対象を先頭で決定（共通化）
+    const toRemove = split
+      ? this.markers.slice(0, idx + 1) // 指定マーカー以前を削除
+      : this.markers.slice(idx, idx + 1); // 指定マーカーのみ削除
 
-    // -------------------------
-    // モデル更新（GPX）
-    // -------------------------
-    const pts = this.gpxService.getTrkptList();
-    pts.splice(start, count);
+    // 2. モデルから削除（point 参照ベース）
+    toRemove.forEach((entry) => {
+      this.gpxService.removeTrkpt(entry.point);
+    });
 
-    // -------------------------
-    // 地図から削除
-    // -------------------------
-    const toRemove = this.markers.slice(start, end);
+    // 3. 地図から削除
     toRemove.forEach((entry) => {
       this.selector.map.removeLayer(entry.m);
     });
 
-    // -------------------------
-    // マーカ配列更新
-    // -------------------------
-    this.markers.splice(start, count);
+    // 4. markers 配列から削除
+    this.markers = this.markers.filter((e) => !toRemove.includes(e));
 
-    // 4. 再描画
+    // 5. 再描画
     this.renumberMarkers();
-
-    // 5. ポリライン更新
     this._updatePolyline();
-
-    // 6. UI 更新
     this.selector.uiManager.updateListUI();
-
-    // 7. デバッグ
     this.debugModel();
   }
 
@@ -180,30 +167,20 @@ export default class MarkerHandler {
   // ドラッグ終了（位置変更）
   // ---------------------------------------------------
   _onMarkerDragEnd(e, m) {
-    const idx = this.markers.findIndex((entry) => entry.m === m);
-    if (idx === -1) return;
+    const entry = this.markers.find((e) => e.m === m);
+    if (!entry) return;
 
     const latlng = e.target.getLatLng();
 
-    // 4.1 モデル更新：座標更新
-    this.gpxService.updateTrkpt(idx, {
-      lat: latlng.lat,
-      lon: latlng.lng,
-    });
-    // 4.2 マーカリスト更新（必要なら）
-    this.renumberMarkers();
+    // モデル更新（index 不要）
+    entry.point.lat = latlng.lat;
+    entry.point.lon = latlng.lng;
 
-    // 4.3 地図更新
+    // マーカー更新
     m.setLatLng(latlng);
 
-    // 4.4 リスト更新
     this.selector.uiManager.updateListUI();
-
-    // 4.5 住所情報取得（point 主導）
-    const point = this.gpxService.getTrkptList()[idx];
-    this.updateAddress(point);
-
-    // 4.6 その他
+    this.updateAddress(entry.point);
     this._updatePolyline();
     this.debugModel();
   }
