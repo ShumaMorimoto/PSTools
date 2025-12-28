@@ -1,6 +1,6 @@
 @{
     RootModule        = 'RunApp.psm1'
-    ModuleVersion     = '1.0.3'
+    ModuleVersion     = '1.0.1'
     GUID              = 'c660d4db-b249-4f8b-a545-abe8072c4f76'
     Author            = ''
     Description       = ''

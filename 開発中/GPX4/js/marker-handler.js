@@ -17,7 +17,7 @@ export default class MarkerHandler {
   // 初期化
   // ---------------------------------------------------
   initMarkers() {
-    const pts = this.gpxService.getTrkptList();
+    const pts = this.gpxService.getTrkpts();
     pts.forEach((tp) => {
       this.addPoint(tp); // モデル更新なし
     });
@@ -31,7 +31,7 @@ export default class MarkerHandler {
     const lng = e.latlng.lng;
 
     // モデル更新
-    const tp = this.gpxService.addTrkpt({ lat, lon: lng, muitiRoute: "1" });
+    const tp = this.gpxService.appendTrkpt({ lat, lon: lng, muitiRoute: "1" });
     // マーカー追加
     this.addPoint(tp);
   }
@@ -190,7 +190,7 @@ export default class MarkerHandler {
   // ---------------------------------------------------
   clearMarkers() {
     // 1. モデル更新：trkpt 全削除
-    const pts = this.gpxService.getTrkptList();
+    const pts = this.gpxService.getTrkpts();
     pts.length = 0; // モデルの唯一の真実をクリア
 
     // 2. マーカリスト更新：内部配列クリア準備
@@ -203,6 +203,7 @@ export default class MarkerHandler {
 
     // 4. UI 更新：リストを空に
     this.selector.uiManager.updateListUI();
+    this._updatePolyline();
 
     // 5. 住所情報取得：なし（全削除なので）
     // 6. ハンドラ登録：不要（削除済み）
@@ -213,7 +214,7 @@ export default class MarkerHandler {
   // 全ポイントの住所情報を再取得
   // ---------------------------------------------------
   reFetchAllAddresses() {
-    const pts = this.gpxService.getTrkptList();
+    const pts = this.gpxService.getTrkpts();
 
     pts.forEach((tp) => {
       this.updateAddress(tp);

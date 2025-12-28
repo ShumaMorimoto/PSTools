@@ -131,7 +131,7 @@
     this._clearPreview();
     this.state = SplitHandler.State.IDLE;
     this.selector.currentMode = this.selector.constructor.Mode.DEFAULT;
-    this.selector.updateModeUI();
     this._updateButtonLabel("経路分割");
+    this.selector.updateModeUI();
   }
 }

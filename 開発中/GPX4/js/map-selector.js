@@ -4,7 +4,6 @@ import MarkerHandler from "./marker-handler.js";
 import ImageHandler from "./image-handler.js";
 import TownHandler from "./town-handler.js";
 import AreaHandler from "./area-handler.js";
-import TrkptHandler from "./trkpt-handler.js";
 import SplitHandler from "./split-handler.js";
 import GAHandler from "./ga-handler.js";
 import UIManager from "./ui-manager.js";
@@ -36,7 +35,6 @@ export default class MapSelector {
     this.imageHandler = new ImageHandler(this);
     this.townHandler = new TownHandler(this);
     this.areaHandler = new AreaHandler(this);
-    this.trkptHandler = new TrkptHandler(this);
     this.splitHandler = new SplitHandler(this);
     this.gaHandler = new GAHandler(this, this.gpxService);
 
@@ -83,13 +81,6 @@ export default class MapSelector {
         this.updateModeUI();
         this.areaHandler.onAreaButtonClick();
       });
-
-    // TRK処理ボタン
-    document
-      .getElementById(this.controls.processTrkptsBtnId)
-      .addEventListener("click", () =>
-        this.trkptHandler.onProcessButtonClick()
-      );
 
     // 経路分割ボタン
     document
@@ -200,27 +191,22 @@ export default class MapSelector {
     const splitBtn = document.getElementById(this.controls.splitActionBtnId);
     const gaBtn = document.getElementById(this.controls.gaActionBtnId);
 
-    imageBtn.classList.toggle(
-      "active",
-      this.currentMode === MapSelector.Mode.IMAGE_MODE
-    );
-    townBtn.classList.toggle(
-      "active",
-      this.currentMode === MapSelector.Mode.TOWN_MODE
-    );
-    areaBtn.classList.toggle(
-      "active",
-      this.currentMode === MapSelector.Mode.AREA_MODE
-    );
-    splitBtn.classList.toggle(
-      "active",
-      this.currentMode === MapSelector.Mode.SPLIT_MODE
-    );
-    gaBtn.classList.toggle(
-      "active",
-      this.currentMode === MapSelector.Mode.GA_MODE
-    );
+    const buttons = [
+      { btn: imageBtn, mode: MapSelector.Mode.IMAGE_MODE },
+      { btn: townBtn, mode: MapSelector.Mode.TOWN_MODE },
+      { btn: areaBtn, mode: MapSelector.Mode.AREA_MODE },
+      { btn: splitBtn, mode: MapSelector.Mode.SPLIT_MODE },
+      { btn: gaBtn, mode: MapSelector.Mode.GA_MODE },
+    ];
 
+    for (const { btn, mode } of buttons) {
+      const isActive =
+        this.currentMode === MapSelector.Mode.DEFAULT ||
+        this.currentMode === mode;
+
+      btn.classList.toggle("active", isActive);
+      btn.disabled = !isActive;
+    }
     this.updateCancelButton();
   }
 }

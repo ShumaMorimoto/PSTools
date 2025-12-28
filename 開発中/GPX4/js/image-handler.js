@@ -1,6 +1,4 @@
-// image-handler.js（町字追加と同じ3状態モデル + MODE連動）
-
-export default class ImageHandler {
+﻿export default class ImageHandler {
   static State = {
     IDLE: "idle", // 何もしていない
     SELECTING: "selecting", // 編集中（フォーカスあり）
@@ -24,7 +22,7 @@ export default class ImageHandler {
   }
 
   // ---------------------------------------------------
-  // ✅ 画像ボタン押下（開始 / キャンセル / 確定）
+  // ✅ 画像ボタン押下（開始 / 確定）
   // ---------------------------------------------------
   onImageButtonClick() {
     switch (this.state) {
@@ -34,15 +32,24 @@ export default class ImageHandler {
         break;
 
       case ImageHandler.State.SELECTING:
-        // ✅ キャンセル（編集破棄）
-        this._resetToIdle();
-        break;
-
       case ImageHandler.State.PREVIEW:
         // ✅ 確定
         this._confirmImage();
         break;
     }
+  }
+
+  // ---------------------------------------------------
+  // ✅ キャンセル
+  // ---------------------------------------------------
+  onCancel() {
+    if (this.state === ImageHandler.State.IDLE) return;
+
+    this._resetToIdle();
+  }
+
+  canCancel() {
+    return this.state !== ImageHandler.State.IDLE;
   }
 
   // ---------------------------------------------------
@@ -61,18 +68,13 @@ export default class ImageHandler {
     this.state = ImageHandler.State.SELECTING;
 
     this.enableEditing();
+
+    this._updateButtonLabel("画像確定");
     this.selector.updateModeUI();
-
-    this.selector.uiManager.setButtonLabel(
-      this.selector.controls.imageActionBtnId,
-      "キャンセル"
-    );
-
-    this._logState(); // ← 追加
   }
 
   // ---------------------------------------------------
-  // ✅ PREVIEW → 確定（IDLEへ）
+  // ✅ PREVIEW / SELECTING → 確定（IDLEへ）
   // ---------------------------------------------------
   _confirmImage() {
     this.selector.currentMode = this.selector.constructor.Mode.DEFAULT;
@@ -81,13 +83,9 @@ export default class ImageHandler {
     this._logState(); // ← 追加
 
     this.disableEditing();
-    this.selector.updateModeUI();
 
-    this.selector.uiManager.setButtonLabel(
-      this.selector.controls.imageActionBtnId,
-      "画像追加"
-    );
-    this._logState(); // ← 追加
+    this._updateButtonLabel("画像追加");
+    this.selector.updateModeUI();
   }
 
   _resetToIdle() {
@@ -102,13 +100,10 @@ export default class ImageHandler {
     } catch (e) {
       console.warn("clearLayers failed", e);
     }
-    this.selector.updateModeUI();
 
     // ✅ 画像が無いので「画像追加」
-    this.selector.uiManager.setButtonLabel(
-      this.selector.controls.imageActionBtnId,
-      "画像追加"
-    );
+    this._updateButtonLabel("画像追加");
+    this.selector.updateModeUI();
   }
 
   // ---------------------------------------------------
@@ -159,7 +154,7 @@ export default class ImageHandler {
   }
 
   // ---------------------------------------------------
-  // ✅ 画像追加（常に 1 枚だけ）
+  // ✅ 画像追加（複数可能）
   // ---------------------------------------------------
   addImageToMap(dataUrl) {
     const bounds = this.selector.map.getBounds();
@@ -196,10 +191,7 @@ export default class ImageHandler {
         this.selector.currentMode = this.selector.constructor.Mode.IMAGE_MODE;
         this.state = ImageHandler.State.SELECTING;
 
-        this.selector.uiManager.setButtonLabel(
-          this.selector.controls.imageActionBtnId,
-          "キャンセル"
-        );
+        // ボタンラベル変更を削除（常に「画像確定」）
         this.selector.updateModeUI();
       });
 
@@ -210,10 +202,7 @@ export default class ImageHandler {
         this.selector.currentMode = this.selector.constructor.Mode.IMAGE_MODE;
         this.state = ImageHandler.State.PREVIEW;
 
-        this.selector.uiManager.setButtonLabel(
-          this.selector.controls.imageActionBtnId,
-          "画像確定"
-        );
+        // ボタンラベル変更を削除（常に「画像確定」）
         this.selector.updateModeUI();
         this._logState(); // ← 追加
       });
@@ -258,6 +247,16 @@ export default class ImageHandler {
   hasImage() {
     return (
       this.selector.imgGroup && this.selector.imgGroup.getLayers().length > 0
+    );
+  }
+
+  // ---------------------------------------------------
+  // ✅ UI 更新
+  // ---------------------------------------------------
+  _updateButtonLabel(label) {
+    this.selector.uiManager.setButtonLabel(
+      this.selector.controls.imageActionBtnId,
+      label
     );
   }
 

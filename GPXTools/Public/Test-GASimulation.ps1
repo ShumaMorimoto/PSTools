@@ -17,5 +17,5 @@ function Test-GASimulation {
     }
     
     Run-GASimulation -Places $Places -State $state -NumClusters $NumClusters -PopSizePerCluster $PopSizePerCluster -PopSizeClustersOrder $PopSizeClustersOrder -MaxGen $MaxGen
-    "Gen: $($state.Generation), BestDist: $([math]::Round($state.BestDist,3))"
+    "Gen: $($state.Generation), BestDist: $([math]::Round($state.Result.Distance,3))"
 }

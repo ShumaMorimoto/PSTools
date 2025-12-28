@@ -1,7 +1,7 @@
 function New-ClusterDistanceMatrix {
     param(
         [System.Collections.ArrayList]$ClusterData,
-        [double[, ]]$GlobalDist
+        [double[, ]]$GlobalMatrix
     )
     $k = $ClusterData.Count
     $mat = [double[, ]]::new($k, $k)
@@ -18,7 +18,7 @@ function New-ClusterDistanceMatrix {
                 # クラスタ j の入口 (Global Index)
                 $entryNode = $ClusterData[$j].BestRouteGlobal[0]
                 # 出口 -> 入口 の距離
-                $mat[$i, $j] = $GlobalDist[$exitNode, $entryNode]
+                $mat[$i, $j] = $GlobalMatrix[$exitNode, $entryNode]
             }
         }
     }

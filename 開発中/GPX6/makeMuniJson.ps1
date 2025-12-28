@@ -4,7 +4,7 @@
 # DFP の code / prefecture_code が Int64 で返る前提でゼロ詰め復元
 # ============================================
 
-$endpoint = 'https://www.mlit-data.jp/api/v1/'
+$endpoint = 'https://www.mlit-data.jp/api/v1/graphql'
 $headers = @{
     "Content-Type" = "application/json"
     "apikey"       = "4ZiwH4ty7rcYPfye2sYP9DjX9BBjCOzY"

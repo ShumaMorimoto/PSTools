@@ -181,7 +181,7 @@ export default class AreaHandler {
         lon: t.lng,
         name: t.name,
       };
-      const added = this.selector.gpxService.addTrkpt(trkpt);
+      const added = this.selector.gpxService.appendTrkpt(trkpt);
       this.selector.markerHandler.addPoint(added);
     });
     console.log(`✅ GPX + Marker 登録完了: ${this.previewTowns.length} 件`);
@@ -311,9 +311,10 @@ export default class AreaHandler {
     this._removeHandles();
     this.center = null;
     this.radius = 1000;
+
     this.state = AreaHandler.State.IDLE;
-    this.selector.currentMode = null; // モードリセット（必要に応じて調整）
-    this.selector.updateModeUI();
+    this.selector.currentMode = this.selector.constructor.Mode.DEFAULT;
     this._updateButtonLabel("領域追加");
+    this.selector.updateModeUI();
   }
 }

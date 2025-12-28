@@ -6,40 +6,85 @@ export default class UIManager {
     this.selector = selector;
   }
 
+  // ---------------------------------------------------
+  // 初期化
+  // ---------------------------------------------------
   initUIHandlers() {
+    // pointList
     document
       .getElementById(this.selector.controls.pointListId)
       .addEventListener("change", () => this.handlePointListChange());
 
-    // ✅ GPX 読み込み
+    // GPX 読み込み
     this.initGpxLoadButton();
 
-    // ✅ GPX 保存
+    // GPX 保存
     this.initGpxSaveButton();
 
+    // 住所再取得
     document
       .getElementById(this.selector.controls.reFetchBtnId)
       .addEventListener("click", () => this.reFetchAllAddresses());
 
+    // マーカー全削除
     document
       .getElementById(this.selector.controls.clearMarkersBtnId)
-      .addEventListener("click", () =>
-        this.selector.markerHandler.clearMarkers()
-      );
+      .addEventListener("click", () => this.selector.clearMarkers());
   }
 
-  // -----------------------------
-  // ✅ 任意ボタンのラベルを変更（汎用）
-  // -----------------------------
+  // ---------------------------------------------------
+  // 汎用：ボタンラベル変更
+  // ---------------------------------------------------
   setButtonLabel(id, text) {
     const btn = document.getElementById(id);
-    const label = btn.querySelector(".label");
+    const label = btn?.querySelector(".label");
     if (label) label.textContent = text;
   }
 
-  // -----------------------------
-  // ✅ GPX 読み込み
-  // -----------------------------
+  // ---------------------------------------------------
+  // MODE ボタン UI 更新（ModeConfig ベース）
+  // ---------------------------------------------------
+  updateModeButtons(mode) {
+    const ModeConfig = this.selector.constructor.ModeConfig;
+
+    Object.entries(ModeConfig).forEach(([m, cfg]) => {
+      const btnId = this.selector.controls[cfg.controlKey];
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+
+      const isActive =
+        mode === this.selector.constructor.Mode.DEFAULT || mode === m;
+
+      btn.classList.toggle("active", isActive);
+      btn.disabled = !isActive;
+    });
+  }
+
+  // ---------------------------------------------------
+  // STATE UI 更新（Handler → Selector → UIManager）
+  // ---------------------------------------------------
+  updateStateUI({ mode, label, canCancel }) {
+    const ModeConfig = this.selector.constructor.ModeConfig;
+    const cfg = ModeConfig[mode];
+
+    // アクションボタンのラベル更新
+    if (cfg) {
+      const actionBtnId = this.selector.controls[cfg.controlKey];
+      this.setButtonLabel(actionBtnId, label);
+    }
+
+    // キャンセルボタンの有効/無効
+    const cancelBtn = document.getElementById(
+      this.selector.controls.cancelActionBtnId
+    );
+    if (cancelBtn) {
+      cancelBtn.disabled = !canCancel;
+    }
+  }
+
+  // ---------------------------------------------------
+  // GPX 読み込み
+  // ---------------------------------------------------
   initGpxLoadButton() {
     const input = document.getElementById(this.selector.controls.gpxInputId);
     if (!input) return;
@@ -52,16 +97,14 @@ export default class UIManager {
       reader.onload = (ev) => {
         const gpxText = ev.target.result;
 
-        // ✅ 一時 GPXModel を UI 側で作る（責務分離）
         const tempService = new GPXService();
         tempService.loadFromXml(gpxText);
 
         const newPts = tempService.getTrkpts();
 
-        // ✅ 正式 Model にこちらで反映
         newPts.forEach((p) => {
           const tp = this.selector.gpxService.appendTrkpt(p);
-          this.selector.markerHandler.addPoint(tp);
+          this.selector.addPoint(tp);
         });
 
         e.target.value = "";
@@ -70,41 +113,33 @@ export default class UIManager {
     });
   }
 
-  // -----------------------------
-  // ✅ GPX 保存
-  // -----------------------------
+  // ---------------------------------------------------
+  // GPX 保存
+  // ---------------------------------------------------
   initGpxSaveButton() {
     const btn = document.getElementById(this.selector.controls.gpxSaveId);
     if (!btn) return;
 
     btn.addEventListener("click", async () => {
-      // -----------------------------
-      // ★ 保存前に trkpt に muitiRoute="1" を付与
-      // -----------------------------
       const pts = this.selector.gpxService.getTrkpts();
       pts.forEach((pt) => {
         pt.muitiRoute = "1";
       });
 
-      // GPX 生成
       const gpx = this.selector.gpxService.toXml();
 
-      // 地図の中心座標
       const center = this.selector.map.getCenter();
-
-      // 自治体情報を取得
       const muni = await fetchMuniInfo(center.lat, center.lng);
 
-      // ファイル名生成
       const filename = muni ? `【周辺】${muni.name}.gpx` : "route.gpx";
 
       await this.saveGpx(filename, gpx);
     });
   }
-  
-  // -----------------------------
-  // ✅ 保存ダイアログ
-  // -----------------------------
+
+  // ---------------------------------------------------
+  // 保存ダイアログ
+  // ---------------------------------------------------
   async saveGpx(filename, text) {
     if (window.showSaveFilePicker) {
       const opts = {
@@ -132,9 +167,9 @@ export default class UIManager {
     this.downloadText(filename, text);
   }
 
-  // -----------------------------
-  // ✅ ダウンロード fallback
-  // -----------------------------
+  // ---------------------------------------------------
+  // ダウンロード fallback
+  // ---------------------------------------------------
   downloadText(filename, text) {
     const blob = new Blob([text], { type: "application/gpx+xml" });
     const url = URL.createObjectURL(blob);
@@ -147,9 +182,9 @@ export default class UIManager {
     URL.revokeObjectURL(url);
   }
 
-  // -----------------------------
-  // ✅ pointList UI 更新
-  // -----------------------------
+  // ---------------------------------------------------
+  // pointList UI 更新
+  // ---------------------------------------------------
   updateListUI() {
     const list = document.getElementById(this.selector.controls.pointListId);
     if (!list) return;
@@ -166,9 +201,9 @@ export default class UIManager {
     });
   }
 
-  // -----------------------------
-  // ✅ pointList → 地図移動
-  // -----------------------------
+  // ---------------------------------------------------
+  // pointList → 地図移動（★4: idx Zoom に再構築）
+  // ---------------------------------------------------
   handlePointListChange() {
     const list = document.getElementById(this.selector.controls.pointListId);
     if (!list) return;
@@ -177,16 +212,15 @@ export default class UIManager {
     if (val === "" || isNaN(val)) return;
 
     const idx = parseInt(val, 10);
-    const marker = this.selector.markerHandler.markers[idx].m;
 
-    if (!marker) return;
-    this.selector.markerHandler.zoomToMarker(marker);
+    // ★ markers 配列を触らない
+    this.selector.zoomToMarkerByIndex(idx);
   }
 
-  // -----------------------------
-  // ✅ 住所情報を再取得する
-  // -----------------------------
+  // ---------------------------------------------------
+  // 住所再取得
+  // ---------------------------------------------------
   reFetchAllAddresses() {
-    this.selector.markerHandler.reFetchAllAddresses();
+    this.selector.reFetchAllAddresses();
   }
 }

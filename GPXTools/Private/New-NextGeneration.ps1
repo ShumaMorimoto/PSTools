@@ -1,7 +1,7 @@
 function New-NextGeneration {
     param(
         [array]$Population,
-        [double[, ]]$Dist,
+        [double[, ]]$DistanceMatrix,
         [double]$MutationRate = 0.3,
         [double]$EliteReserveRate = 0.1,
         [double]$GreedyMutationRate = 0.1
@@ -15,7 +15,7 @@ function New-NextGeneration {
     $popSize = $Population.Count
 
     # 1. 評価してソート
-    $sortedCurrent = $Population | Sort-Object { Get-RouteDistance $_ $Dist }
+    $sortedCurrent = $Population | Sort-Object { Get-RouteDistance $_ $DistanceMatrix }
 
     # 2. エリート数
     $eliteCount = [math]::Floor($popSize * $EliteReserveRate)
@@ -32,11 +32,11 @@ function New-NextGeneration {
     for ($idx = 1; $idx -lt $eliteCount; $idx++) {
         $route = $next[$idx]
 
-        ($i, $j) = Get-Random -Minimum 0 -Maximum $route.Count | Sort-Object
+        ($i, $j) = Get-Random -Minimum 0 -Maximum $route.Count
 
         if ($i -lt $j) {
             $next[$idx] = Get-GreedyRoute `
-                -DistanceMatrix $Dist `
+                -DistanceMatrix $DistanceMatrix `
                 -Route $route `
                 -StartPos $i `
                 -EndPos $j
@@ -46,8 +46,8 @@ function New-NextGeneration {
     # 4. 残りを生成
     while ($next.Count -lt $popSize) {
         # 親選択
-        $parentA = Select-Tournament $Population $Dist
-        $parentB = Select-Tournament $Population $Dist
+        $parentA = Select-Tournament $Population $DistanceMatrix
+        $parentB = Select-Tournament $Population $DistanceMatrix
 
         # 交叉
         $child = Invoke-CrossoverOX $parentA $parentB
@@ -59,10 +59,10 @@ function New-NextGeneration {
 
         # Greedy Mutation（局所改善）
         if ((Get-Random) -lt $GreedyMutationRate) {
-            ($i, $j) = Get-Random -Minimum 0 -Maximum $child.Count | Sort-Object
+            ($i, $j) = Get-Random -Minimum 0 -Maximum $child.Count 
             if ($i -lt $j) {
                 $child = Get-GreedyRoute `
-                    -DistanceMatrix $Dist `
+                    -DistanceMatrix $DistanceMatrix `
                     -Route $child `
                     -StartPos $i `
                     -EndPos $j
@@ -71,5 +71,5 @@ function New-NextGeneration {
         $next += , $child
     }
     # 5. 次世代をソートして返す
-    return ($next | Sort-Object { Get-RouteDistance $_ $Dist })
+    return ($next | Sort-Object { Get-RouteDistance $_ $DistanceMatrix })
 }

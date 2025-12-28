@@ -4,6 +4,7 @@ $script:ModuleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 # RunApp を絶対パスで読み込む
 Import-Module "D:\tool\Repository\PSTools\RunApp" -Force
 
+
 # ─── DLL 読み込み ───
 if (Test-Path "$PSScriptRoot\lib") {
     Get-ChildItem "$PSScriptRoot\lib\*.dll" | ForEach-Object {

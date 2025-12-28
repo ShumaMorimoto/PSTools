@@ -56,43 +56,8 @@
         if (stopPolling) stopPolling();
       }
 
-      async function onGetBest() {
-        const res = await callApi("GetBest");
-        document.getElementById("best").textContent = JSON.stringify(
-          res,
-          null,
-          2
-        );
-      }
-
-      // -----------------------------
-      // Optimize API
-      // -----------------------------
-      async function onOptimize() {
-        const input = document.getElementById("input").value;
-        let data = null;
-
-        try {
-          data = JSON.parse(input);
-        } catch {
-          alert("JSON が不正です");
-          return;
-        }
-
-        const res = await callApi("Optimize", data);
-        console.log("Optimize:", res);
-
-        document.getElementById("best").textContent = JSON.stringify(
-          res,
-          null,
-          2
-        );
-      }
-
       window.onStart = onStart;
       window.onStop = onStop;
-      window.onGetBest = onGetBest;
-      window.onOptimize = onOptimize;
 
       // --- ブラウザ終了時に /shutdown を確実に送る ---
       window.addEventListener("beforeunload", () => {
@@ -124,13 +89,8 @@
 
     <button onclick="onStart()">Start</button>
     <button onclick="onStop()">Stop</button>
-    <button onclick="onGetBest()">GetBest</button>
-    <button onclick="onOptimize()">Optimize</button>
 
     <h2>Status</h2>
     <pre id="status">{}</pre>
-
-    <h2>Best</h2>
-    <pre id="best">{}</pre>
   </body>
 </html>

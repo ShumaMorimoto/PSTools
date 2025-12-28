@@ -152,7 +152,7 @@ function Run-App {
             # --------------------------------------------------------
             '^/runapp/lib/js/(.+)$' {
                 $file = $Matches[1]
-                $libPath = Join-Path $ModulePath "lib/js/$file"
+                $libPath = Join-Path $script:ModuleRoot "lib/js/$file"
 
                 if (Test-Path $libPath -PathType Leaf) {
                     $bytes = [IO.File]::ReadAllBytes($libPath)

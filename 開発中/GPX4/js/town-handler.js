@@ -1,8 +1,4 @@
-﻿import {
-  fetchMuniInfo,
-  fetchBoundary,
-  fetchTowns
-} from "./api-utils.js";
+﻿import {fetchMuniInfo,fetchBoundary, fetchTowns} from "./api-utils.js";
 
 /**
  * GeoJSONを地図に描画
@@ -196,7 +192,7 @@ export default class TownHandler {
         },
       };
 
-      const added = this.selector.gpxService.addTrkpt(trkpt);
+      const added = this.selector.gpxService.appendTrkpt(trkpt);
       this.selector.markerHandler.addPoint(added);
     });
 
@@ -229,7 +225,7 @@ export default class TownHandler {
     this.selector.lastClickLatLng = null;
     this.state = TownHandler.State.IDLE;
     this.selector.currentMode = this.selector.constructor.Mode.DEFAULT;
-    this.selector.updateModeUI();
     this._updateButtonLabel("町字追加");
+    this.selector.updateModeUI();
   }
 }

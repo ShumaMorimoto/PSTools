@@ -1,17 +1,14 @@
 function Run-GASimulation {
     param(
         [array]     $Places,
-        [hashtable] $State,          # 呼び出し側で作成して渡す
+        [hashtable] $State,
         [int]       $PopSizePerCluster = 50,
         [int]       $PopSizeClustersOrder = 50,
         [int]       $MaxGen = 1000,
-        [int]       $NumClusters = 10 
+        [int]       $NumClusters = 10
     )
-    
-    # ★時間計測用ストップウォッチ開始
+
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    
-    # ★パフォーマンス情報を格納する場所を作る
     if (-not $State.ContainsKey('Performance')) {
         $State.Performance = @{
             InitTime       = 0
@@ -23,184 +20,153 @@ function Run-GASimulation {
         }
     }
 
-    # --- フェーズ: 初期化開始 ---
     $State.Phase = "Init"
-    
-    # グローバル距離行列（初期化）
-    if (-not $State.ContainsKey('GlobalDist')) {
-        $State.GlobalDist = New-DistanceMatrix $Places
+
+
+    # --- 1. Place が指定された場合は必ず再構築 ---
+    if ($Places) {
+        $State.Input = $Places
+        $State.GlobalMatrix = New-DistanceMatrix $Places
     }
-    
-    # --- フェーズ: クラスタ初期化 ---
+    else {
+        # --- 2. Place が指定されていない場合は継続実行 ---
+        # Matrix と Place の整合性チェック
+        if (-not $State.GlobalMatrix -or $State.GlobalMatrix.Count -ne $State.Input.Count) {
+            # --- 3. 整合性が取れない場合は再構築 ---
+            $State.GlobalMatrix = New-DistanceMatrix $State.Input
+        }
+    }
+
+    # --- 初期化 ---
     if (-not $State.ContainsKey('ClusterData')) {
+
         $State.Phase = "ClusterInit"
-        
         $initStart = $sw.ElapsedMilliseconds
 
-        # ここでクラスタ生成
-        $clusters = Cluster-Mesh -Places $Places
+        $clusters = Cluster-Mesh -Places $State.Input
         $cd = @()
-    
+
         for ($ci = 0; $ci -lt $clusters.Count; $ci++) {
             $inds = $clusters[$ci]
-            $sub = Get-SubMatrix $State.GlobalDist $inds
-    
-            # Indicesを渡さず、行列だけ渡す
+            $sub = Get-SubMatrix $State.GlobalMatrix $inds
+
             $pop = New-InitialPopulation -PopSize $PopSizePerCluster `
                 -DistMatrix $sub `
                 -GreedyRatio 0.5
 
             $sortedPop = $pop | Sort-Object { Get-RouteDistance $_ $sub }
-            $bestLocal = $sortedPop[0]   
-            
-            # 【追記】ローカルIndex(0,1,2..) を グローバルIndex(10,55,3..) に変換
+            $bestLocal = $sortedPop[0]
             $bestGlobal = $bestLocal | ForEach-Object { $inds[$_] }
-    
+
             $cd += , @{
                 Indices         = $inds
-                SubDist         = $sub
-                Population      = $sortedPop 
+                SubMatrix       = $sub
+                Population      = $sortedPop
                 BestRouteLocal  = $bestLocal
                 BestRouteGlobal = $bestGlobal
-                BestDist        = (Get-RouteDistance $bestLocal $sub) 
+                BestDist        = (Get-RouteDistance $bestLocal $sub)
             }
         }
-    
+
         $State.ClusterData = $cd
-    
-        # 3. クラスタ「順序」初期化
-        Write-Host "  3. Initializing Inter-Cluster Order..."
-        
-        # 「出口→入口」距離行列を作る
-        $clusterDistMatrix = New-ClusterDistanceMatrix -ClusterData $State.ClusterData -GlobalDist $State.GlobalDist
- 
-        # クラスタ順序: 初期集団生成
+
+        # --- クラスタ順序初期化 ---
+        $clusterDistMatrix = New-ClusterDistanceMatrix -ClusterData $State.ClusterData -GlobalMatrix $State.GlobalMatrix
+
         $orderPop = New-InitialPopulation -PopSize $PopSizeClustersOrder `
             -DistMatrix $clusterDistMatrix `
             -GreedyRatio 0.5
-         
-        # 順序を評価してソート
-        $sortedOrderPop = $orderPop | Sort-Object { 
-            Get-RouteDistance $_ $clusterDistMatrix 
-        }
-    
+
+        $sortedOrderPop = $orderPop | Sort-Object { Get-RouteDistance $_ $clusterDistMatrix }
+
         $State.ClusterOrderPopulation = $sortedOrderPop
         $State.BestClusterOrder = $sortedOrderPop[0]
 
-        # -----------------------------------------------------------
-        # 初期状態の BestDist と BestRoute を確定させる
-        # -----------------------------------------------------------
-        
-        # (A) ルートの結合: クラスタ順序に従って配列を繋げる
-        #     先にルートを作ってしまいます。
+        # --- 初期ルート構築 ---
         $fullRoute = @()
         foreach ($cIdx in $State.BestClusterOrder) {
             $fullRoute += $State.ClusterData[$cIdx].BestRouteGlobal
         }
-        $State.BestRoute = $fullRoute
 
-        # (B) 距離の計算:
-        #     足し算による概算をやめ、結合後のルートに対して「真の距離」を測ります。
-        #     これでループ内の計算ロジックと完全に一致します。
-        $State.BestDist = Get-RouteDistance $State.BestRoute $State.GlobalDist
+        $initialDist = Get-RouteDistance $fullRoute $State.GlobalMatrix
 
-        # (B) ルートの結合: クラスタ順序に従って配列を繋げる
-        $fullRoute = @()
-        foreach ($cIdx in $State.BestClusterOrder) {
-            # ClusterData配列はID順なので、順序配列のIDでアクセスして結合
-            $fullRoute += $State.ClusterData[$cIdx].BestRouteGlobal
+        # ★ 外部公開用は Result に一本化
+        $State.Result = @{
+            Route    = $fullRoute
+            Distance = $initialDist
         }
-        $State.BestRoute = $fullRoute
 
-        # メタ情報設定
         $State.Generation = 0
         $State.UpdatedAt = (Get-Date).ToUniversalTime()
 
-        # ★初期化時間の記録
         $initEnd = $sw.ElapsedMilliseconds
         $State.Performance.InitTime = $initEnd - $initStart
-
-        Write-Host "    Initial Total Distance: $($State.BestDist)" -ForegroundColor Yellow
-        Write-Host "    Initialization Time   : $($State.Performance.InitTime) ms" -ForegroundColor Cyan
-        Write-Host "    Initial Best Order    : $($State.BestClusterOrder -join ' -> ')" -ForegroundColor Gray
     }
-        
-    # --- フェーズ: GA 実行 ---
+
+    # --- GA ループ ---
     while (-not $State.Stop) {
-        
-        # ★ループ内計測開始
+
         $t_start = $sw.ElapsedMilliseconds
 
-        # 1) クラスタ内 GA
+        # --- クラスタ内 GA ---
         $State.Phase = "ClusterGA"
         for ($ci = 0; $ci -lt $State.ClusterData.Count; $ci++) {
             $c = $State.ClusterData[$ci]
-    
-            # 次世代生成
+
             if ($c.Indices.count -gt 1) {
-                $c.Population = New-NextGeneration -Population $c.Population -Dist $c.SubDist
+                $c.Population = New-NextGeneration -Population $c.Population -DistanceMatrix $c.SubMatrix
             }
+
             $bestLocal = $c.Population[0]
             $c.BestRouteLocal = $bestLocal
             $c.BestRouteGlobal = $bestLocal | ForEach-Object { $c.Indices[$_] }
-                
-            # 距離測定
-            $c.BestDist = Get-RouteDistance $c.BestRouteGlobal $State.GlobalDist
+            $c.BestDist = Get-RouteDistance $c.BestRouteGlobal $State.GlobalMatrix
         }
         $t_clusterGA = $sw.ElapsedMilliseconds
-    
-        # 2) クラスタ間距離行列
+
+        # --- クラスタ間距離行列 ---
         $State.Phase = "OrderGA"
-        $clusterDist = New-ClusterDistanceMatrix $State.ClusterData $State.GlobalDist
-        
+        $clusterDistanceMatrix = New-ClusterDistanceMatrix $State.ClusterData $State.GlobalMatrix
         $t_matrix = $sw.ElapsedMilliseconds
 
-        # 3) クラスタ順序 GA
-        $State.ClusterOrderPopulation = New-NextGeneration -Population $State.ClusterOrderPopulation -Dist $clusterDist
-        
+        # --- クラスタ順序 GA ---
+        $State.ClusterOrderPopulation = New-NextGeneration -Population $State.ClusterOrderPopulation -Dist $clusterDistanceMatrix
         $t_orderGA = $sw.ElapsedMilliseconds
 
-        # 4) 全体ルート評価
+        # --- 全体ルート評価 ---
         $State.Phase = "Evaluate"
         $bestOrder = $State.ClusterOrderPopulation[0]
-    
+
         $finalRoute = @()
         foreach ($ci in $bestOrder) {
             $finalRoute += $State.ClusterData[$ci].BestRouteGlobal
         }
-    
-        $finalDist = Get-RouteDistance $finalRoute $State.GlobalDist
-    
-        # 5) State 更新
-        $State.Generation++
-        $State.BestRoute = $finalRoute
-        $State.BestDist = $finalDist
-        $State.UpdatedAt = (Get-Date).ToUniversalTime()
-        
-        $t_eval = $sw.ElapsedMilliseconds
 
-        # ★計測結果をStateに保存（差分計算）
+        $finalDistance = Get-RouteDistance $finalRoute $State.GlobalMatrix
+
+        # --- State 更新 ---
+        $State.Generation++
+        $State.UpdatedAt = (Get-Date).ToUniversalTime()
+
+        # ★ 外部公開用は Result に一本化
+        $State.Result = @{
+            Route    = $finalRoute
+            Distance = $finalDistance
+        }
+
+        # --- パフォーマンス計測 ---
+        $t_eval = $sw.ElapsedMilliseconds
         $State.Performance.ClusterGATime = $t_clusterGA - $t_start
         $State.Performance.MatrixCalcTime = $t_matrix - $t_clusterGA
         $State.Performance.OrderGATime = $t_orderGA - $t_matrix
         $State.Performance.EvalTime = $t_eval - $t_orderGA
         $State.Performance.TotalLoopTime = $t_eval - $t_start
 
-        # ★進捗と時間をコンソール表示（50世代ごと、または最終世代）
-        if ($State.Generation % 50 -eq 0 -or $State.Generation -eq $MaxGen) {
-            Write-Host "Gen: $($State.Generation) | Dist: $($State.BestDist.ToString('0.00')) | Time: $($State.Performance.TotalLoopTime)ms [Cluster:$($State.Performance.ClusterGATime) Order:$($State.Performance.OrderGATime)]" -ForegroundColor Gray
-        }
-
-        # ★変更点: 条件を削除し、毎世代表示するようにしました
-        Write-Host "Gen: $($State.Generation) | Dist: $($State.BestDist.ToString('0.00')) | Time: $($State.Performance.TotalLoopTime)ms" -ForegroundColor Gray
-      
-        # 6) 終了判定
         if ($State.Generation -ge $MaxGen) { break }
     }
-    
-    # --- フェーズ: 完了 ---
+
     $State.Phase = "Finished"
     $sw.Stop()
-    
+
     return $State
 }

@@ -34,6 +34,15 @@ class RunspaceHost {
         $this.PS = [PowerShell]::Create()
         $this.PS.Runspace = $this.Runspace
 
+        # --- State（主観的状態）初期化 ---
+        $this.State = [hashtable]::Synchronized(@{
+            Stop       = $false
+            Generation = 0
+            UpdatedAt  = $null
+            Input      = $null
+            Result     = @{}   # ★ ロジック側が自由に設定する
+        })
+
         $this.StartScript = $StartScript
     }
 
@@ -42,14 +51,8 @@ class RunspaceHost {
             return @{ status = "already running" }
         }
 
-        # --- State（主観的状態）初期化 ---
-        $this.State = [hashtable]::Synchronized(@{
-            Stop       = $false
-            Generation = 0
-            UpdatedAt  = $null
-            Input      = $data
-            Result     = @{}   # ★ ロジック側が自由に設定する
-        })
+        $this.State.Input = $data
+        $this.State.Stop  = $false
 
         $this.PS.Commands.Clear()
         $this.PS.AddScript($this.StartScript).

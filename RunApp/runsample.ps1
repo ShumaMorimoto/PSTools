@@ -12,8 +12,9 @@ $DummyLogic = {
         }
         $State.Generation = $i
         $State.UpdatedAt = Get-Date
-        $State.BestDist = 1000 - ($i * 10)
-        $State.BestRoute = @(0, 1, 2, 3)
+
+        $State.Result.BestDist = 1000 - ($i * 10)
+        $State.Result.BestRoute = @(0, 1, 2, 3)
 
         Write-Host "[DummyLogic] Generation $i"
         Start-Sleep -Milliseconds 300
@@ -21,35 +22,6 @@ $DummyLogic = {
     Write-Host "[DummyLogic] Finished"
 }
 
-$DummyRoutes = @{
-    Start   = {
-        param($data, $rh)
-        $rh.Start($data)
-    }
-    Stop    = {
-        param($data, $rh)
-        $rh.Stop()
-    }
-    Status  = {
-        param($data, $rh)
-        @{
-            Generation = $rh.State.Generation
-            UpdatedAt  = $rh.State.UpdatedAt
-            BestDist   = $rh.State.BestDist
-        }
-    }
-    GetBest = {
-        param($data, $rh)
-        $rh.State.BestRoute | ForEach-Object {
-            $rh.State.Places[$_]
-        }
-    }
-    Optimize    = {
-        
-        param($data, $rh)
-        Optimize-AreaRoute $data
-    }
-}
 
 $towns = [GPXDocumentFactory]::FromCItyTOwns("葉山町", $false)
 $pso = $towns.GetTrkPts() | ForEach-Object { [GPXDocument]::ElementToPSO($_) }
