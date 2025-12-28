@@ -132,35 +132,23 @@ export default class MarkerHandler {
   }
 
   // ---------------------------------------------------
-  // 削除（通常 / split 共通化）
+  // removeMarker
   // ---------------------------------------------------
   removeMarker(m, split = false) {
     const idx = this.markers.findIndex((e) => e.m === m);
     if (idx === -1) return;
 
-    // 1. 削除対象を先頭で決定（共通化）
     const toRemove = split
-      ? this.markers.slice(0, idx + 1) // 指定マーカー以前を削除
-      : this.markers.slice(idx, idx + 1); // 指定マーカーのみ削除
+      ? this.markers.slice(0, idx + 1)
+      : this.markers.slice(idx, idx + 1);
 
-    // 2. モデルから削除（point 参照ベース）
     toRemove.forEach((entry) => {
       this.gpxService.removeTrkpt(entry.point);
-    });
-
-    // 3. 地図から削除
-    toRemove.forEach((entry) => {
       this.selector.map.removeLayer(entry.m);
     });
 
-    // 4. markers 配列から削除
     this.markers = this.markers.filter((e) => !toRemove.includes(e));
-
-    // 5. 再描画
-    this.renumberMarkers();
-    this._updatePolyline();
-    this.selector.uiManager.updateListUI();
-    this.debugModel();
+    this.changeState(MarkerHandler.State.IDLE);
   }
 
   // ---------------------------------------------------

@@ -13,13 +13,14 @@ export default class MarkerHandler {
   constructor(selector) {
     this.selector = selector;
     this.gpxService = selector.gpxService;
-
     this.state = MarkerHandler.State.IDLE;
-
     this.markers = [];
     this.requestSeq = 0;
 
     this.polyline = L.polyline([], { color: "blue", weight: 3 });
+    this.REORDER_THRESHOLD = 30; // px距離で判定
+    this._draggedIndex = null;
+    this._currentReorderTarget = null;
   }
 
   // ---------------------------------------------------
@@ -66,16 +67,13 @@ export default class MarkerHandler {
   handleMarkerClick(e, marker) {
     const entry = this.markers.find((x) => x.m === marker);
     if (!entry) return;
-
     const isMulti = e.originalEvent.shiftKey || e.originalEvent.ctrlKey;
-
     if (isMulti) {
       entry.selected = !entry.selected;
     } else {
       this.markers.forEach((x) => (x.selected = false));
       entry.selected = true;
     }
-
     this.changeState(MarkerHandler.State.IDLE);
   }
 
@@ -86,17 +84,12 @@ export default class MarkerHandler {
   // ---------------------------------------------------
   addPoint(tp) {
     const marker = this._buildMarkerInstance(tp);
-
     this.markers.push({ m: marker, point: tp, selected: false });
-
     marker.addTo(this.selector.map);
-
     if (!tp.extensions && !tp.extended) {
       this.updateAddress(tp);
     }
-
     this._bindMarkerHandlers(marker);
-
     this.changeState(MarkerHandler.State.IDLE);
     return tp;
   }
@@ -108,7 +101,6 @@ export default class MarkerHandler {
       markerColor: "blue",
       shape: "circle",
     });
-
     const m = L.marker([tp.lat, tp.lon], {
       draggable: true,
       icon: icon,
@@ -117,71 +109,28 @@ export default class MarkerHandler {
     if (tp.name || tp.desc) {
       m.bindPopup(tp.name || tp.desc);
     }
-
     return m;
   }
 
   _bindMarkerHandlers(m) {
     m.on("click", (e) => this.selector.handleMarkerClick(e, m));
     m.on("contextmenu", () => this.removeMarker(m));
+    m.on("dragstart", (e) => this._onMarkerDragStart(e, m));
+    m.on("drag", (e) => this._onMarkerDrag(e, m));
     m.on("dragend", (e) => this._onMarkerDragEnd(e, m));
   }
-
-  // ---------------------------------------------------
-  // removeMarker
-  // ---------------------------------------------------
-  removeMarker(m, split = false) {
-    const idx = this.markers.findIndex((e) => e.m === m);
-    if (idx === -1) return;
-
-    const toRemove = split
-      ? this.markers.slice(0, idx + 1)
-      : this.markers.slice(idx, idx + 1);
-
-    toRemove.forEach((entry) => {
-      this.gpxService.removeTrkpt(entry.point);
-      this.selector.map.removeLayer(entry.m);
-    });
-
-    this.markers = this.markers.filter((e) => !toRemove.includes(e));
-
-    this.changeState(MarkerHandler.State.IDLE);
-  }
-
-  // ---------------------------------------------------
-  // dragEnd
-  // ---------------------------------------------------
-  _onMarkerDragEnd(e, m) {
-    const entry = this.markers.find((x) => x.m === m);
-    if (!entry) return;
-
-    const latlng = e.target.getLatLng();
-
-    entry.point.lat = latlng.lat;
-    entry.point.lon = latlng.lng;
-
-    m.setLatLng(latlng);
-
-    this.updateAddress(entry.point);
-    this.changeState(MarkerHandler.State.IDLE);
-  }
-
   // ---------------------------------------------------
   // clearMarkers
   // ---------------------------------------------------
   clearMarkers() {
     const pts = this.gpxService.getTrkpts();
     pts.length = 0;
-
     this.markers.forEach((entry) => {
       this.selector.map.removeLayer(entry.m);
     });
-
     this.markers = [];
-
     this.changeState(MarkerHandler.State.IDLE);
   }
-
   // ---------------------------------------------------
   // reFetchAllAddresses
   // ---------------------------------------------------
@@ -190,7 +139,6 @@ export default class MarkerHandler {
     pts.forEach((tp) => this.updateAddress(tp));
     //    this.changeState(MarkerHandler.State.IDLE);
   }
-
   // ---------------------------------------------------
   // renumberMarkers
   // ---------------------------------------------------
@@ -205,7 +153,6 @@ export default class MarkerHandler {
       entry.m.setIcon(icon);
     });
   }
-
   // ---------------------------------------------------
   // updateAddress
   // ---------------------------------------------------
@@ -263,6 +210,167 @@ export default class MarkerHandler {
     if (!this.selector.map.hasLayer(this.polyline)) {
       this.polyline.addTo(this.selector.map);
     }
+  }
+
+  // ---------------------------------------------------
+  // ★ dragstart
+  // ---------------------------------------------------
+  _onMarkerDragStart(e, m) {
+    const entry = this.markers.find((x) => x.m === m);
+    if (!entry) return;
+
+    this._draggedIndex = this.markers.indexOf(entry);
+    this._originalLatLng = m.getLatLng(); // Store original position
+  }
+
+  // ---------------------------------------------------
+  // ★ drag（現在位置で距離判定）
+  // ---------------------------------------------------
+  _onMarkerDrag(e, m) {
+    const nearest = this._findNearestMarker(m, e.latlng);
+
+    if (nearest && nearest.dist < this.REORDER_THRESHOLD) {
+      this._highlightReorderTarget(nearest.marker);
+      this.selector.map._container.style.cursor = "copy";
+    } else {
+      this._clearReorderTarget();
+      this.selector.map._container.style.cursor = "";
+    }
+  }
+
+  // ---------------------------------------------------
+  // ★ dragend（並び替え or 位置変更）
+  // ---------------------------------------------------
+  _onMarkerDragEnd(e, m) {
+    const entry = this.markers.find((x) => x.m === m);
+    if (!entry) return;
+
+    const finalPos = e.target.getLatLng();
+
+    const nearest = this._findNearestMarker(m, finalPos);
+    const draggedIndex = this._draggedIndex;
+
+    this.selector.map._container.style.cursor = "";
+    this._clearReorderTarget();
+    this._draggedIndex = null;
+
+    // 並び替え確定
+    if (nearest && nearest.dist < this.REORDER_THRESHOLD) {
+      const targetIndex = nearest.index;
+
+      if (targetIndex !== draggedIndex) {
+        const indices = this._buildReorderIndices(draggedIndex, targetIndex);
+        this._applyReorder(indices);
+        // 元の位置に戻す
+        m.setLatLng(this._originalLatLng);
+        this.changeState(MarkerHandler.State.IDLE);
+        return;
+      }
+    }
+
+    // 位置変更
+    entry.point.lat = finalPos.lat;
+    entry.point.lon = finalPos.lng;
+    m.setLatLng(finalPos);
+
+    this.updateAddress(entry.point);
+    this.changeState(MarkerHandler.State.IDLE);
+  }
+
+  // ---------------------------------------------------
+  // ★ 最近傍マーカー（現在位置で判定）
+  // ---------------------------------------------------
+  _findNearestMarker(marker, currentLatLng) {
+    const pos = this.selector.map.latLngToContainerPoint(currentLatLng);
+    let minDist = Infinity;
+    let nearest = null;
+
+    this.markers.forEach((entry, i) => {
+      if (entry.m === marker) return;
+
+      const p = this.selector.map.latLngToContainerPoint(entry.m.getLatLng());
+      const d = pos.distanceTo(p);
+
+      if (d < minDist) {
+        minDist = d;
+        nearest = { marker: entry.m, index: i, dist: d };
+      }
+    });
+
+    return nearest;
+  }
+
+  // ---------------------------------------------------
+  // ★ 並び替え index 生成
+  // ---------------------------------------------------
+  _buildReorderIndices(draggedIndex, targetIndex) {
+    const count = this.markers.length;
+    const indices = [...Array(count).keys()];
+
+    const dragged = indices.splice(draggedIndex, 1)[0];
+    indices.splice(targetIndex + 1, 0, dragged);
+
+    return indices;
+  }
+
+  // ---------------------------------------------------
+  // ★ 並び替え適用
+  // ---------------------------------------------------
+  _applyReorder(indices) {
+    const newMarkers = indices.map((i) => this.markers[i]);
+    this.markers.length = 0;
+    this.markers.push(...newMarkers);
+
+    // Update GPX points order
+    const pts = this.gpxService.getTrkpts();
+    const newPts = indices.map((i) => pts[i]);
+    pts.length = 0;
+    pts.push(...newPts);
+
+    this.renumberMarkers();
+    this._updatePolyline();
+  }
+  // ---------------------------------------------------
+  // ★ ハイライト
+  // ---------------------------------------------------
+  _highlightReorderTarget(marker) {
+    if (this._currentReorderTarget === marker) return;
+
+    this._clearReorderTarget();
+    this._currentReorderTarget = marker;
+
+    const el = marker._icon;
+    if (el) el.classList.add("reorder-target");
+  }
+
+  _clearReorderTarget() {
+    if (!this._currentReorderTarget) return;
+
+    const el = this._currentReorderTarget._icon;
+    if (el) el.classList.remove("reorder-target");
+
+    this._currentReorderTarget = null;
+  }
+  
+  // ---------------------------------------------------
+  // removeMarker
+  // ---------------------------------------------------
+  removeMarker(m, split = false) {
+    const idx = this.markers.findIndex((e) => e.m === m);
+    if (idx === -1) return;
+
+    const toRemove = split
+      ? this.markers.slice(0, idx + 1)
+      : this.markers.slice(idx, idx + 1);
+
+    toRemove.forEach((entry) => {
+      this.gpxService.removeTrkpt(entry.point);
+      this.selector.map.removeLayer(entry.m);
+    });
+
+    this.markers = this.markers.filter((e) => !toRemove.includes(e));
+
+    this.changeState(MarkerHandler.State.IDLE);
   }
 
   // ---------------------------------------------------

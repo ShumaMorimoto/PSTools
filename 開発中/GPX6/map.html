@@ -47,93 +47,93 @@
     />
 
     <style>
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        font-family: sans-serif;
-      }
+          html,
+          body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            font-family: sans-serif;
+          }
 
-      #controls {
-        padding: 8px;
-        background: #f0f0f0;
-        border-bottom: 1px solid #ccc;
-        display: flex;
-        gap: 10px;
-        height: 56px;
-        box-sizing: border-box;
-        align-items: center;
-        z-index: 1000;
-      }
+          #controls {
+            padding: 8px;
+            background: #f0f0f0;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            gap: 10px;
+            height: 56px;
+            box-sizing: border-box;
+            align-items: center;
+            z-index: 1000;
+          }
 
-      #map {
-        flex: 1;
-        width: 100%;
-        background-color: #ddd;
-        cursor: crosshair;
-      }
+          #map {
+            flex: 1;
+            width: 100%;
+            background-color: #ddd;
+            cursor: crosshair;
+          }
 
-      #pointList {
-        flex: 1;
-        padding: 5px;
-        height: 34px;
-      }
+          #pointList {
+            flex: 1;
+            padding: 5px;
+            height: 34px;
+          }
 
-      button,
-      label.btn {
-        box-sizing: border-box;
-        padding: 0 12px;
-        cursor: pointer;
-        border: none;
-        background: #007bff;
-        color: #fff;
-        border-radius: 4px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        height: 34px;
-        line-height: 34px;
-        font-size: 14px;
-        white-space: nowrap;
-      }
-      .center-handle-ui {
-        width: 20px;
-        height: 20px;
-        background: #00aaff;
-        border-radius: 50%;
-        border: 3px solid white;
-        box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
-      }
+          button,
+          label.btn {
+            box-sizing: border-box;
+            padding: 0 12px;
+            cursor: pointer;
+            border: none;
+            background: #007bff;
+            color: #fff;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            height: 34px;
+            line-height: 34px;
+            font-size: 14px;
+            white-space: nowrap;
+          }
+          .center-handle-ui {
+            width: 20px;
+            height: 20px;
+            background: #00aaff;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+          }
 
-      .radius-handle-ui {
-        width: 16px;
-        height: 16px;
-        background: #ff4444;
-        border-radius: 50%;
-        border: 2px solid white;
-        box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
-      }
-
-      button.active {
-        background-color: #007bff !important;
-        color: white !important;
-        border-color: #0056b3 !important;
-      }
-
-      button:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;クリア
-        background-color: #ccc !important;
-        color: #666 !important;
-      }
-
-      input[type="file"] {
-        display: none;
-      }
+          .radius-handle-ui {
+            width: 16px;
+            height: 16px;
+            background: #ff4444;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+          }
+          .reorder-target {
+            filter: drop-shadow(0 0 6px yellow);
+          }
+          button.active {
+            background-color: #007bff !important;
+            color: white !important;
+            border-color: #0056b3 !important;
+          }
+          button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background-color: #ccc !important;
+            color: #666 !important;
+          }
+          input[type="file"] {
+            display: none;
+          }
     </style>
   </head>
 
