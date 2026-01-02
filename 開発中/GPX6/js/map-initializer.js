@@ -17,14 +17,42 @@ export default class MapInitializer {
       maxZoom: 19,
     }).addTo(this.selector.map);
 
-
     // ✅ Geocoder
     if (L.Control && L.Control.geocoder) {
-      L.Control.geocoder({ defaultMarkGeocode: false })
+      L.Control.geocoder({
+        placeholder: "地名・住所を検索",
+        defaultMarkGeocode: false,
+        geocoder: L.Control.Geocoder.nominatim({
+          geocodingQueryParams: {
+            format: "json",
+            addressdetails: 1,
+            limit: 10,
+            countrycodes: "jp",
+          },
+        }),
+      })
         .on("markgeocode", (e) => {
-          this.selector.map.setView(e.geocode.center, 16);
+          const g = e.geocode;
+          const latlng = L.latLng(g.center.lat, g.center.lng);
+          const html = `
+    <b>${g.name}</b><br/>
+    緯度: ${latlng.lat.toFixed(6)}<br/>
+    経度: ${latlng.lng.toFixed(6)}<br/>
+    <small>${g.html}</small>
+  `;
+          L.popup()
+            .setLatLng(latlng)
+            .setContent(html)
+            .openOn(this.selector.map); // ← ✅ this.selector が正しく参照される
+          this.selector.map.setView(latlng, 16);
         })
         .addTo(this.selector.map);
+
+      //      L.Control.geocoder({ defaultMarkGeocode: false })
+      //        .on("markgeocode", (e) => {
+      //          this.selector.map.setView(e.geocode.center, 16);
+      //        })
+      //        .addTo(this.selector.map);
     }
 
     // ✅ Coordinate Control（Geocoder より先に追加）
@@ -57,7 +85,6 @@ export default class MapInitializer {
 
       L.control.coordinates({ position: "topright" }).addTo(this.selector.map);
     }
-
 
     // ✅ distortableCollection
     try {

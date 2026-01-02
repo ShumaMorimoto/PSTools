@@ -110,6 +110,13 @@
         $newDoc.AppendChild($root) | Out-Null
         return $newDoc.OuterXml
     }
+    # ----------------------------
+    # Model → JSON
+    # ----------------------------
+    [string] ToJson() {
+        if (-not $this.Model) { return "" }
+        return ConvertTo-Json -depth 10 $this.Model
+    }
 
     [void] Load([string] $path) {
         if (-not (Test-Path $path)) {
@@ -231,6 +238,23 @@
         }
         $this.Model.trk.trkseg.trkpt += $trkpt
     }
+    # ----------------------------
+    # Waypoint Operations
+    # ----------------------------
+    [object[]] GetWpts() {
+        return $this.Model.wpt
+    }
+
+    [void] SetWpts([object[]] $wpts) {
+        $this.Model.wpt = $wpts
+    }
+
+    [void] AppendWpt([hashtable] $wpt) {
+        if (-not $wpt.lat -or -not $wpt.lon) {
+            throw "lat and lon are required"
+        }
+        $this.Model.wpt += $wpt
+    }
 
     [void] RemoveTrkpt([hashtable] $pt) {
         $list = $this.Model.trk.trkseg.trkpt
@@ -243,9 +267,12 @@
     [hashtable] NormalizeModel([hashtable] $model) {
         if (-not $model) {
             return @{
-                version = "1.1"
-                creator = "MapSelector"
-                trk     = @{
+                version  = "1.1"
+                creator  = "MapSelector"
+                metadata = @{
+                    time = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+                }
+                trk      = @{
                     trkseg = @{
                         trkpt = @()
                     }
@@ -261,7 +288,113 @@
         if (-not ($model.trk.trkseg.trkpt -is [System.Collections.IEnumerable])) {
             $model.trk.trkseg.trkpt = @($model.trk.trkseg.trkpt)
         }
+
+        # 既存モデルに metadata が無い場合だけ time を補完
+        if (-not $model.ContainsKey("metadata")) {
+            $model.metadata = @{ time = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ") }
+        }
+        elseif (-not $model.metadata.ContainsKey("time")) {
+            $model.metadata.time = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+        }
         return $model
+    }
+
+    static [hashtable[]] NormalizeData($input) {
+        # 位置指定なら trkpt 1件のリストにする
+        if ($input -is [hashtable] -and $input.lat -and $input.lon) {
+            $pt = [GeoService]::ResolveAddress($input)
+            return @($pt)
+        }
+
+        # キーワード抽出
+        $keyword = ($input -is [hashtable]) ? $input.keyword : $input
+
+        # キーワード検索 → trkpt 候補
+        return [GeoService]::SearchPlace($keyword)
+    }
+    static [GPXService] Search($input) {
+        $gpx = [GPXService]::new()
+
+        # 1. keyword を metadata に保存
+        if ($input -is [string]) {
+            $gpx.Model.metadata.keywords = $input
+        }
+        elseif ($input.keyword) {
+            $gpx.Model.Metadata.keywords = $input.keyword
+        }
+
+        # 3. NormalizeData
+        $pts = [GPXService]::NormalizeData($input)
+        switch ($pts.Count) {
+            0 {}
+            1 {
+                $pt = $pts[0]
+                $gpx.Model.metadata.name = $pt.name
+                $gpx.Model.metadata.desc = $pt.desc
+                $gpx.Model.metadata.extensions = $pt.extensions
+                $gpx.SetTrkpts(@($pt))
+            }
+            default {
+                $gpx.SetWpts($pts)
+            }
+        }
+        return $gpx
+    }
+    static [GPXService] FromCityTowns($input) {
+        $gpx = [GPXService]::new()
+        if ($input -is [string]) {
+            $gpx.Model.metadata.keywords = $input
+        }
+        elseif ($input.keyword) {
+            $gpx.Model.metadata.keywords = $input.keyword
+        }
+
+        $pts = [GPXService]::NormalizeData($input)
+        switch ($pts.Count) {
+            0 {}
+            1 {
+                $pt = $pts[0]
+                $gpx.Model.metadata.name = $pt.name
+                $gpx.Model.metadata.desc = $pt.desc
+                $gpx.Model.metadata.extensions = $pt.extensions
+
+                $towns = [GeoService]::QueryTowns($pt)
+                $gpx.SetTrkpts($towns)
+            }
+            default {
+                $gpx.SetWpts($pts)
+            }
+        }
+        return $gpx
+    }
+    static [GPXService] FromAreaTowns($input) {
+        $gpx = [GPXService]::new()
+
+        if ($input -is [string]) {
+            $gpx.Model.metadata.keywords = $input
+        }
+        elseif ($input.keyword) {
+            $gpx.Model.metadata.keywords = $input.keyword
+        }
+
+        $pts = [GPXService]::NormalizeData($input)
+        switch ($pts.Count) {
+            0 { }
+            1 {
+                $pt = $pts[0]
+                $gpx.Model.metadata.name = $pt.name
+                $gpx.Model.metadata.desc = $pt.desc
+                $gpx.Model.metadata.extensions = $pt.extensions
+
+                $areas = [GeoService]::QueryArea($pt)
+                $gpx.SetTrkpts($areas)
+            }
+            default {
+                $gpx.SetWpts($pts)
+            }
+        }
+
+        return $gpx
     }
 }
 
@@ -359,3 +492,6 @@ else {
 
 Write-Host "`n=== GPXService Test End ===" -ForegroundColor Cyan
 
+$gpx1 = [GPXService]::Search("横須賀市")
+$gpx2 = [GPXService]::FromCityTowns("横須賀市")
+$gpx3 = [GPXService]::FromAreaTowns("松尾寺")

@@ -72,7 +72,7 @@ export default class MapSelector {
   // ---------------------------------------------------
   // 初期化
   // ---------------------------------------------------
-  async init() {
+  async init(initData) {
     this.mapInitializer.initMap();
     this.uiManager.initUIHandlers();
 
@@ -103,6 +103,11 @@ export default class MapSelector {
 
     // 初期 UI
     this.uiManager.updateModeButtons(this.currentMode);
+
+    // 初期データがあればモデルにロード
+    if (initData) {
+      this.handlers[MapSelector.Mode.DEFAULT].setModel(initData);
+    }
   }
 
   // ---------------------------------------------------
@@ -164,8 +169,8 @@ export default class MapSelector {
   // ===================================================
 
   // 1. addPoint
-  addPoint(tp) {
-    this.handlers[MapSelector.Mode.DEFAULT].addPoint(tp);
+  addPoint(p) {
+    this.handlers[MapSelector.Mode.DEFAULT].addPoint(p);
   }
 
   // 2. removeMarker

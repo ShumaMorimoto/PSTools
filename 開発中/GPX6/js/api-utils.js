@@ -58,7 +58,7 @@ export async function fetchBoundary(muniInfo) {
 // ----------------------------------------
 export async function fetchTowns(muniInfo) {
   const pref = muniInfo.prefecture;
-  const muni = muniInfo.name;
+  const muni = muniInfo.municipality;
   const url = `https://geolonia.github.io/japanese-addresses/api/ja/${pref}/${muni}.json`;
 
   try {

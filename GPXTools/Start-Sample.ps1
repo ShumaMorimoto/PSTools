@@ -1,8 +1,7 @@
-﻿using module D:\tool\Repository\PSTools\RouteOptimizer
-using module D:\tool\Repository\PSTools\GPXTools
+﻿using module D:\tool\Repository\PSTools\GPXTools
 
-$towns = [GPXDocumentFactory]::FromCItyTOwns("横須賀市", $false)
-$pso = $towns.GetTrkPts() | ForEach-Object { [GPXDocument]::ElementToPSO($_) }
+$towns = [GPXService]::FromCItyTOwns("横須賀市")
+$pso = $towns.GetTrkpts()
 
 $moduleRoot = (Get-Module GPXTools | Select-Object -First 1).ModuleBase
 

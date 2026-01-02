@@ -103,9 +103,10 @@ export default class UIManager {
         const newPts = tempService.getTrkpts();
 
         newPts.forEach((p) => {
-          const tp = this.selector.gpxService.appendTrkpt(p);
-          this.selector.addPoint(tp);
+          this.selector.addPoint(p);
         });
+
+        this.selector.zoomToMarkerByIndex(newPts.length-1)
 
         e.target.value = "";
       };

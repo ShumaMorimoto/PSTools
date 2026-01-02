@@ -56,8 +56,35 @@
         if (stopPolling) stopPolling();
       }
 
+      // -----------------------------
+      // ★ TSPSolver（ポーリングなし）
+      // -----------------------------
+      async function onTsp() {
+        const input = document.getElementById("input").value;
+        let data = null;
+
+        try {
+          data = JSON.parse(input);
+        } catch {
+          alert("JSON が不正です");
+          return;
+        }
+
+        // ★ TSPResolver を実行
+        const res = await callApi("TSPSolver", data);
+        console.log("TSPSolver:", res);
+
+        // ★ 結果をそのまま表示
+        document.getElementById("status").textContent = JSON.stringify(
+          res,
+          null,
+          2
+        );
+      }
+
       window.onStart = onStart;
       window.onStop = onStop;
+      window.onTsp = onTsp;
 
       // --- ブラウザ終了時に /shutdown を確実に送る ---
       window.addEventListener("beforeunload", () => {
@@ -89,8 +116,9 @@
 
     <button onclick="onStart()">Start</button>
     <button onclick="onStop()">Stop</button>
+    <button onclick="onTsp()">TSP Solver</button> <!-- ★ 追加 -->
 
-    <h2>Status</h2>
+    <h2>Status / Result</h2>
     <pre id="status">{}</pre>
   </body>
 </html>

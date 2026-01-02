@@ -10,7 +10,7 @@
     VariablesToExport = @()
     AliasesToExport   = @()
 
-    RequiredAssemblies = @({{RequiredAssemblies}})
+    RequiredAssemblies = @()
 
     PrivateData = @{
         PSData = @{

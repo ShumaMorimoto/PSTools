@@ -149,9 +149,7 @@ export default class TownHandler {
           country_code: "jp",
         },
       };
-
-      const added = this.selector.gpxService.appendTrkpt(trkpt);
-      this.selector.addPoint(added);
+      this.selector.addPoint(trkpt);
     });
 
     console.log(`✅ GPX + Marker 登録完了: ${this.previewTowns.length} 件`);

@@ -3,8 +3,8 @@ function Cluster-Mesh {
         [Parameter(Mandatory)]
         [array]$Places,
 
-        [double]$MeshKm = 5.0,      # メッシュ幅（km）
-        [int]$MaxGroupSize = 50     # クラスタ上限
+        [double]$MeshKm = 10.0,      # メッシュ幅（km）
+        [int]$MaxGroupSize = 100     # クラスタ上限
     )
 
     # --- 度数換算（km → 緯度経度の度） ---

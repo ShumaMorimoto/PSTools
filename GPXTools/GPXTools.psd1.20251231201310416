@@ -1,0 +1,28 @@
+@{
+    RootModule        = 'GPXTools.psm1'
+    ModuleVersion     = '1.0.6'
+    GUID              = '7449eb72-43ab-4e96-9e04-346e379d3e2e'
+    Author            = ''
+    Description       = ''
+
+    FunctionsToExport = @(@(
+    'Run-GASimulation',
+    'Run-TSPSolver',
+    'Start-Optimizer',
+    'Test-GASimulation'
+))
+    CmdletsToExport   = @()
+    VariablesToExport = @()
+    AliasesToExport   = @()
+
+    RequiredAssemblies = @('abseil_dll.dll', 'bz2.dll', 'google-ortools-native.dll', 'Google.OrTools.dll', 'Google.Protobuf.dll', 'highs.dll', 'libprotobuf.dll', 'libscip.dll', 'libutf8_validity.dll', 'ortools.dll', 're2.dll', 'TspSolverLib.dll', 'zlib1.dll')
+
+    PrivateData = @{
+        PSData = @{
+            Tags         = @('Automation', 'Generated')
+            LicenseUri   = ''
+            ProjectUri   = ''
+            ReleaseNotes = ''
+        }
+    }
+}

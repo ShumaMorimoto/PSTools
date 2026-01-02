@@ -1,6 +1,8 @@
 // marker-handler.js
 import { fetchAddressAsync } from "./api-utils.js";
 
+import MarkerCore from "./marker/marker-core.js";
+
 export default class MarkerHandler {
   static State = {
     IDLE: "idle",
@@ -14,7 +16,9 @@ export default class MarkerHandler {
     this.selector = selector;
     this.gpxService = selector.gpxService;
     this.state = MarkerHandler.State.IDLE;
-    this.markers = [];
+    this.core = new MarkerCore(selector, this.gpxService);
+
+    //    this.markers = [];
     this.requestSeq = 0;
 
     this.polyline = L.polyline([], { color: "blue", weight: 3 });
@@ -31,13 +35,17 @@ export default class MarkerHandler {
     pts.forEach((tp) => this.addPoint(tp));
   }
 
+  setModel(initData) {
+    this.core.setModel(initData);
+  }
+
   // ---------------------------------------------------
   // 状態遷移
   // ---------------------------------------------------
   changeState(newState) {
     this.state = newState;
 
-    this.renumberMarkers();
+    this.core.renumberMarkers();
     this._updatePolyline();
     this.debugModel();
 
@@ -55,9 +63,7 @@ export default class MarkerHandler {
     const lat = e.latlng.lat;
     const lng = e.latlng.lng;
 
-    const tp = this.gpxService.appendTrkpt({ lat, lon: lng, muitiRoute: "1" });
-    this.addPoint(tp);
-
+    this.addPoint({ lat, lon: lng, muitiRoute: "1" });
     this.changeState(MarkerHandler.State.IDLE);
   }
 
@@ -65,13 +71,13 @@ export default class MarkerHandler {
   // markerClick
   // ---------------------------------------------------
   handleMarkerClick(e, marker) {
-    const entry = this.markers.find((x) => x.m === marker);
+    const entry = this.core.markers.find((x) => x.m === marker);
     if (!entry) return;
     const isMulti = e.originalEvent.shiftKey || e.originalEvent.ctrlKey;
     if (isMulti) {
       entry.selected = !entry.selected;
     } else {
-      this.markers.forEach((x) => (x.selected = false));
+      this.core.markers.forEach((x) => (x.selected = false));
       entry.selected = true;
     }
     this.changeState(MarkerHandler.State.IDLE);
@@ -82,34 +88,13 @@ export default class MarkerHandler {
   // ---------------------------------------------------
   // addPoint
   // ---------------------------------------------------
-  addPoint(tp) {
-    const marker = this._buildMarkerInstance(tp);
-    this.markers.push({ m: marker, point: tp, selected: false });
-    marker.addTo(this.selector.map);
-    if (!tp.extensions && !tp.extended) {
-      this.updateAddress(tp);
+  addPoint(p) {
+    const marker = this.core.addPoint(p);
+    if (!p.extensions && !p.extended) {
+      this.updateAddress(p);
     }
     this._bindMarkerHandlers(marker);
-    this.changeState(MarkerHandler.State.IDLE);
-    return tp;
-  }
-
-  _buildMarkerInstance(tp) {
-    const icon = L.ExtraMarkers.icon({
-      icon: "fa-number",
-      number: 0,
-      markerColor: "blue",
-      shape: "circle",
-    });
-    const m = L.marker([tp.lat, tp.lon], {
-      draggable: true,
-      icon: icon,
-    });
-
-    if (tp.name || tp.desc) {
-      m.bindPopup(tp.name || tp.desc);
-    }
-    return m;
+    this._updatePolyline();
   }
 
   _bindMarkerHandlers(m) {
@@ -119,18 +104,16 @@ export default class MarkerHandler {
     m.on("drag", (e) => this._onMarkerDrag(e, m));
     m.on("dragend", (e) => this._onMarkerDragEnd(e, m));
   }
+
   // ---------------------------------------------------
   // clearMarkers
   // ---------------------------------------------------
   clearMarkers() {
-    const pts = this.gpxService.getTrkpts();
-    pts.length = 0;
-    this.markers.forEach((entry) => {
-      this.selector.map.removeLayer(entry.m);
-    });
-    this.markers = [];
+    this.core.clearMarkers();
+    this._updatePolyline();
     this.changeState(MarkerHandler.State.IDLE);
   }
+
   // ---------------------------------------------------
   // reFetchAllAddresses
   // ---------------------------------------------------
@@ -139,25 +122,12 @@ export default class MarkerHandler {
     pts.forEach((tp) => this.updateAddress(tp));
     //    this.changeState(MarkerHandler.State.IDLE);
   }
-  // ---------------------------------------------------
-  // renumberMarkers
-  // ---------------------------------------------------
-  renumberMarkers() {
-    this.markers.forEach((entry, i) => {
-      const icon = L.ExtraMarkers.icon({
-        icon: "fa-number",
-        number: i + 1,
-        markerColor: entry.selected ? "red" : "blue",
-        shape: "circle",
-      });
-      entry.m.setIcon(icon);
-    });
-  }
+
   // ---------------------------------------------------
   // updateAddress
   // ---------------------------------------------------
   updateAddress(point) {
-    const entry = this.markers.find((e) => e.point === point);
+    const entry = this.core.markers.find((e) => e.point === point);
     if (!entry) return;
 
     const seq = ++this.requestSeq;
@@ -171,7 +141,7 @@ export default class MarkerHandler {
   applyAddress(point, address, seq) {
     if (point._reqSeq !== seq) return;
 
-    const entry = this.markers.find((e) => e.point === point);
+    const entry = this.core.markers.find((e) => e.point === point);
     if (!entry) return;
 
     const marker = entry.m;
@@ -191,9 +161,7 @@ export default class MarkerHandler {
   // ★ Zoom ロジック（idx → marker → zoom）
   // ---------------------------------------------------
   zoomToMarkerByIndex(idx) {
-    const entry = this.markers[idx];
-    if (!entry) return;
-    this.zoomToMarker(entry.m);
+    this.zoomToMarker(this.core.getMarker(idx));
   }
 
   zoomToMarker(marker) {
@@ -204,7 +172,7 @@ export default class MarkerHandler {
   // polyline
   // ---------------------------------------------------
   _updatePolyline() {
-    const latlngs = this.markers.map((entry) => entry.m.getLatLng());
+    const latlngs = this.core.markers.map((entry) => entry.m.getLatLng());
     this.polyline.setLatLngs(latlngs);
 
     if (!this.selector.map.hasLayer(this.polyline)) {
@@ -215,17 +183,7 @@ export default class MarkerHandler {
   // ---------------------------------------------------
   // ★ dragstart
   // ---------------------------------------------------
-  _onMarkerDragStart(e, m) {
-    const entry = this.markers.find((x) => x.m === m);
-    if (!entry) return;
-
-    this._draggedIndex = this.markers.indexOf(entry);
-    this._originalLatLng = m.getLatLng(); // Store original position
-  }
-
-  // ---------------------------------------------------
-  // ★ drag（現在位置で距離判定）
-  // ---------------------------------------------------
+  _onMarkerDragStart(e, m) {}
   _onMarkerDrag(e, m) {
     const nearest = this._findNearestMarker(m, e.latlng);
 
@@ -237,44 +195,29 @@ export default class MarkerHandler {
       this.selector.map._container.style.cursor = "";
     }
   }
-
-  // ---------------------------------------------------
-  // ★ dragend（並び替え or 位置変更）
-  // ---------------------------------------------------
   _onMarkerDragEnd(e, m) {
-    const entry = this.markers.find((x) => x.m === m);
-    if (!entry) return;
-
-    const finalPos = e.target.getLatLng();
-
+    const entry = this.core.markers.find((x) => x.m === m);
+    const point = entry.point;
+    const finalPos = m.getLatLng();
     const nearest = this._findNearestMarker(m, finalPos);
-    const draggedIndex = this._draggedIndex;
 
-    this.selector.map._container.style.cursor = "";
     this._clearReorderTarget();
-    this._draggedIndex = null;
 
-    // 並び替え確定
+    // 並び替え
     if (nearest && nearest.dist < this.REORDER_THRESHOLD) {
-      const targetIndex = nearest.index;
-
-      if (targetIndex !== draggedIndex) {
-        const indices = this._buildReorderIndices(draggedIndex, targetIndex);
-        this._applyReorder(indices);
-        // 元の位置に戻す
-        m.setLatLng(this._originalLatLng);
-        this.changeState(MarkerHandler.State.IDLE);
-        return;
-      }
+      this.core.jumpMarker(m, nearest.marker);
+      m.setLatLng([point.lat, point.lon]); // UI を元に戻す
+      this._updatePolyline();
+      return;
     }
 
     // 位置変更
-    entry.point.lat = finalPos.lat;
-    entry.point.lon = finalPos.lng;
+    point.lat = finalPos.lat;
+    point.lon = finalPos.lng;
     m.setLatLng(finalPos);
 
-    this.updateAddress(entry.point);
-    this.changeState(MarkerHandler.State.IDLE);
+    this._updatePolyline();
+    this.updateAddress(point);
   }
 
   // ---------------------------------------------------
@@ -285,7 +228,7 @@ export default class MarkerHandler {
     let minDist = Infinity;
     let nearest = null;
 
-    this.markers.forEach((entry, i) => {
+    this.core.markers.forEach((entry) => {
       if (entry.m === marker) return;
 
       const p = this.selector.map.latLngToContainerPoint(entry.m.getLatLng());
@@ -293,43 +236,12 @@ export default class MarkerHandler {
 
       if (d < minDist) {
         minDist = d;
-        nearest = { marker: entry.m, index: i, dist: d };
+        nearest = { marker: entry.m, dist: d };
       }
     });
-
     return nearest;
   }
 
-  // ---------------------------------------------------
-  // ★ 並び替え index 生成
-  // ---------------------------------------------------
-  _buildReorderIndices(draggedIndex, targetIndex) {
-    const count = this.markers.length;
-    const indices = [...Array(count).keys()];
-
-    const dragged = indices.splice(draggedIndex, 1)[0];
-    indices.splice(targetIndex + 1, 0, dragged);
-
-    return indices;
-  }
-
-  // ---------------------------------------------------
-  // ★ 並び替え適用
-  // ---------------------------------------------------
-  _applyReorder(indices) {
-    const newMarkers = indices.map((i) => this.markers[i]);
-    this.markers.length = 0;
-    this.markers.push(...newMarkers);
-
-    // Update GPX points order
-    const pts = this.gpxService.getTrkpts();
-    const newPts = indices.map((i) => pts[i]);
-    pts.length = 0;
-    pts.push(...newPts);
-
-    this.renumberMarkers();
-    this._updatePolyline();
-  }
   // ---------------------------------------------------
   // ★ ハイライト
   // ---------------------------------------------------
@@ -351,25 +263,13 @@ export default class MarkerHandler {
 
     this._currentReorderTarget = null;
   }
-  
+
   // ---------------------------------------------------
   // removeMarker
   // ---------------------------------------------------
   removeMarker(m, split = false) {
-    const idx = this.markers.findIndex((e) => e.m === m);
-    if (idx === -1) return;
-
-    const toRemove = split
-      ? this.markers.slice(0, idx + 1)
-      : this.markers.slice(idx, idx + 1);
-
-    toRemove.forEach((entry) => {
-      this.gpxService.removeTrkpt(entry.point);
-      this.selector.map.removeLayer(entry.m);
-    });
-
-    this.markers = this.markers.filter((e) => !toRemove.includes(e));
-
+    this.core.removeMarker(m, split);
+    this._updatePolyline();
     this.changeState(MarkerHandler.State.IDLE);
   }
 
@@ -379,55 +279,31 @@ export default class MarkerHandler {
 
   // 1. スナップショットを取る
   beginReorderSession() {
-    this._snapshotMarkers = [...this.markers]; // markers の順序スナップショット
-    this._latestIndices = null; // 最新 index を保持する領域
+    this.core.snapshotMarkers();
     return this.gpxService.getTrkpts(); // モデルを返す（保持はしない）
   }
 
   // 2. Index を渡して markers を並び替える（Preview）
   applyReorder(indices) {
-    if (!this._snapshotMarkers) return;
-
-    this._latestIndices = indices; // 最新 index を保持
-    this.markers = indices.map((i) => this._snapshotMarkers[i]);
-
-    this.renumberMarkers();
+    this.core.previewReorder(indices);
     this._updatePolyline();
-    this.selector.updateList();
   }
 
   // 3. 直近の Index を取得する
   getLatestReorderIndices() {
-    return this._latestIndices;
+    return this.core._latestIndices;
   }
 
   // 4. 確定（モデルに Index を適用）
   confirmReorder(indices) {
-    const trkpts = this.gpxService.getTrkpts();
-    const newTrkpts = indices.map((i) => trkpts[i]);
-    this.gpxService.setTrkpts(newTrkpts);
-
-    // markers は Preview の並びがそのまま正しい
-    this._snapshotMarkers = null;
-    this._latestIndices = null;
-
-    this.renumberMarkers();
+    this.core.reorderMarkers(indices);
     this._updatePolyline();
-    this.selector.updateList();
   }
 
   // 5. キャンセル（スナップショットに戻す）
   cancelReorder() {
-    if (!this._snapshotMarkers) return;
-
-    this.markers = [...this._snapshotMarkers];
-
-    this._snapshotMarkers = null;
-    this._latestIndices = null;
-
-    this.renumberMarkers();
+    this.core.cancelReorder();
     this._updatePolyline();
-    this.selector.updateList();
   }
 
   debugModel() {

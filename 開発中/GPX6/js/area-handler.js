@@ -180,8 +180,7 @@ export default class AreaHandler {
         lon: t.lng,
         name: t.name,
       };
-      const added = this.selector.gpxService.appendTrkpt(trkpt);
-      this.selector.addPoint(added);
+      this.selector.addPoint(trkpt);
     });
 
     // 完了後は領域破棄

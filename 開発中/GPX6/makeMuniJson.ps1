@@ -72,7 +72,7 @@ foreach ($m in $municipalities) {
     $final += @{
         muniCd5    = $muniCd5
         muniCd6    = $muniCd6
-        name       = $m.name
+        municipality = $m.name
         prefecture = $prefMap[$prefCode]
         prefecture_code = $prefCode
     }

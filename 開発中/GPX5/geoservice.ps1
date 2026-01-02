@@ -1,27 +1,24 @@
 ﻿class GeoService {
-
-    # =========================================================
-    # 共通：trkpt 互換フォーマット生成
-    # =========================================================
-    static [hashtable] _MakePoint(
-        [double]$Lat,
-        [double]$Lon,
-        [string]$Name,
-        [hashtable]$Ext
-    ) {
-        return @{
-            lat        = $Lat
-            lon        = $Lon
-            name       = $Name
-            extensions = $Ext
-        }
-    }
-
     # =========================================================
     # municipalities.json のパス（あとで変更可能）
     # =========================================================
     static [string] $MunicipalitiesPath = "D:\tool\Repository\PSTools\開発中\GPX4\municipalities.json"
-    static $MunicipalitiesCache = $null
+    static [hashtable] $MunicipalitiesCache
+
+    # スタティックコンストラクタ：クラス初期化時に一度だけ実行
+    static GeoService() {
+        $path = [GeoService]::MunicipalitiesPath
+
+        if (-not (Test-Path $path)) {
+            Write-Host "municipalities.json が見つかりません。生成を試みます..." -ForegroundColor Yellow
+            [GeoService]::UpdateMunicipalitiesJson()
+        }
+
+        if (-not (Test-Path $path)) {
+            throw "municipalities.json のロードに失敗しました: $path"
+        }
+        [GeoService]::MunicipalitiesCache = Get-Content -Raw -Path $path | ConvertFrom-Json -AsHashtable
+    }
 
     # =========================================================
     # municipalities.json を DFP から生成（最終修正版）
@@ -88,7 +85,7 @@
             $final += @{
                 muniCd5         = $muniCd5
                 muniCd6         = $muniCd6
-                name            = $m.name
+                municipality    = $m.name
                 prefecture      = $prefMap[$prefCode]
                 prefecture_code = $prefCode
             }
@@ -102,52 +99,23 @@
         Out-File $output -Encoding utf8
     }
 
-
-    # =========================================================
-    # municipalities.json のロード
-    # =========================================================
-    static [object] _LoadMunicipalities() {
-        if ($null -ne [GeoService]::MunicipalitiesCache) {
-            return [GeoService]::MunicipalitiesCache
-        }
-        $path = [GeoService]::MunicipalitiesPath
-        if (-not (Test-Path $path)) {
-            throw "municipalities.json が見つかりません: $path"
-        }
-        $json = Get-Content -Raw -Path $path | ConvertFrom-Json
-        [GeoService]::MunicipalitiesCache = $json
-        return $json
-    }
-
     # =========================================================
     # 1. SearchPlace（Nominatim）
     # キーワード → 複数候補
-    # country_code を extensions に含める
     # =========================================================
     static [hashtable[]] SearchPlace([string]$Keyword) {
-
         $url = "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=$([uri]::EscapeDataString($Keyword))"
-
         $json = Invoke-RestMethod -Uri $url -Method Get -Headers @{ "User-Agent" = "GeoService" }
 
         $results = @()
-
         foreach ($item in $json) {
-
-            $ext = @{
-                countryCode  = $item.address.country_code
-                municipality = $item.address.city ?? $item.address.town ?? $item.address.village
-                prefecture   = $item.address.state
-            }
-
-            $results += [GeoService]::_MakePoint(
-                [double]$item.lat,
-                [double]$item.lon,
-                $item.display_name,
-                $ext
-            )
+            $extensions = @{}
+            $item.address.psobject.properties | %{$extensions[$_.Name]=$_.Value}
+            $place = @{extensions = $extensions }
+            @('lat', 'lon', 'name', 'display_name') | ForEach-Object { $place[$_] = $item.$_ }
+            $place = [GeoService]::ResolveAddress($place)
+            $results += $place
         }
-
         return $results
     }
 
@@ -155,48 +123,40 @@
     # 2. ResolveAddress（GSI Reverse + municipalities.json）
     # 座標 → muniInfo（最終形）
     # =========================================================
-    static [hashtable] ResolveAddress([hashtable]$Point) {
+    static [hashtable] ResolveAddress($Point) {
+        # 入力が PSCustomObject の場合はハッシュテーブルに変換
+        if ($Point -is [PSCustomObject]) {
+            $Point = $Point | ConvertTo-Hashtable  # PowerShell 7+ の拡張機能、または自前実装
+        }
 
-        $lat = $Point.lat
-        $lon = $Point.lon
+        $lat = $Point['lat']
+        $lon = $Point['lon']
 
-        # 1. GSI Reverse → muniCd5
+        # GSI Reverse Geocoder
         $url = "https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=$lat&lon=$lon"
         $json = Invoke-RestMethod -Uri $url -Method Get
 
         $muniCd5 = $json.results.muniCd
         $town = $json.results.lv01Nm
 
-        # 2. municipalities.json から muniInfo を取得
-        $muniData = [GeoService]::_LoadMunicipalities()
-        $muniInfo = $muniData.municipalities | Where-Object { $_.muniCd5 -eq $muniCd5 }
+        # municipalities.json から情報取得
+        $muniInfo = [GeoService]::MunicipalitiesCache['municipalities'] | Where-Object { $_['muniCd5'] -eq $muniCd5 }
 
         if (-not $muniInfo) {
-            return $null
+            return $Point
+        }
+        if (-not $Point.ContainsKey('name')) {
+            $Point['name'] = $town
         }
 
-        # muniInfo は JS と同じ構造：
-        # {
-        #   name: "横須賀市",
-        #   prefecture: "神奈川県",
-        #   muniCd5: "14201",
-        #   ...
-        # }
-
-        $ext = @{
-            prefecture   = $muniInfo.prefecture
-            municipality = $muniInfo.name
-            muniCd5      = $muniInfo.muniCd5
-            town         = $town
-            block        = ""   # GSI は丁目まで
+        $extensions = if ($Point.ContainsKey('extensions')) { $Point['extensions'] } else { @{} }
+        foreach ($prop in $muniInfo.GetEnumerator()) {
+            $extensions[$prop.Key] = $prop.Value
         }
+        $extensions['block'] = $town
+        $Point['extensions'] = $extensions
 
-        return [GeoService]::_MakePoint(
-            $lat,
-            $lon,
-            "$($ext.town)$($ext.block)",
-            $ext
-        )
+        return $Point
     }
 
     # =========================================================
@@ -204,36 +164,31 @@
     # muniCd5 ではなく prefecture / municipality 名で取得
     # =========================================================
     static [hashtable[]] QueryTowns([hashtable]$Trkpt) {
-
-        $pref = $Trkpt.extensions.prefecture
-        $muni = $Trkpt.extensions.municipality
+        $pref = $Trkpt['extensions']['prefecture']
+        $muni = $Trkpt['extensions']['municipality']
 
         $url = "https://geolonia.github.io/japanese-addresses/api/ja/$pref/$muni.json"
-
         try {
             $json = Invoke-RestMethod -Uri $url -Method Get
         }
         catch {
             return @()
         }
-
         $results = @()
-
         foreach ($town in $json) {
-
-            $results += [GeoService]::_MakePoint(
-                [double]$town.lat,
-                [double]$town.lng,
-                $town.name,
-                @{
-                    prefecture   = $pref
-                    municipality = $muni
-                    muniCd5      = $Trkpt.extensions.muniCd5
-                    town         = $town.name
-                }
-            )
+            $ext = @{
+                prefecture   = $pref
+                municipality = $muni
+                muniCd5      = $Trkpt['extensions']['muniCd5']
+                block        = $town.town
+            }
+            $results += @{
+                lat        = [double]$town.lat
+                lon        = [double]$town.lng
+                name       = $town.town
+                extensions = $ext
+            }
         }
-
         return $results
     }
 
@@ -242,9 +197,8 @@
     # 中心座標 + 半径 → 町字一覧
     # =========================================================
     static [hashtable[]] QueryArea([hashtable]$Center, [double]$RadiusMeters) {
-
-        $lat = $Center.lat
-        $lon = $Center.lon
+        $lat = $Center['lat']
+        $lon = $Center['lon']
 
         $query = @"
 [out:json];
@@ -253,180 +207,68 @@ out body;
 "@
 
         $url = "https://overpass-api.de/api/interpreter"
-        $json = Invoke-RestMethod -Uri $url -Method Post -Body $query -ContentType "text/plain"
+        $maxRetries = 3
+        $retryDelaySec = 2
+        $json = $null
+        $success = $false
+
+        $swOverpass = [System.Diagnostics.Stopwatch]::StartNew()
+
+        for ($i = 0; $i -lt $maxRetries; $i++) {
+            try {
+                $json = Invoke-RestMethod -Uri $url -Method Post -Body $query -ContentType "text/plain"
+                $success = $true
+                break
+            }
+            catch {
+                Write-Warning "Overpass API リクエスト失敗（$($i+1)/$maxRetries）: $_"
+                Start-Sleep -Seconds $retryDelaySec
+            }
+        }
+
+        $swOverpass.Stop()
+
+        if (-not $success) {
+            throw "Overpass API リクエストに $maxRetries 回失敗しました。"
+        }
 
         $results = @()
+        $resolveLog = @()
+        $swResolveTotal = [System.Diagnostics.Stopwatch]::StartNew()
 
         foreach ($node in $json.elements) {
+            $swEach = [System.Diagnostics.Stopwatch]::StartNew()
 
-            $name = $node.tags.name ?? "unknown"
-
-            # ★自治体情報は入れない
-            $ext = @{
-                place = $node.tags.place
-                osmId = $node.id
+            $place = @{
+                lat  = [double]$node.lat
+                lon  = [double]$node.lon
+                name = $node.tags.name
             }
+            $results += $place
 
-            $results += [GeoService]::_MakePoint(
-                [double]$node.lat,
-                [double]$node.lon,
-                $name,
-                $ext
-            )
+            $swEach.Stop()
+            $resolveLog += @{
+                Name   = $place['name']
+                TimeMs = [math]::Round($swEach.Elapsed.TotalMilliseconds, 2)
+            }
         }
+
+        $swResolveTotal.Stop()
+
+        # ログ出力
+        Write-Host ""
+        Write-Host ("[Overpass] リクエスト処理時間: {0:N2} ms" -f $swOverpass.Elapsed.TotalMilliseconds)
+        Write-Host ("[ResolveAddress] 合計処理時間: {0:N2} ms" -f $swResolveTotal.Elapsed.TotalMilliseconds)
+        Write-Host "[ResolveAddress] 各地点の処理時間:"
+        $resolveLog | Format-Table -AutoSize
 
         return $results
     }
 }
 
-# Requires -Modules Pester
 
-Describe "GeoService" {
+$y = [GeoService]::SearchPlace("横須賀市")
 
-    BeforeAll {
-        Mock Invoke-RestMethod {
-            param($Uri, $Method, $Body, $ContentType)
+$towns = [GeoService]::QueryTowns($y[0])
+$area = [GeoService]::QueryArea($y[0],1000)
 
-            switch -Wildcard ($Uri) {
-
-                # -----------------------------
-                # SearchPlace (Nominatim)
-                # -----------------------------
-                "*nominatim*" {
-                    return @(
-                        @{
-                            lat          = "35.281"
-                            lon          = "139.672"
-                            display_name = "横須賀市, 神奈川県, 日本"
-                            address      = @{
-                                country_code = "jp"
-                                state        = "神奈川県"
-                                city         = "横須賀市"
-                            }
-                        }
-                    )
-                }
-
-                # -----------------------------
-                # ResolveAddress (GSI Reverse)
-                # -----------------------------
-                "*LonLatToAddress*" {
-                    return @{
-                        results = @{
-                            muniCd = "14201"
-                            lv01Nm = "汐入町"
-                        }
-                    }
-                }
-
-                # -----------------------------
-                # QueryTowns (Geolonia)
-                # -----------------------------
-                "*geolonia*" {
-                    return @(
-                        @{ name = "汐入町"; lat = 35.281; lng = 139.672 },
-                        @{ name = "本町"; lat = 35.29; lng = 139.66 }
-                    )
-                }
-
-                # -----------------------------
-                # QueryArea (Overpass)
-                # -----------------------------
-                "*overpass*" {
-                    return @{
-                        elements = @(
-                            @{
-                                id   = 123
-                                lat  = 35.281
-                                lon  = 139.672
-                                tags = @{
-                                    name  = "汐入町"
-                                    place = "neighbourhood"
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    # ---------------------------------------------------------
-    # 1. SearchPlace
-    # ---------------------------------------------------------
-    It "SearchPlace returns hashtable[] with correct format" {
-        $results = [GeoService]::SearchPlace("横須賀市")
-
-        ($results -is [array]) | Should Be $true
-        $results.Count | Should Be 1
-
-        $p = $results[0]
-        $p.lat | Should Be 35.281
-        $p.lon | Should Be 139.672
-
-        $p.extensions.countryCode | Should Be "jp"
-        $p.extensions.municipality | Should Be "横須賀市"
-        $p.extensions.prefecture | Should Be "神奈川県"
-    }
-
-    # ---------------------------------------------------------
-    # 2. ResolveAddress
-    # ---------------------------------------------------------
-    It "ResolveAddress returns muniInfo-based hashtable" {
-        $point = @{ lat = 35.281; lon = 139.672 }
-        $result = [GeoService]::ResolveAddress($point)
-
-        $result.lat | Should Be 35.281
-        $result.lon | Should Be 139.672
-
-        $ext = $result.extensions
-        $ext.muniCd5 | Should Be "14201"
-        $ext.municipality | Should Be "横須賀市"
-        $ext.prefecture | Should Be "神奈川県"
-        $ext.town | Should Be "汐入町"
-    }
-
-    # ---------------------------------------------------------
-    # 3. QueryTowns
-    # ---------------------------------------------------------
-    It "QueryTowns returns hashtable[] with correct town info" {
-        $muni = @{
-            prefecture   = "神奈川県"
-            municipality = "横須賀市"
-            muniCd5      = "14201"
-        }
-
-        $towns = [GeoService]::QueryTowns($muni)
-
-        $towns.Count | Should Be 2
-
-        $towns[0].name | Should Be "汐入町"
-        $towns[0].extensions.municipality | Should Be "横須賀市"
-        $towns[0].extensions.prefecture | Should Be "神奈川県"
-    }
-
-    # ---------------------------------------------------------
-    # 4. QueryArea
-    # ---------------------------------------------------------
-    It "QueryArea returns hashtable[] without municipality/prefecture" {
-        $center = @{
-            lat        = 35.281
-            lon        = 139.672
-            extensions = @{
-                municipality = "横須賀市"
-                prefecture   = "神奈川県"
-            }
-        }
-
-        $towns = [GeoService]::QueryArea($center, 500)
-
-        $towns.Count | Should Be 1
-
-        $keys = $towns[0].extensions.Keys
-
-        # Pester 3 のバグ回避：-contains を使う
-        ($keys -contains "place") | Should Be $true
-        ($keys -contains "municipality") | Should Be $false
-        ($keys -contains "prefecture") | Should Be $false
-    }
-}

@@ -5,11 +5,7 @@ $script:ModuleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Import-Module "D:\tool\Repository\PSTools\RunApp" -Force
 
 # ─── DLL 読み込み ───
-if (Test-Path "$PSScriptRoot\lib") {
-    Get-ChildItem "$PSScriptRoot\lib\*.dll" | ForEach-Object {
-        Add-Type -Path $_.FullName
-    }
-}
+Add-Type -Path "$PSScriptRoot\lib\TspSolverLib.dll" 
 
 # ─── クラス定義 ───
 {{Classes}}

@@ -3,8 +3,8 @@ function New-NextGeneration {
         [array]$Population,
         [double[, ]]$DistanceMatrix,
         [double]$MutationRate = 0.3,
-        [double]$EliteReserveRate = 0.1,
-        [double]$GreedyMutationRate = 0.1
+        [double]$EliteReserveRate = 0.05,
+        [double]$GreedyMutationRate = 0.5
     )
 
     # ★ 拠点が 1 個なら GA は無意味 → スキップ
