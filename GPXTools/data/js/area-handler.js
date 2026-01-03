@@ -63,7 +63,7 @@ export default class AreaHandler {
         break;
 
       default:
-        break; 
+        break;
     }
   }
 
@@ -174,15 +174,14 @@ export default class AreaHandler {
   // PREVIEW → IDLE（確定）
   // ---------------------------------------------------
   _confirm() {
-    this.previewTowns.forEach((t) => {
-      const trkpt = {
-        lat: t.lat,
-        lon: t.lng,
-        name: t.name,
-      };
-      this.selector.addPoint(trkpt);
-    });
-//    this.selector.reorderMarkers()
+    const pts = this.previewTowns.map((t) => ({
+      lat: t.lat,
+      lon: t.lng,
+      name: t.name,
+    }));
+
+    this.selector.addPoints(pts);
+    this.selector.reorderMarkers()
 
     // 完了後は領域破棄
     this._clearAllLayers();

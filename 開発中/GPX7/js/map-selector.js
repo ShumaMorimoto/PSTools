@@ -4,8 +4,10 @@ import MarkerHandler from "./marker-handler.js";
 import ImageHandler from "./image-handler.js";
 import TownHandler from "./town-handler.js";
 import AreaHandler from "./area-handler.js";
-import GAHandler from "./ga-handler.js";
+//import GAHandler from "./ga-handler.js";
 import UIManager from "./ui-manager.js";
+import SearchService from "./search-service.js";
+import { initToast } from "./api-utils.js";
 
 export default class MapSelector {
   static Mode = {
@@ -13,7 +15,7 @@ export default class MapSelector {
     IMAGE_MODE: "imageMode",
     TOWN_MODE: "townMode",
     AREA_MODE: "areaMode",
-    GA_MODE: "gaMode",
+    //    GA_MODE: "gaMode",
   };
 
   // Mode → UIボタンIDキー / Handlerクラス の対応表
@@ -30,10 +32,10 @@ export default class MapSelector {
       controlKey: "areaActionBtnId",
       handlerClass: AreaHandler,
     },
-    [MapSelector.Mode.GA_MODE]: {
-      controlKey: "gaActionBtnId",
-      handlerClass: GAHandler,
-    },
+    //    [MapSelector.Mode.GA_MODE]: {
+    //      controlKey: "gaActionBtnId",
+    //      handlerClass: GAHandler,
+    //    },
   };
 
   constructor(options) {
@@ -59,6 +61,7 @@ export default class MapSelector {
       this.handlers[mode] = new cfg.handlerClass(this);
     });
 
+    this.searchService = new SearchService(this);
     this.uiManager = new UIManager(this);
     this.mapInitializer = new MapInitializer(this);
   }
@@ -99,6 +102,10 @@ export default class MapSelector {
 
     // 初期 UI
     this.uiManager.updateModeButtons(this.currentMode);
+
+    // toast
+
+    initToast(document.getElementById(this.controls.toastId))
 
     // 初期データがあればモデルにロード
     if (initData) {
@@ -144,25 +151,6 @@ export default class MapSelector {
     document
       .getElementById(this.controls.gpxSaveId)
       .addEventListener("click", () => this.uiManager.handleGpxSave());
-
-    const menu = document.getElementById(this.controls.viewSettingMenuId);
-    document
-      .getElementById(this.controls.viewSettingBtnId)
-      .addEventListener("click", () => {
-        menu.style.display = menu.style.display === "flex" ? "none" : "flex";
-      });
-    document
-      .getElementById(this.controls.toggleClusterItemId)
-      .addEventListener("click", () => {
-        this.handlers[MapSelector.Mode.DEFAULT].cluster.toggle();
-        menu.style.display = "none";
-      });
-    document
-      .getElementById(this.controls.togglePolylineItemId)
-      .addEventListener("click", () => {
-        this.handlers[MapSelector.Mode.DEFAULT].polyline.toggle();
-        menu.style.display = "none";
-      });
   }
 
   handleTogglePolyline() {
@@ -173,13 +161,20 @@ export default class MapSelector {
     this.handlers[MapSelector.Mode.DEFAULT].cluster.toggle();
   }
 
+  handleToggleBoundary() {
+    this.handlers[MapSelector.Mode.DEFAULT].boundary.toggle();
+  }
+
   // ---------------------------------------------------
   // Geocoder → MarkerHandler（仮マーカー表示）
   // ---------------------------------------------------
-  handleGeocodeResult(geocode) {
-    this.handlers[MapSelector.Mode.DEFAULT].showPreviewMarker(geocode);
+  handleShowLocation(trkpt) {
+    this.handlers[MapSelector.Mode.DEFAULT].addPreviewMarker(trkpt);
   }
 
+  handleToggleBoundary() {
+    this.handlers[MapSelector.Mode.DEFAULT].boundary.toggle();
+  }
   // ---------------------------------------------------
   // MODE 変更
   // ---------------------------------------------------
@@ -232,6 +227,9 @@ export default class MapSelector {
   addPoint(p) {
     this.handlers[MapSelector.Mode.DEFAULT].addPoint(p);
   }
+  addPoints(pts) {
+    this.handlers[MapSelector.Mode.DEFAULT].addPoints(pts);
+  }
 
   // 2. removeMarker
   removeMarker(marker, removeTrkpt = true) {
@@ -249,31 +247,21 @@ export default class MapSelector {
   }
 
   // 5. reFetchAllAddresses
+  updateAddress(m) {
+    this.handlers[MapSelector.Mode.DEFAULT].address.updateAddress(m);
+  }
+
   reFetchAllAddresses() {
     this.handlers[MapSelector.Mode.DEFAULT].address.reFetchAllAddresses();
   }
+
+
 
   reorderMarkers() {
     this.handlers[MapSelector.Mode.DEFAULT].reorderMarkers();
   }
 
-  startReorderSession() {
-    return this.handlers[MapSelector.Mode.DEFAULT].beginReorderSession();
-  }
-
-  applyReorder(indices) {
-    this.handlers[MapSelector.Mode.DEFAULT].applyReorder(indices);
-  }
-
-  getLatestReorderIndices() {
-    return this.handlers[MapSelector.Mode.DEFAULT].getLatestReorderIndices();
-  }
-
-  confirmReorder(indices) {
-    this.handlers[MapSelector.Mode.DEFAULT].confirmReorder(indices);
-  }
-
-  cancelReorder() {
-    this.handlers[MapSelector.Mode.DEFAULT].cancelReorder();
+  drawBorder(m) {
+    this.handlers[MapSelector.Mode.DEFAULT].border.drawBorder(m);
   }
 }

@@ -1,0 +1,13 @@
+D:\tool\Repository\PSTools\TSPSolverLib\bin\Debug\net8.0\TspSolverLib.deps.json
+D:\tool\Repository\PSTools\TSPSolverLib\bin\Debug\net8.0\TspSolverLib.dll
+D:\tool\Repository\PSTools\TSPSolverLib\bin\Debug\net8.0\TspSolverLib.pdb
+D:\tool\Repository\PSTools\TSPSolverLib\obj\Debug\net8.0\TspSolverLib.csproj.AssemblyReference.cache
+D:\tool\Repository\PSTools\TSPSolverLib\obj\Debug\net8.0\TspSolverLib.GeneratedMSBuildEditorConfig.editorconfig
+D:\tool\Repository\PSTools\TSPSolverLib\obj\Debug\net8.0\TspSolverLib.AssemblyInfoInputs.cache
+D:\tool\Repository\PSTools\TSPSolverLib\obj\Debug\net8.0\TspSolverLib.AssemblyInfo.cs
+D:\tool\Repository\PSTools\TSPSolverLib\obj\Debug\net8.0\TspSolverLib.csproj.CoreCompileInputs.cache
+D:\tool\Repository\PSTools\TSPSolverLib\obj\Debug\net8.0\TspSolverLib.sourcelink.json
+D:\tool\Repository\PSTools\TSPSolverLib\obj\Debug\net8.0\TspSolverLib.dll
+D:\tool\Repository\PSTools\TSPSolverLib\obj\Debug\net8.0\refint\TspSolverLib.dll
+D:\tool\Repository\PSTools\TSPSolverLib\obj\Debug\net8.0\TspSolverLib.pdb
+D:\tool\Repository\PSTools\TSPSolverLib\obj\Debug\net8.0\ref\TspSolverLib.dll

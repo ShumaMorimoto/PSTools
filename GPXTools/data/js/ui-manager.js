@@ -76,7 +76,7 @@ export default class UIManager {
       tempService.loadFromXml(gpxText);
 
       const newPts = tempService.getTrkpts();
-      newPts.forEach((p) => this.selector.addPoint(p));
+      this.selector.addPoints(newPts);
 
       this.selector.zoomToMarkerByIndex(newPts.length - 1);
       e.target.value = "";

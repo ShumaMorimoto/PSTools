@@ -48,6 +48,13 @@
     />
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
+    <!-- GeoSearch -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-geosearch@latest/dist/geosearch.css"
+    />
+    <script src="https://unpkg.com/leaflet-geosearch@latest/dist/geosearch.umd.js"></script>
+
     <!-- FontAwesome -->
     <link
       rel="stylesheet"
@@ -108,6 +115,7 @@
         font-size: 14px;
         white-space: nowrap;
       }
+
       .center-handle-ui {
         width: 20px;
         height: 20px;
@@ -125,23 +133,28 @@
         border: 2px solid white;
         box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
       }
+
       .reorder-target {
         filter: drop-shadow(0 0 6px yellow);
       }
+
       button.active {
         background-color: #007bff !important;
         color: white !important;
         border-color: #0056b3 !important;
       }
+
       button:disabled {
         opacity: 0.4;
         cursor: not-allowed;
         background-color: #ccc !important;
         color: #666 !important;
       }
+
       input[type="file"] {
         display: none;
       }
+
       .dropdown {
         position: relative;
       }
@@ -190,7 +203,30 @@
         background: #007bff;
         color: white;
       }
-      
+
+      /* ★★★ 追加：汎用トースト通知 ★★★ */
+      .toast {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(51, 51, 51, 0.9);
+        color: #fff;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        z-index: 9999;
+      }
+
+      .toast.show {
+        opacity: 1;
+      }
+
+      .toast.hidden {
+        display: none;
+      }
     </style>
   </head>
 
@@ -215,12 +251,6 @@
         <span class="label">領域追加</span>
       </button>
 
-      <!-- GA（最適化） -->
-      <button id="gaActionBtn" class="btn">
-        <i class="fas fa-route"></i>
-        <span class="label">GA処理</span>
-      </button>
-
       <!-- キャンセル -->
       <button id="cancelActionBtn" class="btn">
         <i class="fas fa-times"></i>
@@ -231,7 +261,7 @@
         <option>読み込み中...</option>
       </select>
 
-      <!-- 経路更新（★追加） -->
+      <!-- 経路更新 -->
       <button id="updateRouteBtn" class="btn">
         <i class="fas fa-route"></i>
         <span class="label">経路更新</span>
@@ -256,21 +286,6 @@
         <span class="label">GPX保存</span>
       </button>
 
-      <!-- 表示設定（ドロップダウン） -->
-      <div class="dropdown">
-        <button id="viewSettingBtn" class="btn">
-          <i class="fas fa-eye"></i>
-          <span class="label">表示設定</span>
-        </button>
-
-        <div id="viewSettingMenu" class="dropdown-menu">
-          <div class="dropdown-item" id="toggleClusterItem">クラスタ表示</div>
-          <div class="dropdown-item" id="togglePolylineItem">
-            ポリライン表示
-          </div>
-        </div>
-      </div>
-
       <!-- クリア -->
       <button id="clearMarkersBtn" class="btn">
         <i class="fas fa-trash"></i>
@@ -280,15 +295,13 @@
 
     <div id="map"></div>
 
+    <!-- ★★★ 追加：トースト通知領域 ★★★ -->
+    <div id="toast" class="toast hidden"></div>
+
     <script type="module">
       import MapSelector from "./js/map-selector.js";
       import GPXService from "./js/gpx-service.js";
-      import {
-        callApi,
-        pollApi,
-        initialize,
-        shutdown,
-      } from "/runapp/lib/js/api.js";
+      import { initialize } from "/runapp/lib/js/api.js";
 
       const params = new URLSearchParams(window.location.search);
 
@@ -308,18 +321,14 @@
           imageActionBtnId: "imageActionBtn",
           townActionBtnId: "townActionBtn",
           areaActionBtnId: "areaActionBtn",
-          gaActionBtnId: "gaActionBtn",
           cancelActionBtnId: "cancelActionBtn",
           pointListId: "pointList",
           updateRouteBtnId: "updateRouteBtn",
           reFetchBtnId: "reFetchBtn",
           gpxInputId: "gpxInput",
           gpxSaveId: "gpxSaveBtn",
-          viewSettingBtnId: "viewSettingBtn",
-          viewSettingMenuId: "viewSettingMenu",
-          toggleClusterItemId: "toggleClusterItem",
-          togglePolylineItemId: "togglePolylineItem",
           clearMarkersBtnId: "clearMarkersBtn",
+          toastId: "toast",
         },
         gpxService,
         initialView: [initialLat, initialLng, initialZoom],
@@ -330,7 +339,7 @@
       // -----------------------------
       window.addEventListener("load", async () => {
         const initData = await initialize();
-        mapSelector.init(initData); // ← initData を渡すだけ
+        mapSelector.init(initData);
       });
 
       // ブラウザ終了時に shutdown を呼ぶ

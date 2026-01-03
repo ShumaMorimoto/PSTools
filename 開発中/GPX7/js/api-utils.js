@@ -8,8 +8,25 @@ let isProcessingQueue = false;
 
 // api-utils.js
 
-let muniCache = null;
+// api-utils.js
+let toastEl = null;
+export function initToast(el) {
+  toastEl = el;
+}
+export function notify(message, duration = 1500) {
+  if (!toastEl) return;
 
+  toastEl.textContent = message;
+  toastEl.classList.remove("hidden");
+  toastEl.classList.add("show");
+
+  setTimeout(() => {
+    toastEl.classList.remove("show");
+    toastEl.classList.add("hidden");
+  }, duration);
+}
+
+let muniCache = null;
 // municipalities.json を内部キャッシュでロード
 async function loadMunicipalitiesInternal() {
   if (muniCache) return muniCache;
@@ -41,13 +58,24 @@ export async function fetchMuniInfo(lat, lng) {
 }
 
 // ----------------------------------------
-// 自治体境界 GeoJSON
+// GeoJSONキャッシュ
+// ----------------------------------------
+const geoJsonCache = new Map();
+
+// ----------------------------------------
+// 自治体境界 GeoJSON（キャッシュ付き）
 // ----------------------------------------
 export async function fetchBoundary(muniInfo) {
-  const url = `https://shikuchoson-boundaries.sankichi.app/${muniInfo.muniCd5}.geojson`;
+  const { muniCd5 } = muniInfo;
+  if (geoJsonCache.has(muniCd5)) {
+    return geoJsonCache.get(muniCd5);
+  }
+  const url = `https://shikuchoson-boundaries.sankichi.app/${muniCd5}.geojson`;
   try {
     const res = await fetch(url);
-    return await res.json();
+    const geoJson = await res.json();
+    geoJsonCache.set(muniCd5, geoJson);
+    return geoJson;
   } catch {
     return null;
   }

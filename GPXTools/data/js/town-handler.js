@@ -134,25 +134,25 @@ export default class TownHandler {
   _confirm() {
     const { name: muniName, prefecture: prefName, muniCd6 } = this.previewAdmin;
 
-    this.previewTowns.forEach((t) => {
-      const trkpt = {
-        lat: t.lat,
-        lon: t.lng,
-        name: t.town,
-        desc: `${prefName}${muniName}${t.town}`,
-        extensions: {
-          quarter: t.town,
-          muni: muniName,
-          province: prefName,
-          muniCd: muniCd6,
-          country: "日本",
-          country_code: "jp",
-        },
-      };
-      this.selector.addPoint(trkpt);
-    });
+    // まず配列 ps を作る（データ生成のみ）
+    const pts = this.previewTowns.map((t) => ({
+      lat: t.lat,
+      lon: t.lng,
+      name: t.town,
+      desc: `${prefName}${muniName}${t.town}`,
+      extensions: {
+        quarter: t.town,
+        muni: muniName,
+        province: prefName,
+        muniCd: muniCd6,
+        country: "日本",
+        country_code: "jp",
+      },
+    }));
 
-//    this.selector.reorderMarkers()
+    // 最後に一括追加
+    this.selector.addPoints(pts);
+    this.selector.reorderMarkers()
 
     console.log(`✅ GPX + Marker 登録完了: ${this.previewTowns.length} 件`);
 

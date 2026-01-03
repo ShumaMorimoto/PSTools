@@ -1,0 +1,12 @@
+D:\tool\TspSolverLib\bin\Release\net8.0\win-x64\TspSolverLib.deps.json
+D:\tool\TspSolverLib\bin\Release\net8.0\win-x64\TspSolverLib.dll
+D:\tool\TspSolverLib\bin\Release\net8.0\win-x64\TspSolverLib.pdb
+D:\tool\TspSolverLib\obj\Release\net8.0\win-x64\TspSolverLib.csproj.AssemblyReference.cache
+D:\tool\TspSolverLib\obj\Release\net8.0\win-x64\TspSolverLib.GeneratedMSBuildEditorConfig.editorconfig
+D:\tool\TspSolverLib\obj\Release\net8.0\win-x64\TspSolverLib.AssemblyInfoInputs.cache
+D:\tool\TspSolverLib\obj\Release\net8.0\win-x64\TspSolverLib.AssemblyInfo.cs
+D:\tool\TspSolverLib\obj\Release\net8.0\win-x64\TspSolverLib.csproj.CoreCompileInputs.cache
+D:\tool\TspSolverLib\obj\Release\net8.0\win-x64\TspSolverLib.dll
+D:\tool\TspSolverLib\obj\Release\net8.0\win-x64\refint\TspSolverLib.dll
+D:\tool\TspSolverLib\obj\Release\net8.0\win-x64\TspSolverLib.pdb
+D:\tool\TspSolverLib\obj\Release\net8.0\win-x64\ref\TspSolverLib.dll

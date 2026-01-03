@@ -15,11 +15,12 @@ export default class MarkerCluster {
 
   toggle() {
     this.show = !this.show;
+    this.core.renumberMarkers()
     this.redraw();
   }
 
   async redraw() {
-    if (!this.show) {
+    if (!this.show || this.core.markers.length <10) {
       this.clear();
       return;
     }
@@ -27,14 +28,14 @@ export default class MarkerCluster {
     this.generation++;
     const gen = this.generation;
 
-    const points = this.core.markers.map(e => ({
+    const points = this.core.markers.map((e) => ({
       lat: e.point.lat,
-      lon: e.point.lon
+      lon: e.point.lon,
     }));
 
     // ★ 外部 or ローカル切り替え
     const clusterIndexList = this.useLocal
-      ? this._clusterLocal(points)           // number[][]
+      ? this._clusterLocal(points) // number[][]
       : await this._callExternalClusterAPI(points); // number[][]
 
     // ★ モデルが変わっていたら破棄
@@ -45,7 +46,7 @@ export default class MarkerCluster {
   }
 
   clear() {
-    this.layers.forEach(l => this.selector.map.removeLayer(l));
+    this.layers.forEach((l) => this.selector.map.removeLayer(l));
     this.layers = [];
   }
 
@@ -53,9 +54,10 @@ export default class MarkerCluster {
   // ★ 外部クラスタリングAPI（本番）
   // ----------------------------------------
   async _callExternalClusterAPI(points) {
-    const input = points.map(p => ({ lat: p.lat, lon: p.lon }));
-    const clusters = await callApi("Cluster", input);
+    const input = points.map((p) => ({ lat: p.lat, lon: p.lon }));
+    const clusters = await callApi("KMeansCluster", input);
 
+    console.log("Clusters:", clusters);
     // clusters は number[][] の前提
     return clusters;
   }
@@ -96,13 +98,13 @@ export default class MarkerCluster {
         radius,
         color,
         fillColor: color,
-        fillOpacity: 0.15
+        fillOpacity: 0.15,
       }).addTo(this.selector.map);
 
       this.layers.push(circle);
 
       // --- マーカー色変更 ---
-      indices.forEach(idx => {
+      indices.forEach((idx) => {
         const entry = this.core.markers[idx];
         entry.m.setIcon(this._coloredIcon(color));
       });
@@ -110,24 +112,25 @@ export default class MarkerCluster {
   }
 
   _computeCenter(indices, points) {
-    let sumLat = 0, sumLon = 0;
-    indices.forEach(idx => {
+    let sumLat = 0,
+      sumLon = 0;
+    indices.forEach((idx) => {
       sumLat += points[idx].lat;
       sumLon += points[idx].lon;
     });
     return {
       lat: sumLat / indices.length,
-      lon: sumLon / indices.length
+      lon: sumLon / indices.length,
     };
   }
 
   _computeRadius(center, indices, points) {
     const R = 6371000;
-    const toRad = d => d * Math.PI / 180;
+    const toRad = (d) => (d * Math.PI) / 180;
 
     let maxDist = 0;
 
-    indices.forEach(idx => {
+    indices.forEach((idx) => {
       const p = points[idx];
       const dLat = toRad(p.lat - center.lat);
       const dLon = toRad(p.lon - center.lon);
@@ -144,7 +147,26 @@ export default class MarkerCluster {
   }
 
   _getColor(i) {
-    const colors = ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00"];
+    const colors = [
+      "#e41a1c",
+      "#377eb8",
+      "#4daf4a",
+      "#984ea3",
+      "#ff7f00",
+      "#ffff33",
+      "#a65628",
+      "#f781bf",
+      "#999999",
+      "#66c2a5",
+      "#fc8d62",
+      "#8da0cb",
+      "#e78ac3",
+      "#a6d854",
+      "#ffd92f",
+      "#e5c494",
+      "#b3b3b3",
+    ];
+    //    const colors = ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00"];
     return colors[i % colors.length];
   }
 
@@ -156,7 +178,7 @@ export default class MarkerCluster {
         border-radius: 50%;
         border: 2px solid #fff;
         background: ${color};
-      "></div>`
+      "></div>`,
     });
   }
 }

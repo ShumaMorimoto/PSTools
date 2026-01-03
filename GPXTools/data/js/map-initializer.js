@@ -1,4 +1,5 @@
 // map-initializer.js
+
 export default class MapInitializer {
   constructor(selector) {
     this.selector = selector;
@@ -10,7 +11,7 @@ export default class MapInitializer {
     // ----------------------------------------
     this.selector.map = L.map(this.selector.mapId, {
       contextmenu: true,
-      contextmenuWidth: 140,
+      contextmenuWidth: 160,
       contextmenuItems: [],
     }).setView(
       [this.selector.initialView[0], this.selector.initialView[1]],
@@ -26,29 +27,35 @@ export default class MapInitializer {
     }).addTo(this.selector.map);
 
     // ----------------------------------------
-    // Geocoder
+    // ★ SearchService を Leaflet UI に接続（正しい場所）
     // ----------------------------------------
-    if (L.Control && L.Control.geocoder) {
-      L.Control.geocoder({
-        placeholder: "地名・住所を検索",
-        defaultMarkGeocode: false,
-        geocoder: L.Control.Geocoder.nominatim({
-          geocodingQueryParams: {
-            format: "json",
-            addressdetails: 1,
-            limit: 10,
-            countrycodes: "jp",
-          },
-        }),
-      })
-        .on("markgeocode", (e) => {
+    if (this.selector.searchService) {
+      const searchControl = new window.GeoSearch.GeoSearchControl({
+        provider: {
+          search: (query) => this.selector.searchService.search(query),
+        },
+        style: "button",
+        autoComplete: true,
+        autoCompleteDelay: 200,
+        showMarker: false,
+        retainZoomLevel: true,
+        animateZoom: true,
+        autoClose: false,
+        searchLabel: "場所を検索...",
+      });
 
-          // ★★★ 修正ポイント ★★★
-          // 初期化層ではロジックを持たず、Selector に渡すだけ
-          this.selector.handleGeocodeResult(e.geocode);
+      this.selector.map.addControl(searchControl);
 
-        })
-        .addTo(this.selector.map);
+      this.selector.map.on("geosearch/showlocation", (e) => {
+        const trkpt = e.location.raw;
+
+        // 仮マーカー生成（UI層の責務）
+        this.selector.handleShowLocation(trkpt);
+
+        // ★ 履歴更新（Service の責務）
+        // updateHistory → showLocation に変更
+        this.selector.searchService.showLocation(trkpt);
+      });
     }
 
     // ----------------------------------------
@@ -126,10 +133,13 @@ export default class MapInitializer {
 
         container.innerHTML = `
           <a href="#" id="polylineToggleBtn" class="toggle-btn">
-            <i class="fas fa-pencil-alt"></i>
+            <i class="fas fa-route"></i>
           </a>
           <a href="#" id="clusterToggleBtn" class="toggle-btn">
-            <i class="fas fa-project-diagram"></i>
+            <i class="fas fa-braille"></i>
+          </a>
+          <a href="#" id="boundaryToggleBtn" class="toggle-btn">
+            <i class="fas fa-draw-polygon"></i>
           </a>
         `;
 
@@ -160,6 +170,13 @@ export default class MapInitializer {
       .addEventListener("click", () => {
         this.selector.handleToggleCluster();
         document.getElementById("clusterToggleBtn").classList.toggle("active");
+      });
+    // ★ 追加：Boundary トグル
+    document
+      .getElementById("boundaryToggleBtn")
+      .addEventListener("click", () => {
+        this.selector.handleToggleBoundary();
+        document.getElementById("boundaryToggleBtn").classList.toggle("active");
       });
   }
 }
