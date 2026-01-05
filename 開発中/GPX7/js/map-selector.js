@@ -1,10 +1,10 @@
 // map-selector.js
+import GPXService from "./gpx-service.js";
 import MapInitializer from "./map-initializer.js";
 import MarkerHandler from "./marker-handler.js";
 import ImageHandler from "./image-handler.js";
 import TownHandler from "./town-handler.js";
 import AreaHandler from "./area-handler.js";
-//import GAHandler from "./ga-handler.js";
 import UIManager from "./ui-manager.js";
 import SearchService from "./search-service.js";
 import { initToast } from "./api-utils.js";
@@ -15,7 +15,6 @@ export default class MapSelector {
     IMAGE_MODE: "imageMode",
     TOWN_MODE: "townMode",
     AREA_MODE: "areaMode",
-    //    GA_MODE: "gaMode",
   };
 
   // Mode → UIボタンIDキー / Handlerクラス の対応表
@@ -32,10 +31,6 @@ export default class MapSelector {
       controlKey: "areaActionBtnId",
       handlerClass: AreaHandler,
     },
-    //    [MapSelector.Mode.GA_MODE]: {
-    //      controlKey: "gaActionBtnId",
-    //      handlerClass: GAHandler,
-    //    },
   };
 
   constructor(options) {
@@ -49,7 +44,7 @@ export default class MapSelector {
     this.currentMode = MapSelector.Mode.DEFAULT;
     this.currentHandler = null;
 
-    this.gpxService = options.gpxService;
+    this.gpxService = new GPXService();
 
     // Handler インスタンスを Map で管理
     this.handlers = {
@@ -76,19 +71,26 @@ export default class MapSelector {
     // 必要な Handler の init
     Object.values(this.handlers).forEach((h) => h.init?.());
 
-    // MODE ボタンをループでバインド
-    Object.entries(MapSelector.ModeConfig).forEach(([mode, cfg]) => {
-      const btnId = this.controls[cfg.controlKey];
-      const handler = this.handlers[mode];
-      this._bindModeButton(btnId, mode, handler);
+    // IMAGE_MODE
+    this.mapInitializer.groups.modeOptions.onFile("addImage", (map, file) => {
+      if (!file) return;
+      this.setMode(MapSelector.Mode.IMAGE_MODE);
+      this.handlers[MapSelector.Mode.IMAGE_MODE].onActionButtonClick?.();
     });
-
-    // キャンセルボタン
-    document
-      .getElementById(this.controls.cancelActionBtnId)
-      .addEventListener("click", () => this.handleCancel());
-
-    this._bindUIEvents();
+    // TOWN_MODE
+    this.mapInitializer.groups.modeOptions.onClick("addTown", () => {
+      this.setMode(MapSelector.Mode.TOWN_MODE);
+      this.handlers[MapSelector.Mode.TOWN_MODE].onActionButtonClick?.();
+    });
+    // AREA_MODE
+    this.mapInitializer.groups.modeOptions.onClick("addArea", () => {
+      this.setMode(MapSelector.Mode.AREA_MODE);
+      this.handlers[MapSelector.Mode.AREA_MODE].onActionButtonClick?.();
+    });
+    // CANCEL（必要なら）
+    this.mapInitializer.groups.modeOptions.onClick("cancel", () => {
+      this.handleCancel();
+    });
 
     // beforeunload
     window.addEventListener("beforeunload", () => {
@@ -104,8 +106,7 @@ export default class MapSelector {
     this.uiManager.updateModeButtons(this.currentMode);
 
     // toast
-
-    initToast(document.getElementById(this.controls.toastId))
+    initToast(document.getElementById(this.controls.toastId));
 
     // 初期データがあればモデルにロード
     if (initData) {
@@ -123,35 +124,7 @@ export default class MapSelector {
     });
   }
 
-  _bindUIEvents() {
-    // pointList
-    document
-      .getElementById(this.controls.pointListId)
-      .addEventListener("change", () => this.uiManager.handlePointListChange());
-
-    // 経路最適化
-    document
-      .getElementById(this.controls.updateRouteBtnId)
-      .addEventListener("click", () => this.reorderMarkers());
-
-    // 住所再取得
-    document
-      .getElementById(this.controls.reFetchBtnId)
-      .addEventListener("click", () => this.reFetchAllAddresses());
-
-    // マーカー全削除
-    document
-      .getElementById(this.controls.clearMarkersBtnId)
-      .addEventListener("click", () => this.clearMarkers());
-
-    document
-      .getElementById(this.controls.gpxInputId)
-      .addEventListener("change", (e) => this.uiManager.handleGpxLoad(e));
-
-    document
-      .getElementById(this.controls.gpxSaveId)
-      .addEventListener("click", () => this.uiManager.handleGpxSave());
-  }
+  _bindUIEvents() {}
 
   handleTogglePolyline() {
     this.handlers[MapSelector.Mode.DEFAULT].polyline.toggle();
@@ -163,6 +136,13 @@ export default class MapSelector {
 
   handleToggleBoundary() {
     this.handlers[MapSelector.Mode.DEFAULT].boundary.toggle();
+  }
+
+  handleGpxLoad(file) {
+    this.uiManager.handleGpxLoad(file);
+  }
+  handleGpxSave() {
+    this.uiManager.handleGpxSave();
   }
 
   // ---------------------------------------------------
@@ -254,8 +234,6 @@ export default class MapSelector {
   reFetchAllAddresses() {
     this.handlers[MapSelector.Mode.DEFAULT].address.reFetchAllAddresses();
   }
-
-
 
   reorderMarkers() {
     this.handlers[MapSelector.Mode.DEFAULT].reorderMarkers();

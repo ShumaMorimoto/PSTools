@@ -10,7 +10,7 @@ export default class MarkerHandler {
     this.markers = [];
     this.requestSeq = 0;
 
-    this.polyline = L.polyline([], { color: "blue", weight: 3 });
+    this.polyline = L.polyline([], { color: '#ff8800', weight: 3 });
   }
 
   // ---------------------------------------------------

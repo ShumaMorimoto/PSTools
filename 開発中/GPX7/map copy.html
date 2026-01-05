@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MapSelector</title>
+    <link rel="icon" href="data:," />
+
+    <!-- Leaflet 本体 -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- leaflet-toolbar -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.css"
+    />
+    <script src="https://unpkg.com/leaflet-toolbar@0.4.0-alpha.2/dist/leaflet.toolbar.js"></script>
+
+    <!-- leaflet-distortableimage -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-distortableimage@latest/dist/leaflet.distortableimage.css"
+    />
+    <script src="https://unpkg.com/leaflet-distortableimage@latest/dist/leaflet.distortableimage.js"></script>
+
+    <!-- ExtraMarkers -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.2.2/dist/css/leaflet.extra-markers.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.2.2/dist/js/leaflet.extra-markers.min.js"></script>
+
+    <!-- leaflet-contextmenu -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-contextmenu@1.4.0/dist/leaflet.contextmenu.css"
+    />
+    <script src="https://unpkg.com/leaflet-contextmenu@1.4.0/dist/leaflet.contextmenu.js"></script>
+
+    <!-- Geocoder -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"
+    />
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+    <!-- GeoSearch -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-geosearch@latest/dist/geosearch.css"
+    />
+    <script src="https://unpkg.com/leaflet-geosearch@latest/dist/geosearch.umd.js"></script>
+
+    <!-- FontAwesome -->
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"
+    />
+
+    <link rel="stylesheet" href="./css/map.css" />
+  </head>
+
+  <body>
+    <div id="controls">
+      <!-- 画像 -->
+      <button id="imageActionBtn" class="btn">
+        <i class="fas fa-upload"></i>
+        <span class="label">画像追加</span>
+      </button>
+      <input type="file" id="imageInput" accept="image/*" />
+
+      <!-- 町字 -->
+      <button id="townActionBtn" class="btn">
+        <i class="fas fa-map"></i>
+        <span class="label">町字追加</span>
+      </button>
+
+      <!-- 領域 -->
+      <button id="areaActionBtn" class="btn">
+        <i class="fas fa-draw-polygon"></i>
+        <span class="label">領域追加</span>
+      </button>
+
+      <!-- キャンセル -->
+      <button id="cancelActionBtn" class="btn">
+        <i class="fas fa-times"></i>
+        <span class="label">キャンセル</span>
+      </button>
+
+      <select id="pointList">
+        <option>読み込み中...</option>
+      </select>
+
+      <!-- 経路更新 -->
+      <button id="updateRouteBtn" class="btn">
+        <i class="fas fa-route"></i>
+        <span class="label">経路更新</span>
+      </button>
+
+      <!-- 住所更新 -->
+      <button id="reFetchBtn" class="btn">
+        <i class="fas fa-sync-alt"></i>
+        <span class="label">住所更新</span>
+      </button>
+
+      <!-- GPX追加 -->
+      <label for="gpxInput" class="btn">
+        <i class="fas fa-map-marker-alt"></i>
+        <span class="label">GPX追加</span>
+      </label>
+      <input type="file" id="gpxInput" accept=".gpx" />
+
+      <!-- GPX保存 -->
+      <button id="gpxSaveBtn" class="btn">
+        <i class="fas fa-save"></i>
+        <span class="label">GPX保存</span>
+      </button>
+
+      <!-- クリア -->
+      <button id="clearMarkersBtn" class="btn">
+        <i class="fas fa-trash"></i>
+        <span class="label">クリア</span>
+      </button>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- トースト通知領域 -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script type="module">
+      import MapSelector from "./js/map-selector.js";
+      import GPXService from "./js/gpx-service.js";
+      import { initialize } from "/runapp/lib/js/api.js";
+
+      const params = new URLSearchParams(window.location.search);
+
+      const DEFAULT_LAT = 35.677605;
+      const DEFAULT_LNG = 139.758496;
+      const DEFAULT_ZOOM = 16;
+
+      const initialLat = parseFloat(params.get("lat")) || DEFAULT_LAT;
+      const initialLng = parseFloat(params.get("lng")) || DEFAULT_LNG;
+      const initialZoom = parseInt(params.get("zoom"), 10) || DEFAULT_ZOOM;
+
+      const gpxService = new GPXService();
+      const mapSelector = new MapSelector({
+        mapId: "map",
+        controls: {
+          imageInputId: "imageInput",
+          imageActionBtnId: "imageActionBtn",
+          townActionBtnId: "townActionBtn",
+          areaActionBtnId: "areaActionBtn",
+          cancelActionBtnId: "cancelActionBtn",
+          pointListId: "pointList",
+          updateRouteBtnId: "updateRouteBtn",
+          reFetchBtnId: "reFetchBtn",
+          gpxInputId: "gpxInput",
+          gpxSaveId: "gpxSaveBtn",
+          clearMarkersBtnId: "clearMarkersBtn",
+          toastId: "toast",
+        },
+        gpxService,
+        initialView: [initialLat, initialLng, initialZoom],
+      });
+
+      window.addEventListener("load", async () => {
+        const initData = await initialize();
+        mapSelector.init(initData);
+      });
+
+      window.addEventListener("beforeunload", () => {
+        navigator.sendBeacon("/shutdown", "{}");
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,340 @@
+﻿html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  font-family: sans-serif;
+}
+
+#controls {
+  padding: 8px;
+  background: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+  display: flex;
+  gap: 10px;
+  height: 56px;
+  box-sizing: border-box;
+  align-items: center;
+  z-index: 1000;
+}
+
+#map {
+  flex: 1;
+  width: 100%;
+  background-color: #ddd;
+  cursor: crosshair;
+}
+
+
+/* グループボタン用*/
+/* 共通ボタン */
+.btn {
+  padding: 6px 8px;
+  cursor: pointer;
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+}
+/* ON 状態（強調） */
+.status-on {
+  background: #4caf50;   /* 緑 */
+  color: rgb(94, 17, 167);
+  border-color: #3e8e41;
+}
+/* OFF 状態（通常） */
+.status-off {
+  background: #e0e0e0;   /* 薄いグレー */
+  color: #333;
+  border-color: #bbb;
+}
+/* disabled は別概念（status と混ぜない） */
+.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+
+
+.leaflet-control-pointlist {
+  background: #ffffff;
+  padding: 6px 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  font-size: 16px;
+  /* ← 文字大きめ */
+  display: flex;
+  align-items: center;
+}
+
+.leaflet-control-pointlist select {
+  width: 320px;
+  /* ← 大きめの幅 */
+  padding: 6px 8px;
+  /* ← クリックしやすい */
+  font-size: 16px;
+  /* ← 文字大きめ */
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: #fafafa;
+  color: #333;
+  outline: none;
+}
+
+.leaflet-control-pointlist select:focus {
+  border-color: #1e88e5;
+  box-shadow: 0 0 4px rgba(30, 136, 229, 0.4);
+}
+
+
+/* 座標表示 */
+.leaflet-control-mouseposition {
+  background: transparent;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 20px;
+  line-height: 1.2;
+  color: #7a0d44;
+}
+
+
+/* カスタムボタン本体 */
+.leaflet-control-custom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 42px;
+  height: 42px;
+  font-size: 20px;
+  padding: 0;
+  margin: 0;
+
+  background: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* ラベルを完全に非表示 */
+.leaflet-control-custom .label {
+  display: none;
+}
+
+/* Leaflet のデフォルトを完全に上書きして間を詰める */
+.leaflet-bar a {
+  margin: 0 !important;
+  border-bottom: none !important;
+  display: block;
+}
+
+/* ボタンのアイコン */
+.leaflet-control-custom i {
+  font-size: 20px;
+  pointer-events: none;
+}
+
+/* ホバー時の視認性 */
+.leaflet-control-custom:hover {
+  background: #f0f0f0;
+}
+
+
+
+/* 検索ボタン */
+/* GeoSearch のボタン本体 */
+/* GeoSearch のボタンを CustomButton に揃える */
+/* 検索バー全体の幅を広げる（デフォルトは約200px程度） */
+.leaflet-control-geosearch.bar {
+  width: 400px !important;
+}
+
+/* 入力ボックスの高さと文字サイズ */
+.leaflet-control-geosearch input {
+  height: 44px !important;
+  /* 高さ */
+  font-size: 16px !important;
+  /* 文字サイズ */
+  padding: 0 12px !important;
+  /* 内側余白（打ちやすさ向上） */
+}
+
+/* プレースホルダーの文字サイズも合わせる */
+.leaflet-control-geosearch input::placeholder {
+  font-size: 16px !important;
+  color: #999;
+}
+
+/* サジェスト一覧の文字サイズと高さ */
+.leaflet-control-geosearch .results {
+  font-size: 15px !important;
+  /* サジェスト文字サイズ */
+  max-height: 300px !important;
+  /* リストの高さ制限 */
+}
+
+.leaflet-control-geosearch .results>* {
+  padding: 10px 12px !important;
+  /* 候補項目の余白 */
+}
+
+/* アクティブ（選択中）項目の背景色（好みで） */
+.leaflet-control-geosearch .results>.active {
+  background: #e0e0e0 !important;
+}
+
+.leaflet-control-geosearch button {
+  width: 50px !important;
+  /* ボタン幅（デフォルト約36px） */
+  height: 44px !important;
+  /* 入力ボックスと高さを合わせる場合 */
+  font-size: 24px !important;
+  /* アイコン自体の大きさ（重要！） */
+  line-height: 44px !important;
+  /* 垂直中央揃え */
+  border-radius: 0 4px 4px 0 !important;
+  /* 好みで角丸 */
+}
+
+/* 虫眼鏡アイコンをさらに調整したい場合（通常はfont-sizeで十分） */
+.leaflet-control-geosearch button::before {
+  line-height: inherit !important;
+}
+
+/* ホバー時の色を変えたい場合（オプション） */
+.leaflet-control-geosearch button:hover {
+  background-color: #f0f0f0 !important;
+}
+
+
+
+button,
+label.btn {
+  box-sizing: border-box;
+  padding: 0 12px;
+  cursor: pointer;
+  border: none;
+  background: #007bff;
+  color: #fff;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  line-height: 34px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.center-handle-ui {
+  width: 20px;
+  height: 20px;
+  background: #00aaff;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+}
+
+.radius-handle-ui {
+  width: 16px;
+  height: 16px;
+  background: #ff4444;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+}
+
+.reorder-target {
+  filter: drop-shadow(0 0 6px yellow);
+}
+
+button.active {
+  background-color: #007bff !important;
+  color: white !important;
+  border-color: #0056b3 !important;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background-color: #ccc !important;
+  color: #666 !important;
+}
+
+input[type="file"] {
+  display: none;
+}
+
+.dropdown {
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  display: none;
+  flex-direction: column;
+  min-width: 140px;
+  z-index: 2000;
+}
+
+.dropdown-menu .dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dropdown-menu .dropdown-item:hover {
+  background: #eee;
+}
+
+.layer-toggle .toggle-btn {
+  display: block;
+  width: 42px;
+  height: 42px;
+  line-height: 42px;
+  text-align: center;
+  background: #fff;
+  border-bottom: 1px solid #ccc;
+  cursor: pointer;
+  font-size: 20px;
+  user-select: none;
+}
+
+.layer-toggle .toggle-btn:last-child {
+  border-bottom: none;
+}
+
+.layer-toggle .toggle-btn.active {
+  background: #b17d1e;
+  color: white;
+}
+
+/* トースト通知 */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(51, 51, 51, 0.9);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 9999;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+.toast.hidden {
+  display: none;
+}

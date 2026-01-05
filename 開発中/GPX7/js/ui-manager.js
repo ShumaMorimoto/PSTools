@@ -9,7 +9,8 @@ export default class UIManager {
   // ---------------------------------------------------
   // 初期化
   // ---------------------------------------------------
-  initUIHandlers() {}
+  initUIHandlers() {
+  }
 
   // ---------------------------------------------------
   // 汎用：ボタンラベル変更
@@ -64,8 +65,7 @@ export default class UIManager {
   // ---------------------------------------------------
   // GPX 読み込み
   // ---------------------------------------------------
-  handleGpxLoad(e) {
-    const file = e.target.files[0];
+  handleGpxLoad(file) {
     if (!file) return;
 
     const reader = new FileReader();
@@ -150,35 +150,6 @@ export default class UIManager {
   // pointList UI 更新
   // ---------------------------------------------------
   updateListUI() {
-    const list = document.getElementById(this.selector.controls.pointListId);
-    if (!list) return;
-
-    list.innerHTML = "";
-
-    const pts = this.selector.gpxService.getTrkpts();
-
-    pts.forEach((p, i) => {
-      const opt = document.createElement("option");
-      opt.value = i;
-      opt.textContent = `${i + 1}. ${p.name || p.desc || `${p.lat}, ${p.lon}`}`;
-      list.appendChild(opt);
-    });
+    this.selector.pointListControl.updateList();
   }
-
-  // ---------------------------------------------------
-  // pointList → 地図移動（★4: idx Zoom に再構築）
-  // ---------------------------------------------------
-  handlePointListChange() {
-    const list = document.getElementById(this.selector.controls.pointListId);
-    if (!list) return;
-
-    const val = list.value;
-    if (val === "" || isNaN(val)) return;
-
-    const idx = parseInt(val, 10);
-
-    // ★ markers 配列を触らない
-    this.selector.zoomToMarkerByIndex(idx);
-  }
-
 }
