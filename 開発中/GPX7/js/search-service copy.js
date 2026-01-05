@@ -1,15 +1,13 @@
-﻿
-
-
-export default class SearchService {
+﻿export default class SearchService {
   constructor() {
     this.history = this._loadHistory();
     this.lastKeyword = "";
+    this.originalProvider = new window.GeoSearch.OpenStreetMapProvider();
   }
 
   // ----------------------------------------------------
   // Provider が呼ぶ search()
-  // （TrkptProvider のロジックを移植し、OSM APIを直接fetchで呼ぶ）
+  // （TrkptProvider のロジックをそのまま移植）
   // ----------------------------------------------------
   async search({ query }) {
 
@@ -30,22 +28,14 @@ export default class SearchService {
         isHistory: true
       }));
 
-    // API検索（OSM Nominatim APIを直接fetch）
-    let apiResults = [];
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5`);
-      if (response.ok) {
-        apiResults = await response.json();
-      }
-    } catch (error) {
-      console.error('Nominatim API error:', error);
-    }
+    // API検索（OSM）
+    const apiResults = await this.originalProvider.search({ query });
 
     const apiConverted = apiResults.map(r => ({
-      label: r.display_name,
-      x: parseFloat(r.lon),
-      y: parseFloat(r.lat),
-      bounds: r.boundingbox ? [[parseFloat(r.boundingbox[0]), parseFloat(r.boundingbox[2])], [parseFloat(r.boundingbox[1]), parseFloat(r.boundingbox[3])]] : null,
+      label: r.label,
+      x: r.x,
+      y: r.y,
+      bounds: r.bounds,
       raw: this._convertToTrkpt(r, this.lastKeyword),
       isHistory: false
     }));
@@ -78,9 +68,9 @@ export default class SearchService {
   // ----------------------------------------------------
   _convertToTrkpt(result, keyword) {
     return {
-      lat: parseFloat(result.lat),
-      lon: parseFloat(result.lon),
-      name: result.display_name,
+      lat: result.y,
+      lon: result.x,
+      name: result.label,
       desc: `検索: ${keyword}`,
       extensions: {
         keyword,

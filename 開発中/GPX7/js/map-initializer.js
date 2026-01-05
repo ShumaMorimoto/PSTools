@@ -24,22 +24,20 @@ const buttonGroups = {
   modeOptions: [
     {
       id: "addImage",
-      status: "off",
+      status: "idle",
       icon: '<i class="fas fa-image"></i>',
       title: "画像追加",
-      fileInput: true,
-      accept: "image/*",
+      fileInput: false, // ← これが正しい
     },
-
     {
       id: "addTown",
-      status: "off",
+      status: "idle",
       icon: '<i class="fas fa-map-marker-alt"></i>',
       title: "町字追加",
     },
     {
       id: "addArea",
-      status: "off",
+      status: "idle",
       icon: '<i class="fas fa-draw-polygon"></i>',
       title: "領域追加",
     },
@@ -139,12 +137,113 @@ export default class MapInitializer {
         }
       });
     });
+    this.groups = groups;
 
+    // カスタムLeafletコントロールの定義（新しいクラスとして追加）
+    L.Control.Search = L.Control.extend({
+      options: {
+        position: "topleft", // デフォルト位置（必要に応じて変更）
+        searchService: null, // SearchServiceインスタンスを渡す
+        handleShowLocation: null, // 場所表示ハンドラを渡す
+      },
+
+      initialize: function (options) {
+        L.setOptions(this, options);
+        if (!this.options.searchService || !this.options.handleShowLocation) {
+          throw new Error(
+            "searchService and handleShowLocation are required options."
+          );
+        }
+      },
+
+      onAdd: function (map) {
+        this._map = map; // マップ参照を保持
+
+        // コントロールのコンテナ作成
+        const container = L.DomUtil.create(
+          "div",
+          "leaflet-bar leaflet-control leaflet-control-search"
+        );
+
+        // 入力フィールド作成
+        const input = L.DomUtil.create("input", "search-input", container);
+        input.id = "autoCompleteSearch";
+        input.type = "text";
+        input.placeholder = "場所を検索...";
+
+        // マップイベントの干渉を防ぐ
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.on(container, "mousewheel", L.DomEvent.stopPropagation);
+
+        // autoComplete.jsの初期化を遅らせる（DOM追加後）
+        setTimeout(() => {
+          this.autoCompleteInstance = new autoComplete({
+            selector: "#autoCompleteSearch",
+            placeHolder: "場所を検索...",
+            data: {
+              src: async (query) => {
+                // SearchServiceのsearchを呼び出し
+                const results = await this.options.searchService.search({
+                  query,
+                });
+                return results;
+              },
+              keys: ["label"], // 検索キー（labelで検索）
+              cache: false, // キャッシュ無効（履歴が動的に変わるため）
+            },
+            threshold: 1, // 1文字からトリガー
+            debounce: 200, // 200msのデバウンス
+            resultsList: {
+              noResults: true, // 結果なしの場合表示
+              maxResults: 10, // 最大結果数
+            },
+            resultItem: {
+              highlight: true, // ハイライト有効
+            },
+          });
+
+          // 選択イベントハンドリング
+          input.addEventListener("selection", (event) => {
+            const feedback = event.detail;
+            const selection = feedback.selection.value; // 選択されたオブジェクト {label, x, y, raw, ...}
+
+            // 仮マーカー生成（UI層の責務）
+            this.options.handleShowLocation(selection.raw);
+
+            // 履歴更新（Service の責務）
+            this.options.searchService.showLocation(selection.raw);
+
+            // 入力フィールドをクリア（オプション）
+            input.value = "";
+          });
+        }, 0);
+
+        return container;
+      },
+
+      onRemove: function (map) {
+        // クリーンアップ（必要に応じて）
+        if (this.autoCompleteInstance) {
+          // autoComplete.jsの破棄（ドキュメント参照、必要に応じて）
+        }
+      },
+    });
+
+    // コントロールのインスタンス化と追加（元のコードの置き換え）
+    const searchControl = new L.Control.Search({
+      searchService: this.selector.searchService,
+      handleShowLocation: this.selector.handleShowLocation,
+    });
+
+    this.selector.map.addControl(searchControl);
+
+    // 元のgeosearchイベントは不要になるため削除
+    // this.selector.map.on("geosearch/showlocation", ...) は削除
     // -------------------------
     // ---------------
     // ★ SearchService を Leaflet UI に接続（正しい場所）
     // ----------------------------------------
-    if (this.selector.searchService) {
+    /*     if (this.selector.searchService) {
       const searchControl = new window.GeoSearch.GeoSearchControl({
         provider: {
           search: (query) => this.selector.searchService.search(query),
@@ -169,7 +268,7 @@ export default class MapInitializer {
         // ★ 履歴更新（Service の責務）
         this.selector.searchService.showLocation(trkpt);
       });
-    }
+    } */
 
     // ----------------------------------------
     // 座標表示
@@ -338,29 +437,6 @@ export default class MapInitializer {
     // クリア（clearButton）
     groups.updateOptions.onClick("clear", () => {
       this.selector.clearMarkers();
-    });
-
-    // IMAGE_MODE
-    groups.modeOptions.onClick("addImage", () => {
-      this.setMode(MapSelector.Mode.IMAGE_MODE);
-      new ImageHandler(this.selector).onActionButtonClick?.();
-    });
-
-    // TOWN_MODE
-    groups.modeOptions.onClick("addTown", () => {
-      this.setMode(MapSelector.Mode.TOWN_MODE);
-      new TownHandler(this.selector).onActionButtonClick?.();
-    });
-
-    // AREA_MODE
-    groups.modeOptions.onClick("addArea", () => {
-      this.setMode(MapSelector.Mode.AREA_MODE);
-      new AreaHandler(this.selector).onActionButtonClick?.();
-    });
-
-    // CANCEL_MODE（必要なら）
-    groups.modeOptions.onClick("cancel", () => {
-      this.setMode(MapSelector.Mode.NONE);
     });
   }
 }

@@ -36,19 +36,38 @@ body {
   background: #f0f0f0;
   border: 1px solid #ccc;
 }
-/* ON 状態（強調） */
-.status-on {
-  background: #4caf50;   /* 緑 */
-  color: rgb(94, 17, 167);
-  border-color: #3e8e41;
-}
-/* OFF 状態（通常） */
-.status-off {
-  background: #e0e0e0;   /* 薄いグレー */
-  color: #333;
+
+/* IDLE 状態（初期・待機） */
+.status-idle {
+  background: white !important;
+  /* 薄グレー */
+  color: #333 !important;
   border-color: #bbb;
 }
-/* disabled は別概念（status と混ぜない） */
+
+/* SELECTING 状態（選択中・アクティブ） */
+.status-selecting {
+  background: #4caf50 !important;
+  /* 緑 */
+  color: white !important;
+  border-color: #3e8e41;
+}
+/* PREVIEW 状態（確認・登録前） */
+.status-preview {
+  background: #2196f3 !important;
+  /* 青 */
+  color: white !important;
+  border-color: #1976d2;
+}
+.status-on {
+  background: #4caf50 !important;
+  color: rgb(94, 17, 167) !important;
+}
+.status-off {
+  background: #e0e0e0 !important;
+  color: #333 !important;
+}
+/* disabled（透明化） */
 .disabled {
   opacity: 0.4;
   pointer-events: none;

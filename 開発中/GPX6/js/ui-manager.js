@@ -48,15 +48,12 @@ export default class UIManager {
     const ModeConfig = this.selector.constructor.ModeConfig;
 
     Object.entries(ModeConfig).forEach(([m, cfg]) => {
-      const btnId = this.selector.controls[cfg.controlKey];
-      const btn = document.getElementById(btnId);
-      if (!btn) return;
+      const isActive = mode === m;
 
-      const isActive =
-        mode === this.selector.constructor.Mode.DEFAULT || mode === m;
-
-      btn.classList.toggle("active", isActive);
-      btn.disabled = !isActive;
+      this.selector.controls.modeOptionsGroup.setStatus(
+        cfg.buttonId,
+        isActive ? "active" : "off"
+      );
     });
   }
 
@@ -106,7 +103,7 @@ export default class UIManager {
           this.selector.addPoint(p);
         });
 
-        this.selector.zoomToMarkerByIndex(newPts.length-1)
+        this.selector.zoomToMarkerByIndex(newPts.length - 1);
 
         e.target.value = "";
       };

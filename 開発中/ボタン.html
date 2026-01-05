@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ButtonGroup State Test</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<style>
+  .btn {
+    padding: 6px 10px;
+    display: inline-block;
+    background: #eee;
+    border: 1px solid #333;
+    cursor: pointer;
+  }
+  .status-idle { background: #eef; }
+  .status-selecting { background: #ffe; }
+  .status-confirm { background: #efe; }
+</style>
+</head>
+<body>
+
+<h2>ButtonGroup + State Test</h2>
+
+<div id="map" style="height:300px;"></div>
+
+<p>State: <span id="stateLabel">IDLE</span></p>
+<button onclick="setState('IDLE')">IDLE</button>
+<button onclick="setState('SELECTING')">SELECTING</button>
+<button onclick="setState('CONFIRM')">CONFIRM</button>
+
+<script>
+// --------------------------------------------------
+// ButtonGroup（あなたのコードそのまま）
+// --------------------------------------------------
+L.Control.ButtonGroup = L.Control.extend({
+  options: { position: "topleft", buttons: [] },
+
+  onAdd: function (map) {
+    const container = L.DomUtil.create("div", "leaflet-control leaflet-bar");
+    L.DomEvent.disableClickPropagation(container);
+
+    this._map = map;
+    this._btnElems = {};
+    this._fileElems = {};
+
+    container.innerHTML = this.options.buttons
+      .map(
+        (btn) => `
+        <a href="#" id="${btn.id}"
+           class="btn status-default ${btn.enabled === false ? "disabled" : ""}"
+           title="${btn.title || ""}">
+          ${btn.icon}
+        </a>
+        ${
+          btn.fileInput
+            ? `<input type="file" id="${btn.id}_file" accept="${btn.accept || ""}" style="display:none;">`
+            : ""
+        }
+      `
+      )
+      .join("");
+
+    this.options.buttons.forEach((btn) => {
+      this._btnElems[btn.id] = container.querySelector(`#${btn.id}`);
+      if (btn.fileInput) {
+        this._fileElems[btn.id] = container.querySelector(`#${btn.id}_file`);
+      }
+    });
+
+    return container;
+  },
+
+  onClick: function (btnId, handler) {
+    const el = this._btnElems[btnId];
+    if (!el) return;
+    L.DomEvent.on(el, "click", (e) => {
+      L.DomEvent.preventDefault(e);
+      handler(this._map, e);
+    });
+  },
+
+  setStatus: function (btnId, status) {
+    const el = this._btnElems[btnId];
+    if (!el) return;
+    el.className = `btn status-${status}`;
+  }
+});
+
+L.control.buttonGroup = (opts) => new L.Control.ButtonGroup(opts);
+
+// --------------------------------------------------
+// Handler（アプリロジック）
+// --------------------------------------------------
+
+let State = "IDLE";
+
+function setState(s) {
+  State = s;
+  document.getElementById("stateLabel").textContent = s;
+  group.setStatus("addImage", s.toLowerCase());
+}
+
+const map = L.map("map").setView([35, 139], 10);
+
+// ButtonGroup（UI 用）
+const group = L.control.buttonGroup({
+  position: "topleft",
+  buttons: [
+    {
+      id: "addImage",
+      icon: "📷",
+      title: "画像追加",
+      fileInput: true,   // ← DOM だけ使う
+      accept: "image/*"
+    }
+  ]
+}).addTo(map);
+
+// ButtonGroup が作った fileInput を取得
+const fileInput = document.getElementById("addImage_file");
+
+// fileInput の change を自前で制御
+fileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (State === "IDLE") {
+    console.log("IDLE: ファイル受け付け → 開始処理");
+  } else {
+    console.log(State + ": ファイル無視");
+  }
+});
+
+// ButtonGroup の onClick にロジックを注入
+group.onClick("addImage", () => {
+  switch (State) {
+    case "IDLE":
+      console.log("IDLE: fileInput を開く");
+      fileInput.click();
+      break;
+
+    case "SELECTING":
+      console.log("SELECTING: 何もしない");
+      break;
+
+    case "CONFIRM":
+      console.log("CONFIRM: 確定処理を実行");
+      break;
+  }
+});
+</script>
+
+</body>
+</html>

@@ -9,8 +9,7 @@ export default class UIManager {
   // ---------------------------------------------------
   // 初期化
   // ---------------------------------------------------
-  initUIHandlers() {
-  }
+  initUIHandlers() {}
 
   // ---------------------------------------------------
   // 汎用：ボタンラベル変更
@@ -28,38 +27,27 @@ export default class UIManager {
     const ModeConfig = this.selector.constructor.ModeConfig;
 
     Object.entries(ModeConfig).forEach(([m, cfg]) => {
-      const btnId = this.selector.controls[cfg.controlKey];
-      const btn = document.getElementById(btnId);
-      if (!btn) return;
+      const btnId = cfg.buttonId;
 
-      const isActive =
-        mode === this.selector.constructor.Mode.DEFAULT || mode === m;
+      // ★ 条件：カレントMODEと一致 or カレントMODEがDEFAULT
+      const shouldEnable = m === mode || mode === this.selector.constructor.Mode.DEFAULT;
 
-      btn.classList.toggle("active", isActive);
-      btn.disabled = !isActive;
+      if (shouldEnable) {
+        this.selector.mapInitializer.groups.modeOptions.enable(btnId);
+      } else {
+        this.selector.mapInitializer.groups.modeOptions.disable(btnId);
+      }
     });
   }
+  updateStateUI({ buttonId, state, canCancel }) {
+    // ① 対象ボタンのステータス更新
+    this.selector.mapInitializer.groups.modeOptions.setStatus(buttonId, state);
 
-  // ---------------------------------------------------
-  // STATE UI 更新（Handler → Selector → UIManager）
-  // ---------------------------------------------------
-  updateStateUI({ mode, label, canCancel }) {
-    const ModeConfig = this.selector.constructor.ModeConfig;
-    const cfg = ModeConfig[mode];
-
-    // アクションボタンのラベル更新
-    if (cfg) {
-      const actionBtnId = this.selector.controls[cfg.controlKey];
-      this.setButtonLabel(actionBtnId, label);
-    }
-
-    // キャンセルボタンの有効/無効
-    const cancelBtn = document.getElementById(
-      this.selector.controls.cancelActionBtnId
+    // ② キャンセルボタンのステータス更新
+    this.selector.mapInitializer.groups.modeOptions.setStatus(
+      "cancel",
+      canCancel ? "active" : "inactive"
     );
-    if (cancelBtn) {
-      cancelBtn.disabled = !canCancel;
-    }
   }
 
   // ---------------------------------------------------

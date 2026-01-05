@@ -16,7 +16,7 @@ export default class MarkerCore {
     pts.forEach((tp) => {
       this.addMarker(tp); // モデル更新なし
     });
-    this.selector.updateList();
+    this.selector.updateListUI();
   }
 
   addMarker(tp) {
@@ -30,7 +30,7 @@ export default class MarkerCore {
   addPoint(p) {
     const tp = this.selector.gpxService.appendTrkpt(p);
     const entry = this.addMarker(tp);
-    this.selector.updateList();
+    this.selector.updateListUI();
     return entry;
   }
 
@@ -69,7 +69,7 @@ export default class MarkerCore {
     Object.assign(point, rest);
 
     marker.bindPopup(point.name || point.desc).openPopup();
-    this.selector.updateList();
+    this.selector.updateListUI();
   }
 
   // ---------------------------------------------------
@@ -106,7 +106,7 @@ export default class MarkerCore {
     this.markers = this.markers.filter((e) => !toRemove.includes(e));
 
     this.renumberMarkers();
-    this.selector.updateList();
+    this.selector.updateListUI();
   }
 
   // ---------------------------------------------------
@@ -151,7 +151,7 @@ export default class MarkerCore {
     this._latestIndices = null;
 
     this.renumberMarkers();
-    this.selector.updateList();
+    this.selector.updateListUI();
   }
 
   jumpMarker(m, n = null) {
@@ -181,7 +181,7 @@ export default class MarkerCore {
 
     // --- 表示更新 ---
     this.renumberMarkers();
-    this.selector.updateList();
+    this.selector.updateListUI();
   }
 
   // プレビューモード

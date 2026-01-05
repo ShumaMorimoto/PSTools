@@ -20,15 +20,15 @@ export default class MapSelector {
   // Mode → UIボタンIDキー / Handlerクラス の対応表
   static ModeConfig = {
     [MapSelector.Mode.IMAGE_MODE]: {
-      controlKey: "imageActionBtnId",
+      buttonId: "addImage",
       handlerClass: ImageHandler,
     },
     [MapSelector.Mode.TOWN_MODE]: {
-      controlKey: "townActionBtnId",
+      buttonId: "addTown",
       handlerClass: TownHandler,
     },
     [MapSelector.Mode.AREA_MODE]: {
-      controlKey: "areaActionBtnId",
+      buttonId: "addArea",
       handlerClass: AreaHandler,
     },
   };
@@ -72,8 +72,7 @@ export default class MapSelector {
     Object.values(this.handlers).forEach((h) => h.init?.());
 
     // IMAGE_MODE
-    this.mapInitializer.groups.modeOptions.onFile("addImage", (map, file) => {
-      if (!file) return;
+    this.mapInitializer.groups.modeOptions.onClick("addImage", () => {
       this.setMode(MapSelector.Mode.IMAGE_MODE);
       this.handlers[MapSelector.Mode.IMAGE_MODE].onActionButtonClick?.();
     });
@@ -88,7 +87,7 @@ export default class MapSelector {
       this.handlers[MapSelector.Mode.AREA_MODE].onActionButtonClick?.();
     });
     // CANCEL（必要なら）
-    this.mapInitializer.groups.modeOptions.onClick("cancel", () => {
+      this.mapInitializer.groups.modeOptions.onClick("cancel", () => {
       this.handleCancel();
     });
 
@@ -169,14 +168,19 @@ export default class MapSelector {
   // ---------------------------------------------------
   // Handler → Selector → UIManager
   // ---------------------------------------------------
-  onHandlerStateChanged(info) {
-    this.uiManager.updateStateUI(info);
-    this.updateList();
-  }
+ onHandlerStateChanged({ state, canCancel }) {
+  const mode = this.currentMode;
 
-  updateList() {
-    this.uiManager.updateListUI();
+  if (mode !== this.constructor.Mode.DEFAULT) {
+    const buttonId = this.constructor.ModeConfig[mode].buttonId;
+    this.uiManager.updateStateUI({
+      buttonId,
+      state,
+      canCancel,
+    });
   }
+  this.uiManager.updateListUI();
+}
 
   // ---------------------------------------------------
   // キャンセル
@@ -241,5 +245,9 @@ export default class MapSelector {
 
   drawBorder(m) {
     this.handlers[MapSelector.Mode.DEFAULT].border.drawBorder(m);
+  }
+
+  updateListUI(){
+    this.uiManager.updateListUI()
   }
 }
