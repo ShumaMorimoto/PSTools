@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet GeoSearch Customization (Fixed)</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3.11.0/dist/geosearch.css" />
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; }
+        #map { width: 100%; height: 100%; }
+
+        /* =========================================
+           leaflet-geosearch 修正版CSS
+           ========================================= */
+
+        /* 1. 全体の高さ・文字サイズの基準設定 */
+        :root {
+            --bar-height: 50px; /* バーの高さを変数で定義 */
+            --icon-scale: 1.5;  /* アイコンの拡大率 */
+        }
+
+        /* 2. ボタン枠（虫眼鏡の四角）のサイズ変更 */
+        .leaflet-touch .leaflet-geosearch-button a.leaflet-bar-part,
+        .leaflet-geosearch-button a.leaflet-bar-part {
+            width: var(--bar-height) !important;
+            height: var(--bar-height) !important;
+            line-height: var(--bar-height) !important;
+            border-radius: 4px !important;
+        }
+
+        /* 3. 【重要】虫眼鏡アイコン自体の拡大 
+           このライブラリはCSSのborderでアイコンを描いているため、transformで拡大します */
+        .leaflet-geosearch-button a.leaflet-bar-part::before,
+        .leaflet-geosearch-button a.leaflet-bar-part::after {
+            transform: scale(var(--icon-scale)); 
+            transform-origin: center; /* 中心から拡大 */
+        }
+        /* 位置の微調整（拡大すると中心がずれることがあるため） */
+        .leaflet-geosearch-button a.leaflet-bar-part::before {
+            top: 15px !important; 
+            left: 13px !important;
+        }
+        .leaflet-geosearch-button a.leaflet-bar-part::after {
+            top: 23px !important; 
+            left: 23px !important;
+        }
+
+        /* 4. 検索フォーム（入力欄が開いた状態）のコンテナ */
+        .leaflet-geosearch-button form {
+            height: var(--bar-height) !important;
+            /* Flexboxで中身（入力欄とXボタン）を制御する */
+            display: none; 
+            align-items: center !important; /* 垂直方向の中央揃え */
+            justify-content: space-between !important;
+            padding: 0 10px !important;
+            background: white;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+            top: 0 !important;
+        }
+        
+        /* 開いた時の幅指定 */
+        .leaflet-geosearch-button.active form {
+            display: flex !important;
+            width: 350px !important; 
+        }
+
+        /* 5. 入力ボックス */
+        .leaflet-geosearch-button form input {
+            height: 100% !important; /* 親の高さに合わせる */
+            font-size: 18px !important;
+            border: none !important; /* 枠線を消してスッキリさせる */
+            outline: none !important;
+            margin: 0 !important;
+            flex-grow: 1; /* 余白を埋める */
+        }
+
+        /* 6. 【重要】Xボタン（リセット）の位置修正 */
+        .leaflet-geosearch-button form a.reset {
+            /* 絶対配置(absolute)を解除して、Flexboxの流れに乗せる */
+            position: static !important; 
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            
+            width: 30px !important;
+            height: 30px !important;
+            font-size: 24px !important;
+            font-weight: bold !important;
+            line-height: 1 !important;
+            
+            background: #f0f0f0;
+            color: #666;
+            border-radius: 50%; /* 丸くする */
+            cursor: pointer;
+            text-decoration: none;
+            margin-left: 10px; /* 入力欄との隙間 */
+            padding: 0 !important;
+            top: auto !important; /* デフォルトのtop指定を無効化 */
+            right: auto !important;
+        }
+
+        /* Xボタンのホバー時 */
+        .leaflet-geosearch-button form a.reset:hover {
+            background: #ddd;
+            color: #333;
+        }
+
+        /* 検索結果リストの位置調整 */
+        .leaflet-geosearch-button .results {
+            top: calc(var(--bar-height) + 5px) !important;
+        }
+        .leaflet-geosearch-button .results > * {
+            font-size: 16px;
+            padding: 10px;
+            cursor: pointer;
+            background: white;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-geosearch@3.11.0/dist/bundle.min.js"></script>
+
+    <script>
+        var map = L.map('map').setView([35.681236, 139.767125], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const provider = new window.GeoSearch.OpenStreetMapProvider();
+
+        const searchControl = new window.GeoSearch.GeoSearchControl({
+            provider: provider,
+            style: 'button',
+            autoClose: true,
+            keepResult: true,
+            showMarker: true,
+            searchLabel: '住所を入力...',
+        });
+
+        map.addControl(searchControl);
+    </script>
+</body>
+</html>
