@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet + Custom Autocomplete</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- autoComplete.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/css/autoComplete.01.min.css">
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
+        
+        /* 地図コンテナ */
+        #map { width: 100%; height: 100%; z-index: 1; }
+
+        /* --- 検索ボックスのコンテナ（地図の上に浮かす） --- */
+        .search-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000; /* 地図より上 */
+            width: 90%;
+            max-width: 400px;
+        }
+
+        /* autoComplete.js の入力欄カスタマイズ */
+        #autoComplete {
+            width: 100%;
+            height: 50px;
+            padding: 0 20px 0 50px; /* 左にアイコン分の余白 */
+            font-size: 18px;
+            border-radius: 25px;
+            border: 1px solid #ccc;
+            outline: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%23999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+            background-repeat: no-repeat;
+            background-position: 15px center;
+        }
+
+        /* 履歴アイテムの強調スタイル */
+        .history-item {
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        .history-badge {
+            font-size: 10px;
+            background: #eee;
+            color: #666;
+            padding: 2px 5px;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 検索ボックス（地図の外に記述） -->
+    <div class="search-container">
+        <input id="autoComplete" type="search" dir="ltr" spellcheck=false autocorrect="off" autocomplete="off" autocapitalize="off" placeholder="住所や施設名を検索...">
+    </div>
+
+    <!-- 地図 -->
+    <div id="map"></div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js"></script>
+
+    <script>
+        // 1. 地図の初期化
+        const map = L.map('map').setView([35.681236, 139.767125], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        let currentMarker = null;
+
+        // 2. ローカルストレージ操作用関数
+        const STORAGE_KEY = 'map_search_history';
+        
+        function getHistory() {
+            const history = localStorage.getItem(STORAGE_KEY);
+            return history ? JSON.parse(history) : [];
+        }
+
+        function saveToHistory(item) {
+            let history = getHistory();
+            // 重複排除（同じ名前があれば削除）
+            history = history.filter(h => h.display_name !== item.display_name);
+            // 先頭に追加
+            history.unshift(item);
+            // 最大10件まで保存
+            if (history.length > 10) history.pop();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+        }
+
+        // 3. autoComplete.js の設定
+        const autoCompleteJS = new autoComplete({
+            selector: "#autoComplete",
+            placeHolder: "住所や施設名を検索...",
+            data: {
+                src: async (query) => {
+                    try {
+                        // A. まず履歴から検索 (部分一致)
+                        const history = getHistory();
+                        const historyMatches = history.filter(item => 
+                            item.display_name.toLowerCase().includes(query.toLowerCase())
+                        );
+                        // 履歴アイテムにはフラグを立てる
+                        historyMatches.forEach(item => item.isHistory = true);
+
+                        // B. 外部API (OpenStreetMap Nominatim) から検索
+                        const source = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5`);
+                        const data = await source.json();
+
+                        // C. 履歴とAPI結果を結合（履歴を優先）
+                        // ※API結果の中に履歴と同じものがあれば除外するなどの工夫も可能
+                        return [...historyMatches, ...data];
+                    } catch (error) {
+                        return error;
+                    }
+                },
+                keys: ["display_name"], // 検索対象のキー
+                cache: false,
+            },
+            resultsList: {
+                element: (list, data) => {
+                    if (!data.results.length) {
+                        // 結果がない場合のメッセージ
+                        const message = document.createElement("div");
+                        message.setAttribute("class", "no_result");
+                        message.innerHTML = `<span>"${data.query}"</span> が見つかりません`;
+                        list.prepend(message);
+                    }
+                },
+                noResults: true,
+            },
+            resultItem: {
+                element: (item, data) => {
+                    // リスト表示のカスタマイズ
+                    const content = data.value.display_name;
+                    if (data.value.isHistory) {
+                        // 履歴の場合はバッジを表示
+                        item.innerHTML = `<span class="history-badge">履歴</span> <span class="history-item">${content}</span>`;
+                    } else {
+                        item.innerHTML = `<span>${content}</span>`;
+                    }
+                },
+                highlight: true
+            },
+            events: {
+                input: {
+                    selection: (event) => {
+                        const selection = event.detail.selection.value;
+                        // 1. 入力欄にセット
+                        autoCompleteJS.input.value = selection.display_name;
+                        
+                        // 2. 座標を取得して移動
+                        const lat = parseFloat(selection.lat);
+                        const lon = parseFloat(selection.lon);
+                        
+                        map.flyTo([lat, lon], 16);
+
+                        // 3. マーカー設置
+                        if (currentMarker) map.removeLayer(currentMarker);
+                        currentMarker = L.marker([lat, lon]).addTo(map)
+                            .bindPopup(selection.display_name)
+                            .openPopup();
+
+                        // 4. 履歴に保存
+                        // 必要最小限のデータを保存（APIのレスポンスそのままだと大きすぎる場合があるため）
+                        saveToHistory({
+                            display_name: selection.display_name,
+                            lat: selection.lat,
+                            lon: selection.lon
+                        });
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
