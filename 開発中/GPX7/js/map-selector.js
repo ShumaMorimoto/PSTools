@@ -71,24 +71,40 @@ export default class MapSelector {
     // 必要な Handler の init
     Object.values(this.handlers).forEach((h) => h.init?.());
 
-    // IMAGE_MODE
-    this.mapInitializer.groups.modeOptions.onClick("addImage", () => {
-      this.setMode(MapSelector.Mode.IMAGE_MODE);
-      this.handlers[MapSelector.Mode.IMAGE_MODE].onActionButtonClick?.();
+    const modeBtns = this.mapInitializer.groups.modeOptions;
+    // ハンドラの登録
+    modeBtns.setButtonHandler("addImage", {
+      // 【条件判定】現在のステータスをチェックしてファイルモードにするか決める
+      cndFileInput: (map, btnId) => {
+        const currentStatus = modeBtns.getStatus(btnId);
+        return currentStatus === "idle";
+      },
+      onClick: (map, e) => {
+        this.setMode(MapSelector.Mode.IMAGE_MODE);
+        this.handlers[MapSelector.Mode.IMAGE_MODE].onActionButtonClick?.();
+      },
+      onFile: (map, file, e) => {
+        this.setMode(MapSelector.Mode.IMAGE_MODE);
+        this.handlers[MapSelector.Mode.IMAGE_MODE].onFileInputClick?.(file);
+      },
     });
-    // TOWN_MODE
-    this.mapInitializer.groups.modeOptions.onClick("addTown", () => {
-      this.setMode(MapSelector.Mode.TOWN_MODE);
-      this.handlers[MapSelector.Mode.TOWN_MODE].onActionButtonClick?.();
+    modeBtns.setButtonHandler("addTown", {
+      onClick: (map, e) => {
+        this.setMode(MapSelector.Mode.TOWN_MODE);
+        this.handlers[MapSelector.Mode.TOWN_MODE].onActionButtonClick?.();
+      },
     });
-    // AREA_MODE
-    this.mapInitializer.groups.modeOptions.onClick("addArea", () => {
-      this.setMode(MapSelector.Mode.AREA_MODE);
-      this.handlers[MapSelector.Mode.AREA_MODE].onActionButtonClick?.();
+    modeBtns.setButtonHandler("addArea", {
+      onClick: (map, e) => {
+        this.setMode(MapSelector.Mode.AREA_MODE);
+        this.handlers[MapSelector.Mode.AREA_MODE].onActionButtonClick?.();
+      },
     });
     // CANCEL（必要なら）
-      this.mapInitializer.groups.modeOptions.onClick("cancel", () => {
-      this.handleCancel();
+    modeBtns.setButtonHandler("cancel", {
+      onClick: (map, e) => {
+        this.handleCancel();
+      },
     });
 
     // beforeunload
@@ -103,6 +119,10 @@ export default class MapSelector {
 
     // 初期 UI
     this.uiManager.updateModeButtons(this.currentMode);
+
+    this.searchControl.bindOnLocationSelected(
+      this.handlers[MapSelector.Mode.DEFAULT].preview.onSelected
+    );
 
     // toast
     initToast(document.getElementById(this.controls.toastId));
@@ -144,13 +164,6 @@ export default class MapSelector {
     this.uiManager.handleGpxSave();
   }
 
-  // ---------------------------------------------------
-  // Geocoder → MarkerHandler（仮マーカー表示）
-  // ---------------------------------------------------
-  handleShowLocation(trkpt) {
-    this.handlers[MapSelector.Mode.DEFAULT].addPreviewMarker(trkpt);
-  }
-
   handleToggleBoundary() {
     this.handlers[MapSelector.Mode.DEFAULT].boundary.toggle();
   }
@@ -168,19 +181,19 @@ export default class MapSelector {
   // ---------------------------------------------------
   // Handler → Selector → UIManager
   // ---------------------------------------------------
- onHandlerStateChanged({ state, canCancel }) {
-  const mode = this.currentMode;
+  onHandlerStateChanged({ state, canCancel }) {
+    const mode = this.currentMode;
 
-  if (mode !== this.constructor.Mode.DEFAULT) {
-    const buttonId = this.constructor.ModeConfig[mode].buttonId;
-    this.uiManager.updateStateUI({
-      buttonId,
-      state,
-      canCancel,
-    });
+    if (mode !== this.constructor.Mode.DEFAULT) {
+      const buttonId = this.constructor.ModeConfig[mode].buttonId;
+      this.uiManager.updateStateUI({
+        buttonId,
+        state,
+        canCancel,
+      });
+    }
+    this.uiManager.updateListUI();
   }
-  this.uiManager.updateListUI();
-}
 
   // ---------------------------------------------------
   // キャンセル
@@ -247,7 +260,7 @@ export default class MapSelector {
     this.handlers[MapSelector.Mode.DEFAULT].border.drawBorder(m);
   }
 
-  updateListUI(){
-    this.uiManager.updateListUI()
+  updateListUI() {
+    this.uiManager.updateListUI();
   }
 }

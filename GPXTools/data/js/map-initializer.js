@@ -1,5 +1,99 @@
 // map-initializer.js
 
+const buttonGroups = {
+  mainOptions: [
+    {
+      id: "list", // これを追加
+      status: "off",
+      icon: '<i class="fas fa-list-ul"></i>',
+      title: "拠点一覧",
+    },
+  ],
+  redrawOptions: [
+    {
+      id: "polyline",
+      status: "on",
+      icon: '<i class="fas fa-pencil-alt"></i>',
+      title: "Polyline",
+    },
+    {
+      id: "cluster",
+      status: "off",
+      icon: '<i class="fas fa-braille"></i>',
+      title: "クラスタ",
+    },
+    {
+      id: "boundary",
+      status: "off",
+      icon: '<i class="fas fa-vector-square"></i>',
+      title: "境界",
+    },
+  ],
+  modeOptions: [
+    {
+      id: "addImage",
+      status: "idle",
+      icon: '<i class="fas fa-image"></i>',
+      title: "画像追加",
+      fileInput: true,
+    },
+    {
+      id: "addTown",
+      status: "idle",
+      icon: '<i class="fas fa-map-marker-alt"></i>',
+      title: "町字追加",
+    },
+    {
+      id: "addArea",
+      status: "idle",
+      icon: '<i class="fas fa-draw-polygon"></i>',
+      title: "領域追加",
+    },
+    {
+      id: "cancel",
+      status: "off",
+      icon: '<i class="fas fa-times"></i>',
+      title: "キャンセル",
+    },
+  ],
+  gpxOptions: [
+    {
+      id: "gpxLoad",
+      status: "off",
+      icon: '<i class="fas fa-map-marker-alt"></i>',
+      title: "GPX追加",
+      fileInput: true,
+      accept: ".gpx",
+    },
+    {
+      id: "gpxSave",
+      status: "off",
+      icon: '<i class="fas fa-save"></i>',
+      title: "GPX保存",
+    },
+  ],
+  updateOptions: [
+    {
+      id: "routeUpdate",
+      status: "off",
+      icon: '<i class="fas fa-route"></i>',
+      title: "経路更新",
+    },
+    {
+      id: "addrUpdate",
+      status: "off",
+      icon: '<i class="fas fa-map"></i>',
+      title: "住所更新",
+    },
+    {
+      id: "clear",
+      status: "off",
+      icon: '<i class="fas fa-trash"></i>',
+      title: "クリア",
+    },
+  ],
+};
+
 export default class MapInitializer {
   constructor(selector) {
     this.selector = selector;
@@ -27,70 +121,74 @@ export default class MapInitializer {
     }).addTo(this.selector.map);
 
     // ----------------------------------------
-    // ★ SearchService を Leaflet UI に接続（正しい場所）
+    // 地図クリック → Selector に通知
     // ----------------------------------------
-    if (this.selector.searchService) {
-      const searchControl = new window.GeoSearch.GeoSearchControl({
-        provider: {
-          search: (query) => this.selector.searchService.search(query),
-        },
-        style: "button",
-        autoComplete: true,
-        autoCompleteDelay: 200,
-        showMarker: false,
-        retainZoomLevel: true,
-        animateZoom: true,
-        autoClose: false,
-        searchLabel: "場所を検索...",
+    this.selector.map.on("click", (e) => {
+      this.selector.handleMapClick(e);
+    });
+
+    const groups = {};
+
+    Object.entries(buttonGroups).forEach(([groupName, buttons]) => {
+      const group = L.control
+        .buttonGroup({
+          position: "topleft",
+          buttons,
+        })
+        .addTo(this.selector.map);
+      groups[groupName] = group;
+
+      // 初期 status を設定
+      buttons.forEach((btn) => {
+        if (btn.status) {
+          group.setStatus(btn.id, btn.status);
+        }
       });
+    });
+    this.groups = groups;
 
-      this.selector.map.addControl(searchControl);
+    // コントロールのインスタンス化と追加（元のコードの置き換え）
+    // 初期化時
 
-      this.selector.map.on("geosearch/showlocation", (e) => {
-        const trkpt = e.location.raw;
-
-        // 仮マーカー生成（UI層の責務）
-        this.selector.handleShowLocation(trkpt);
-
-        // ★ 履歴更新（Service の責務）
-        // updateHistory → showLocation に変更
-        this.selector.searchService.showLocation(trkpt);
-      });
-    }
+    this.selector.searchControl = L.control
+      .searchWithHistory({ position: "topright" })
+      .addTo(this.selector.map);
 
     // ----------------------------------------
     // 座標表示
     // ----------------------------------------
-    if (L.Control) {
-      L.Control.coordinates = L.Control.extend({
-        onAdd: function (map) {
-          const div = L.DomUtil.create("div", "coordinate-display");
-          div.style.background = "transparent";
-          div.style.border = "none";
-          div.style.padding = "4px 8px";
-          div.style.fontSize = "20px";
-          div.style.fontWeight = "600";
-          div.style.color = "#1e88e5";
-          div.style.textShadow = "0 0 3px rgba(255,255,255,0.8)";
-          div.style.margin = "4px";
-          div.innerHTML = " - , - ";
+    const CoordinateControl = L.Control.extend({
+      options: { position: "bottomleft" },
 
-          map.on("mousemove", (e) => {
-            div.innerHTML = `${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(
-              6
-            )}`;
-          });
+      onAdd: function (map) {
+        // コンテナ
+        this._container = L.DomUtil.create(
+          "div",
+          "leaflet-control-mouseposition"
+        );
+        this._coordDiv = L.DomUtil.create("div", "", this._container);
+        this._coordDiv.innerHTML = "— , —";
+        this._distDiv = L.DomUtil.create("div", "", this._container);
+        this._distDiv.innerHTML = "0 m";
 
-          return div;
-        },
-      });
-
-      L.control.coordinates = function (opts) {
-        return new L.Control.coordinates(opts);
-      };
-
-      L.control.coordinates({ position: "topright" }).addTo(this.selector.map);
-    }
+        // マウス移動で座標更新
+        map.on("mousemove", (e) => {
+          this._coordDiv.innerHTML = `${e.latlng.lat.toFixed(
+            5
+          )}, ${e.latlng.lng.toFixed(5)}`;
+        });
+        return this._container;
+      },
+      // ★ 外部から距離をセットするメソッド
+      updateDistance: function (meters) {
+        if (!this._distDiv) return;
+        this._distDiv.innerHTML = `${(meters / 1000).toFixed(2)} km`;
+      },
+    });
+    // コントロールを地図に追加
+    this.selector.coordinatesControl = new CoordinateControl().addTo(
+      this.selector.map
+    );
 
     // ----------------------------------------
     // distortableCollection
@@ -117,66 +215,97 @@ export default class MapInitializer {
       };
     }
 
-    // ----------------------------------------
-    // 地図クリック → Selector に通知
-    // ----------------------------------------
-    this.selector.map.on("click", (e) => {
-      this.selector.handleMapClick(e);
-    });
+    // 1. パネルの作成
+    this.selector.pointListControl = L.control
+      .pointListPanel({
+        getPoints: () => this.selector.gpxService.getTrkpts(),
+        onSelect: (idx) => this.selector.zoomToMarkerByIndex(idx),
+      })
+      .addTo(this.selector.map);
 
-    // ----------------------------------------
-    // Polyline / Cluster トグル
-    // ----------------------------------------
-    L.Control.LayerToggle = L.Control.extend({
-      onAdd: function (map) {
-        const container = L.DomUtil.create("div", "leaflet-bar layer-toggle");
+    // 2. 左側のボタングループのハンドラ設定
+    groups.mainOptions.setButtonHandler("list", {
+      onClick: () => {
+        console.log("Control Instance:", this.selector.pointListControl);
+        console.log("Toggle Method:", this.selector.pointListControl.toggle);
+        // パネルの開閉
+        const isOpen = this.selector.pointListControl.toggle();
+        // ボタンの見た目を更新
+        groups.mainOptions.setStatus("list", isOpen ? "active" : "default");
 
-        container.innerHTML = `
-          <a href="#" id="polylineToggleBtn" class="toggle-btn">
-            <i class="fas fa-route"></i>
-          </a>
-          <a href="#" id="clusterToggleBtn" class="toggle-btn">
-            <i class="fas fa-braille"></i>
-          </a>
-          <a href="#" id="boundaryToggleBtn" class="toggle-btn">
-            <i class="fas fa-draw-polygon"></i>
-          </a>
-        `;
-
-        L.DomEvent.disableClickPropagation(container);
-        return container;
+        if (isOpen) {
+          this.selector.pointListControl.updateList();
+        }
       },
     });
-
-    L.control.layerToggle = function (opts) {
-      return new L.Control.LayerToggle(opts);
-    };
-
-    L.control.layerToggle({ position: "topleft" }).addTo(this.selector.map);
+    
 
     // ----------------------------------------
     // UI → Handler 通知
     // ----------------------------------------
-    document
-      .getElementById("polylineToggleBtn")
-      .addEventListener("click", () => {
-        this.selector.handleTogglePolyline();
-        document.getElementById("polylineToggleBtn").classList.toggle("active");
-      });
-    document.getElementById("polylineToggleBtn").classList.add("active");
 
-    document
-      .getElementById("clusterToggleBtn")
-      .addEventListener("click", () => {
-        this.selector.handleToggleCluster();
-        document.getElementById("clusterToggleBtn").classList.toggle("active");
-      });
-    // ★ 追加：Boundary トグル
-    document
-      .getElementById("boundaryToggleBtn")
-      .addEventListener("click", () => {
-        this.selector.handleToggleBoundary();
-        document.getElementById("boundaryToggleBtn").classList.toggle("active");
-      });
+    // --- 表示切替関連グループ (Redraw Options) ---
+    // ポリライン表示切替
+    groups.redrawOptions.setButtonHandler("polyline", {
+      onClick: () => {
+        const current = groups.redrawOptions.getStatus("polyline");
+        const next = current === "on" ? "off" : "on";
+        groups.redrawOptions.setStatus("polyline", next);
+        this.selector.handleTogglePolyline(next);
+      },
+    });
+    // クラスター表示切替
+    groups.redrawOptions.setButtonHandler("cluster", {
+      onClick: () => {
+        const current = groups.redrawOptions.getStatus("cluster");
+        const next = current === "on" ? "off" : "on";
+        groups.redrawOptions.setStatus("cluster", next);
+        this.selector.handleToggleCluster(next);
+      },
+    });
+    // 境界線表示切替
+    groups.redrawOptions.setButtonHandler("boundary", {
+      onClick: () => {
+        const current = groups.redrawOptions.getStatus("boundary");
+        const next = current === "on" ? "off" : "on";
+        groups.redrawOptions.setStatus("boundary", next);
+        this.selector.handleToggleBoundary(next);
+      },
+    });
+
+    // --- GPX関連グループ ---
+    // GPX追加（ファイル入力）
+    groups.gpxOptions.setButtonHandler("gpxLoad", {
+      cndFileInput: true, // クリック時にファイル選択を開く
+      onFile: (map, file) => {
+        this.selector.handleGpxLoad(file);
+      },
+    });
+    // GPX保存
+    groups.gpxOptions.setButtonHandler("gpxSave", {
+      onClick: () => {
+        this.selector.handleGpxSave();
+      },
+    });
+
+    // --- 更新・クリア関連グループ ---
+    // 経路更新（rerouteButton）
+    groups.updateOptions.setButtonHandler("routeUpdate", {
+      onClick: () => {
+        this.selector.reorderMarkers();
+      },
+    });
+    // 住所更新（addressUpButton）
+    groups.updateOptions.setButtonHandler("addrUpdate", {
+      onClick: () => {
+        this.selector.reFetchAllAddresses();
+      },
+    });
+    // クリア（clearButton）
+    groups.updateOptions.setButtonHandler("clear", {
+      onClick: () => {
+        this.selector.clearMarkers();
+      },
+    });
   }
 }

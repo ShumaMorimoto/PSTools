@@ -14,13 +14,15 @@
   constructor(selector) {
     this.selector = selector;
     this.state = ImageHandler.State.IDLE;
-    this.tempData = null;
+
+    this.tempData = null; // 画像の DataURL
   }
 
   // ---------------------------------------------------
-  // 初期化（onAdd だけ呼ぶ）
+  // 初期化
   // ---------------------------------------------------
   init() {
+    this._initImageInputHandlers();
   }
 
   // ---------------------------------------------------
@@ -40,34 +42,27 @@
   }
 
   // ---------------------------------------------------
-  // File → DataURL
-  // ---------------------------------------------------
-  onFileInputClick(file) {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      this.tempData = event.target.result;
-      this._addImageToMap(this.tempData);
-      this.changeState(ImageHandler.State.SELECTING);
-    };
-    reader.readAsDataURL(file);
-  }
-
-  // ---------------------------------------------------
   // キャンセル（テンプレ準拠）
   // ---------------------------------------------------
   handleCancel() {
     if (this.state === ImageHandler.State.IDLE) return;
 
+    // ① キャンセルは編集破棄 → 画像を消す
     try {
       this.selector.imgGroup.clearLayers();
     } catch (e) {
       console.warn("clearLayers failed", e);
     }
 
+    // ② 状態遷移は必ず changeState を通す
     this.changeState(ImageHandler.State.IDLE);
+
+    // ③ モードは DEFAULT に戻す
     this.selector.setMode(this.selector.constructor.Mode.DEFAULT);
   }
-
+  // ---------------------------------------------------
+  // Map click（画像編集は画像側で完結）
+  // ---------------------------------------------------
   handleMapClick(e) {}
 
   // ---------------------------------------------------
@@ -91,6 +86,7 @@
     }
 
     this.selector.onHandlerStateChanged({
+      mode: this.selector.currentMode,
       state: newState,
       ...ImageHandler.StateInfo[newState],
     });
@@ -99,14 +95,19 @@
   // ---------------------------------------------------
   // 内部ロジック（テンプレ準拠）
   // ---------------------------------------------------
+
+  // IDLE → SELECTING（画像追加開始）
   _start() {
-    this.input.click();
+    const input = document.getElementById(this.selector.controls.imageInputId);
+    input.click();
   }
 
+  // SELECTING → PREVIEW（フォーカス外れ）
   _preview() {
     this.changeState(ImageHandler.State.PREVIEW);
   }
 
+  // PREVIEW / SELECTING → IDLE（確定）
   _confirm() {
     this.changeState(ImageHandler.State.IDLE);
     this.selector.setMode(this.selector.constructor.Mode.DEFAULT);
@@ -115,9 +116,11 @@
   // ---------------------------------------------------
   // 内部処理
   // ---------------------------------------------------
+
   _clear() {
     this.tempData = null;
-    this._disableEditing();
+    this._disableEditing(); // 編集終了
+    // 画像(imgGroup)は消さない
   }
 
   _prepareSelecting() {
@@ -128,6 +131,43 @@
   _preparePreview() {
     this.selector.setMode(this.selector.constructor.Mode.IMAGE_MODE);
     this._disableEditing();
+  }
+
+  // ---------------------------------------------------
+  // input / drop で画像追加
+  // ---------------------------------------------------
+  _initImageInputHandlers() {
+    const input = document.getElementById(this.selector.controls.imageInputId);
+
+    input.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      this._loadImageFile(file);
+      e.target.value = "";
+    });
+
+    const mapArea = document.getElementById(this.selector.mapId);
+
+    mapArea.addEventListener("dragover", (e) => e.preventDefault());
+    mapArea.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith("image/")) {
+        this._loadImageFile(file);
+      }
+    });
+  }
+
+  // File → DataURL
+  _loadImageFile(file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      this.tempData = event.target.result;
+      this._addImageToMap(this.tempData);
+      this.changeState(ImageHandler.State.SELECTING);
+    };
+    reader.readAsDataURL(file);
   }
 
   // ---------------------------------------------------
@@ -159,6 +199,17 @@
     });
 
     img.on("add", () => img.setOpacity(0.3));
+
+    //    img.on("select", () => {
+    //      if (this.state === ImageHandler.State.IDLE) return;
+    //      this.changeState(ImageHandler.State.SELECTING);
+    //    });
+
+    //    img.on("deselect", () => {
+    //      if (this.state === ImageHandler.State.IDLE) return;
+    //      this.changeState(ImageHandler.State.PREVIEW);
+    //    });
+
     img.on("delete", () => {
       this.changeState(ImageHandler.State.IDLE);
     });

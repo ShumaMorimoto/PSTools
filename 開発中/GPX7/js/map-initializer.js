@@ -1,6 +1,14 @@
 // map-initializer.js
 
 const buttonGroups = {
+  mainOptions: [
+    {
+      id: "list", // これを追加
+      status: "off",
+      icon: '<i class="fas fa-list-ul"></i>',
+      title: "拠点一覧",
+    },
+  ],
   redrawOptions: [
     {
       id: "polyline",
@@ -27,7 +35,7 @@ const buttonGroups = {
       status: "idle",
       icon: '<i class="fas fa-image"></i>',
       title: "画像追加",
-      fileInput: false, // ← これが正しい
+      fileInput: true,
     },
     {
       id: "addTown",
@@ -139,136 +147,12 @@ export default class MapInitializer {
     });
     this.groups = groups;
 
-    // カスタムLeafletコントロールの定義（新しいクラスとして追加）
-    L.Control.Search = L.Control.extend({
-      options: {
-        position: "topleft", // デフォルト位置（必要に応じて変更）
-        searchService: null, // SearchServiceインスタンスを渡す
-        handleShowLocation: null, // 場所表示ハンドラを渡す
-      },
-
-      initialize: function (options) {
-        L.setOptions(this, options);
-        if (!this.options.searchService || !this.options.handleShowLocation) {
-          throw new Error(
-            "searchService and handleShowLocation are required options."
-          );
-        }
-      },
-
-      onAdd: function (map) {
-        this._map = map; // マップ参照を保持
-
-        // コントロールのコンテナ作成
-        const container = L.DomUtil.create(
-          "div",
-          "leaflet-bar leaflet-control leaflet-control-search"
-        );
-
-        // 入力フィールド作成
-        const input = L.DomUtil.create("input", "search-input", container);
-        input.id = "autoCompleteSearch";
-        input.type = "text";
-        input.placeholder = "場所を検索...";
-
-        // マップイベントの干渉を防ぐ
-        L.DomEvent.disableClickPropagation(container);
-        L.DomEvent.on(container, "mousewheel", L.DomEvent.stopPropagation);
-
-        // autoComplete.jsの初期化を遅らせる（DOM追加後）
-        setTimeout(() => {
-          this.autoCompleteInstance = new autoComplete({
-            selector: "#autoCompleteSearch",
-            placeHolder: "場所を検索...",
-            data: {
-              src: async (query) => {
-                // SearchServiceのsearchを呼び出し
-                const results = await this.options.searchService.search({
-                  query,
-                });
-                return results;
-              },
-              keys: ["label"], // 検索キー（labelで検索）
-              cache: false, // キャッシュ無効（履歴が動的に変わるため）
-            },
-            threshold: 1, // 1文字からトリガー
-            debounce: 200, // 200msのデバウンス
-            resultsList: {
-              noResults: true, // 結果なしの場合表示
-              maxResults: 10, // 最大結果数
-            },
-            resultItem: {
-              highlight: true, // ハイライト有効
-            },
-          });
-
-          // 選択イベントハンドリング
-          input.addEventListener("selection", (event) => {
-            const feedback = event.detail;
-            const selection = feedback.selection.value; // 選択されたオブジェクト {label, x, y, raw, ...}
-
-            // 仮マーカー生成（UI層の責務）
-            this.options.handleShowLocation(selection.raw);
-
-            // 履歴更新（Service の責務）
-            this.options.searchService.showLocation(selection.raw);
-
-            // 入力フィールドをクリア（オプション）
-            input.value = "";
-          });
-        }, 0);
-
-        return container;
-      },
-
-      onRemove: function (map) {
-        // クリーンアップ（必要に応じて）
-        if (this.autoCompleteInstance) {
-          // autoComplete.jsの破棄（ドキュメント参照、必要に応じて）
-        }
-      },
-    });
-
     // コントロールのインスタンス化と追加（元のコードの置き換え）
-    const searchControl = new L.Control.Search({
-      searchService: this.selector.searchService,
-      handleShowLocation: this.selector.handleShowLocation,
-    });
+    // 初期化時
 
-    this.selector.map.addControl(searchControl);
-
-    // 元のgeosearchイベントは不要になるため削除
-    // this.selector.map.on("geosearch/showlocation", ...) は削除
-    // -------------------------
-    // ---------------
-    // ★ SearchService を Leaflet UI に接続（正しい場所）
-    // ----------------------------------------
-    /*     if (this.selector.searchService) {
-      const searchControl = new window.GeoSearch.GeoSearchControl({
-        provider: {
-          search: (query) => this.selector.searchService.search(query),
-        },
-        style: "bar",
-        autoComplete: true,
-        autoCompleteDelay: 200,
-        showMarker: false,
-        retainZoomLevel: true,
-        animateZoom: true,
-        autoClose: false,
-        searchLabel: "場所を検索...",
-      });
-
-      this.selector.map.addControl(searchControl);
-      this.selector.map.on("geosearch/showlocation", (e) => {
-        const trkpt = e.location.raw;
-
-        // 仮マーカー生成（UI層の責務）
-        this.selector.handleShowLocation(trkpt);
-
-        // ★ 履歴更新（Service の責務）
-        this.selector.searchService.showLocation(trkpt);
-      });
-    } */
+    this.selector.searchControl = L.control
+      .searchWithHistory({ position: "topright" })
+      .addTo(this.selector.map);
 
     // ----------------------------------------
     // 座標表示
@@ -331,112 +215,97 @@ export default class MapInitializer {
       };
     }
 
-    //
-    //  リスト表示
-    //
-    L.Control.pointList = L.Control.extend({
-      options: {
-        position: "topright",
-        getPoints: null, // () => [{name, lat, lon}, ...]
-        onSelect: null, // (idx) => void
-      },
-      onAdd: function (map) {
-        const container = L.DomUtil.create("div", "leaflet-control-pointlist");
-        this.select = L.DomUtil.create("select", "", container);
-
-        L.DomEvent.disableClickPropagation(container);
-        L.DomEvent.disableScrollPropagation(container);
-
-        this.select.addEventListener("change", () => {
-          const val = this.select.value;
-          if (val === "" || isNaN(val)) return;
-          const idx = parseInt(val, 10);
-          if (typeof this.options.onSelect === "function") {
-            this.options.onSelect(idx);
-          }
-        });
-        return container;
-      },
-      updateList: function () {
-        if (!this.select) return;
-        this.select.innerHTML = "";
-
-        if (typeof this.options.getPoints !== "function") return;
-
-        const pts = this.options.getPoints();
-        if (!pts || !Array.isArray(pts)) return;
-
-        pts.forEach((p, i) => {
-          const opt = document.createElement("option");
-          opt.value = i;
-          opt.textContent = `${i + 1}. ${
-            p.name || p.desc || `${p.lat}, ${p.lon}`
-          }`;
-          this.select.appendChild(opt);
-        });
-      },
-    });
-    L.control.pointList = function (opts) {
-      return new L.Control.pointList(opts);
-    };
+    // 1. パネルの作成
     this.selector.pointListControl = L.control
-      .pointList({
+      .pointListPanel({
         getPoints: () => this.selector.gpxService.getTrkpts(),
         onSelect: (idx) => this.selector.zoomToMarkerByIndex(idx),
       })
       .addTo(this.selector.map);
 
+    // 2. 左側のボタングループのハンドラ設定
+    groups.mainOptions.setButtonHandler("list", {
+      onClick: () => {
+        console.log("Control Instance:", this.selector.pointListControl);
+        console.log("Toggle Method:", this.selector.pointListControl.toggle);
+        // パネルの開閉
+        const isOpen = this.selector.pointListControl.toggle();
+        // ボタンの見た目を更新
+        groups.mainOptions.setStatus("list", isOpen ? "active" : "default");
+
+        if (isOpen) {
+          this.selector.pointListControl.updateList();
+        }
+      },
+    });
+    
+
     // ----------------------------------------
     // UI → Handler 通知
     // ----------------------------------------
 
-    // redrawOptions のボタン → ハンドラ対応表
-    const redrawHandlers = {
-      polyline: () => {
+    // --- 表示切替関連グループ (Redraw Options) ---
+    // ポリライン表示切替
+    groups.redrawOptions.setButtonHandler("polyline", {
+      onClick: () => {
         const current = groups.redrawOptions.getStatus("polyline");
         const next = current === "on" ? "off" : "on";
         groups.redrawOptions.setStatus("polyline", next);
         this.selector.handleTogglePolyline(next);
       },
-
-      cluster: () => {
+    });
+    // クラスター表示切替
+    groups.redrawOptions.setButtonHandler("cluster", {
+      onClick: () => {
         const current = groups.redrawOptions.getStatus("cluster");
         const next = current === "on" ? "off" : "on";
         groups.redrawOptions.setStatus("cluster", next);
         this.selector.handleToggleCluster(next);
       },
-
-      boundary: () => {
+    });
+    // 境界線表示切替
+    groups.redrawOptions.setButtonHandler("boundary", {
+      onClick: () => {
         const current = groups.redrawOptions.getStatus("boundary");
         const next = current === "on" ? "off" : "on";
         groups.redrawOptions.setStatus("boundary", next);
         this.selector.handleToggleBoundary(next);
       },
-    };
-    // ループで登録（美しい）
-    Object.entries(redrawHandlers).forEach(([btnId, handler]) => {
-      groups.redrawOptions.onClick(btnId, handler);
     });
 
+    // --- GPX関連グループ ---
     // GPX追加（ファイル入力）
-    groups.gpxOptions.onFile("gpxLoad", (map, file) => {
-      this.selector.handleGpxLoad(file);
+    groups.gpxOptions.setButtonHandler("gpxLoad", {
+      cndFileInput: true, // クリック時にファイル選択を開く
+      onFile: (map, file) => {
+        this.selector.handleGpxLoad(file);
+      },
     });
     // GPX保存
-    groups.gpxOptions.onClick("gpxSave", () => {
-      this.selector.handleGpxSave();
+    groups.gpxOptions.setButtonHandler("gpxSave", {
+      onClick: () => {
+        this.selector.handleGpxSave();
+      },
     });
+
+    // --- 更新・クリア関連グループ ---
     // 経路更新（rerouteButton）
-    groups.updateOptions.onClick("routeUpdate", () => {
-      this.selector.reorderMarkers();
+    groups.updateOptions.setButtonHandler("routeUpdate", {
+      onClick: () => {
+        this.selector.reorderMarkers();
+      },
     });
     // 住所更新（addressUpButton）
-    groups.updateOptions.onClick("addrUpdate", () => {
-      this.selector.reFetchAllAddresses();
+    groups.updateOptions.setButtonHandler("addrUpdate", {
+      onClick: () => {
+        this.selector.reFetchAllAddresses();
+      },
     });
     // クリア（clearButton）
-    groups.updateOptions.onClick("clear", () => {
-      this.selector.clearMarkers();
+    groups.updateOptions.setButtonHandler("clear", {
+      onClick: () => {
+        this.selector.clearMarkers();
+      },
     });
   }
 }

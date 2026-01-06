@@ -15,36 +15,12 @@
     this.selector = selector;
     this.state = ImageHandler.State.IDLE;
     this.tempData = null;
-
-    // ---------------------------------------------------
-    // ★ FileInput ボタン（ButtonGroup）を ImageHandler 内で生成
-    // ---------------------------------------------------
-    this.fileInputGroup = L.control.buttonGroup({
-      position: "topleft",
-      buttons: [
-        {
-          id: "imageFileInput",
-          fileInput: true,
-          accept: "image/*",
-        },
-      ],
-    });
   }
 
   // ---------------------------------------------------
   // 初期化（onAdd だけ呼ぶ）
   // ---------------------------------------------------
   init() {
-    // ★ addTo はしない（UI に出さない）
-    const container = this.fileInputGroup.onAdd(this.selector.map);
-
-    // input element を取得
-    this.input = container.querySelector("#imageFileInput_file");
-
-    // ★ onFile を登録（DOM change を自前で書かない）
-    this.fileInputGroup.onFile("imageFileInput", (map, file) => {
-      this.onFileInputClick(file);
-    });
   }
 
   // ---------------------------------------------------

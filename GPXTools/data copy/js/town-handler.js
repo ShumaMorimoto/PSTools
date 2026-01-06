@@ -107,6 +107,7 @@ export default class TownHandler {
     }
 
     this.selector.onHandlerStateChanged({
+      mode: this.selector.currentMode,
       state: newState,
       ...TownHandler.StateInfo[newState],
     });

@@ -5,7 +5,7 @@ export default class MarkerPolyline {
     this.core = core;
 
     this.show = true; // ← フラグはここに持つ
-    this.polyline = L.polyline([], { color: "#ff8800", weight: 3 });
+    this.polyline = L.polyline([], { color: "blue", weight: 3 });
   }
 
   toggle() {

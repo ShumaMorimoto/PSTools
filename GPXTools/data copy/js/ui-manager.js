@@ -27,33 +27,45 @@ export default class UIManager {
     const ModeConfig = this.selector.constructor.ModeConfig;
 
     Object.entries(ModeConfig).forEach(([m, cfg]) => {
-      const btnId = cfg.buttonId;
+      const btnId = this.selector.controls[cfg.controlKey];
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
 
-      // ★ 条件：カレントMODEと一致 or カレントMODEがDEFAULT
-      const shouldEnable = m === mode || mode === this.selector.constructor.Mode.DEFAULT;
+      const isActive =
+        mode === this.selector.constructor.Mode.DEFAULT || mode === m;
 
-      if (shouldEnable) {
-        this.selector.mapInitializer.groups.modeOptions.enable(btnId);
-      } else {
-        this.selector.mapInitializer.groups.modeOptions.disable(btnId);
-      }
+      btn.classList.toggle("active", isActive);
+      btn.disabled = !isActive;
     });
   }
-  updateStateUI({ buttonId, state, canCancel }) {
-    // ① 対象ボタンのステータス更新
-    this.selector.mapInitializer.groups.modeOptions.setStatus(buttonId, state);
 
-    // ② キャンセルボタンのステータス更新
-    this.selector.mapInitializer.groups.modeOptions.setStatus(
-      "cancel",
-      canCancel ? "active" : "inactive"
+  // ---------------------------------------------------
+  // STATE UI 更新（Handler → Selector → UIManager）
+  // ---------------------------------------------------
+  updateStateUI({ mode, label, canCancel }) {
+    const ModeConfig = this.selector.constructor.ModeConfig;
+    const cfg = ModeConfig[mode];
+
+    // アクションボタンのラベル更新
+    if (cfg) {
+      const actionBtnId = this.selector.controls[cfg.controlKey];
+      this.setButtonLabel(actionBtnId, label);
+    }
+
+    // キャンセルボタンの有効/無効
+    const cancelBtn = document.getElementById(
+      this.selector.controls.cancelActionBtnId
     );
+    if (cancelBtn) {
+      cancelBtn.disabled = !canCancel;
+    }
   }
 
   // ---------------------------------------------------
   // GPX 読み込み
   // ---------------------------------------------------
-  handleGpxLoad(file) {
+  handleGpxLoad(e) {
+    const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
@@ -67,6 +79,7 @@ export default class UIManager {
       this.selector.addPoints(newPts);
 
       this.selector.zoomToMarkerByIndex(newPts.length - 1);
+      e.target.value = "";
     };
     reader.readAsText(file);
   }
@@ -137,6 +150,35 @@ export default class UIManager {
   // pointList UI 更新
   // ---------------------------------------------------
   updateListUI() {
-    this.selector.pointListControl.updateList();
+    const list = document.getElementById(this.selector.controls.pointListId);
+    if (!list) return;
+
+    list.innerHTML = "";
+
+    const pts = this.selector.gpxService.getTrkpts();
+
+    pts.forEach((p, i) => {
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = `${i + 1}. ${p.name || p.desc || `${p.lat}, ${p.lon}`}`;
+      list.appendChild(opt);
+    });
   }
+
+  // ---------------------------------------------------
+  // pointList → 地図移動（★4: idx Zoom に再構築）
+  // ---------------------------------------------------
+  handlePointListChange() {
+    const list = document.getElementById(this.selector.controls.pointListId);
+    if (!list) return;
+
+    const val = list.value;
+    if (val === "" || isNaN(val)) return;
+
+    const idx = parseInt(val, 10);
+
+    // ★ markers 配列を触らない
+    this.selector.zoomToMarkerByIndex(idx);
+  }
+
 }

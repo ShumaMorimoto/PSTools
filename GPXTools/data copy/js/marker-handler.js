@@ -59,21 +59,6 @@ export default class MarkerHandler {
     this.polyline.redraw();
     this.cluster.redraw();
     this.boundary.redraw();
-
-    this.selector.coordinatesControl.updateDistance(this.calcTotalDistance());
-  }
-
-  calcTotalDistance() {
-    const points = this.core.markers.map((x) => x.m.getLatLng());
-    if (!points || points.length < 2) return 0;
-
-    let total = 0;
-    for (let i = 0; i < points.length - 1; i++) {
-      const p1 = points[i];
-      const p2 = points[i + 1];
-      total += this.selector.map.distance(p1, p2);
-    }
-    return total;
   }
 
   // ---------------------------------------------------
@@ -121,13 +106,13 @@ export default class MarkerHandler {
   }
 
   addPoint(p) {
-    this._addPoint(p);
+    this._addPoint(p)
     this.redraw();
   }
 
   addPoints(points) {
     points.forEach((p) => {
-      this._addPoint(p);
+      this._addPoint(p)
     });
     this.redraw();
   }
@@ -173,4 +158,5 @@ export default class MarkerHandler {
   zoomToMarker(marker) {
     this.selector.map.setView(marker.getLatLng(), 18);
   }
+
 }

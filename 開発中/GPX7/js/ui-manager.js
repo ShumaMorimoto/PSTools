@@ -67,7 +67,6 @@ export default class UIManager {
       this.selector.addPoints(newPts);
 
       this.selector.zoomToMarkerByIndex(newPts.length - 1);
-      e.target.value = "";
     };
     reader.readAsText(file);
   }

@@ -1,11 +1,12 @@
 // map-selector.js
-import GPXService from "./gpx-service.js";
 import MapInitializer from "./map-initializer.js";
 import MarkerHandler from "./marker-handler.js";
 import ImageHandler from "./image-handler.js";
 import TownHandler from "./town-handler.js";
 import AreaHandler from "./area-handler.js";
+//import GAHandler from "./ga-handler.js";
 import UIManager from "./ui-manager.js";
+import SearchService from "./search-service.js";
 import { initToast } from "./api-utils.js";
 
 export default class MapSelector {
@@ -14,22 +15,27 @@ export default class MapSelector {
     IMAGE_MODE: "imageMode",
     TOWN_MODE: "townMode",
     AREA_MODE: "areaMode",
+    //    GA_MODE: "gaMode",
   };
 
   // Mode → UIボタンIDキー / Handlerクラス の対応表
   static ModeConfig = {
     [MapSelector.Mode.IMAGE_MODE]: {
-      buttonId: "addImage",
+      controlKey: "imageActionBtnId",
       handlerClass: ImageHandler,
     },
     [MapSelector.Mode.TOWN_MODE]: {
-      buttonId: "addTown",
+      controlKey: "townActionBtnId",
       handlerClass: TownHandler,
     },
     [MapSelector.Mode.AREA_MODE]: {
-      buttonId: "addArea",
+      controlKey: "areaActionBtnId",
       handlerClass: AreaHandler,
     },
+    //    [MapSelector.Mode.GA_MODE]: {
+    //      controlKey: "gaActionBtnId",
+    //      handlerClass: GAHandler,
+    //    },
   };
 
   constructor(options) {
@@ -43,7 +49,7 @@ export default class MapSelector {
     this.currentMode = MapSelector.Mode.DEFAULT;
     this.currentHandler = null;
 
-    this.gpxService = new GPXService();
+    this.gpxService = options.gpxService;
 
     // Handler インスタンスを Map で管理
     this.handlers = {
@@ -55,6 +61,7 @@ export default class MapSelector {
       this.handlers[mode] = new cfg.handlerClass(this);
     });
 
+    this.searchService = new SearchService(this);
     this.uiManager = new UIManager(this);
     this.mapInitializer = new MapInitializer(this);
   }
@@ -69,41 +76,19 @@ export default class MapSelector {
     // 必要な Handler の init
     Object.values(this.handlers).forEach((h) => h.init?.());
 
-    const modeBtns = this.mapInitializer.groups.modeOptions;
-    // ハンドラの登録
-    modeBtns.setButtonHandler("addImage", {
-      // 【条件判定】現在のステータスをチェックしてファイルモードにするか決める
-      cndFileInput: (map, btnId) => {
-        const currentStatus = modeBtns.getStatus(btnId);
-        return currentStatus === "idle";
-      },
-      onClick: (map, e) => {
-        this.setMode(MapSelector.Mode.IMAGE_MODE);
-        this.handlers[MapSelector.Mode.IMAGE_MODE].onActionButtonClick?.();
-      },
-      onFile: (map, file, e) => {
-        this.setMode(MapSelector.Mode.IMAGE_MODE);
-        this.handlers[MapSelector.Mode.IMAGE_MODE].onFileInputClick?.(file);
-      },
+    // MODE ボタンをループでバインド
+    Object.entries(MapSelector.ModeConfig).forEach(([mode, cfg]) => {
+      const btnId = this.controls[cfg.controlKey];
+      const handler = this.handlers[mode];
+      this._bindModeButton(btnId, mode, handler);
     });
-    modeBtns.setButtonHandler("addTown", {
-      onClick: (map, e) => {
-        this.setMode(MapSelector.Mode.TOWN_MODE);
-        this.handlers[MapSelector.Mode.TOWN_MODE].onActionButtonClick?.();
-      },
-    });
-    modeBtns.setButtonHandler("addArea", {
-      onClick: (map, e) => {
-        this.setMode(MapSelector.Mode.AREA_MODE);
-        this.handlers[MapSelector.Mode.AREA_MODE].onActionButtonClick?.();
-      },
-    });
-    // CANCEL（必要なら）
-    modeBtns.setButtonHandler("cancel", {
-      onClick: (map, e) => {
-        this.handleCancel();
-      },
-    });
+
+    // キャンセルボタン
+    document
+      .getElementById(this.controls.cancelActionBtnId)
+      .addEventListener("click", () => this.handleCancel());
+
+    this._bindUIEvents();
 
     // beforeunload
     window.addEventListener("beforeunload", () => {
@@ -118,12 +103,9 @@ export default class MapSelector {
     // 初期 UI
     this.uiManager.updateModeButtons(this.currentMode);
 
-    this.searchControl.bindOnLocationSelected(
-      this.handlers[MapSelector.Mode.DEFAULT].preview.onSelected
-    );
-
     // toast
-    initToast(document.getElementById(this.controls.toastId));
+
+    initToast(document.getElementById(this.controls.toastId))
 
     // 初期データがあればモデルにロード
     if (initData) {
@@ -141,7 +123,35 @@ export default class MapSelector {
     });
   }
 
-  _bindUIEvents() {}
+  _bindUIEvents() {
+    // pointList
+    document
+      .getElementById(this.controls.pointListId)
+      .addEventListener("change", () => this.uiManager.handlePointListChange());
+
+    // 経路最適化
+    document
+      .getElementById(this.controls.updateRouteBtnId)
+      .addEventListener("click", () => this.reorderMarkers());
+
+    // 住所再取得
+    document
+      .getElementById(this.controls.reFetchBtnId)
+      .addEventListener("click", () => this.reFetchAllAddresses());
+
+    // マーカー全削除
+    document
+      .getElementById(this.controls.clearMarkersBtnId)
+      .addEventListener("click", () => this.clearMarkers());
+
+    document
+      .getElementById(this.controls.gpxInputId)
+      .addEventListener("change", (e) => this.uiManager.handleGpxLoad(e));
+
+    document
+      .getElementById(this.controls.gpxSaveId)
+      .addEventListener("click", () => this.uiManager.handleGpxSave());
+  }
 
   handleTogglePolyline() {
     this.handlers[MapSelector.Mode.DEFAULT].polyline.toggle();
@@ -155,11 +165,11 @@ export default class MapSelector {
     this.handlers[MapSelector.Mode.DEFAULT].boundary.toggle();
   }
 
-  handleGpxLoad(file) {
-    this.uiManager.handleGpxLoad(file);
-  }
-  handleGpxSave() {
-    this.uiManager.handleGpxSave();
+  // ---------------------------------------------------
+  // Geocoder → MarkerHandler（仮マーカー表示）
+  // ---------------------------------------------------
+  handleShowLocation(trkpt) {
+    this.handlers[MapSelector.Mode.DEFAULT].addPreviewMarker(trkpt);
   }
 
   handleToggleBoundary() {
@@ -179,17 +189,12 @@ export default class MapSelector {
   // ---------------------------------------------------
   // Handler → Selector → UIManager
   // ---------------------------------------------------
-  onHandlerStateChanged({ state, canCancel }) {
-    const mode = this.currentMode;
+  onHandlerStateChanged(info) {
+    this.uiManager.updateStateUI(info);
+    this.updateList();
+  }
 
-    if (mode !== this.constructor.Mode.DEFAULT) {
-      const buttonId = this.constructor.ModeConfig[mode].buttonId;
-      this.uiManager.updateStateUI({
-        buttonId,
-        state,
-        canCancel,
-      });
-    }
+  updateList() {
     this.uiManager.updateListUI();
   }
 
@@ -250,15 +255,13 @@ export default class MapSelector {
     this.handlers[MapSelector.Mode.DEFAULT].address.reFetchAllAddresses();
   }
 
+
+
   reorderMarkers() {
     this.handlers[MapSelector.Mode.DEFAULT].reorderMarkers();
   }
 
   drawBorder(m) {
     this.handlers[MapSelector.Mode.DEFAULT].border.drawBorder(m);
-  }
-
-  updateListUI() {
-    this.uiManager.updateListUI();
   }
 }

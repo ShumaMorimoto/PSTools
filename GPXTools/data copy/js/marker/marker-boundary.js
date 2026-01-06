@@ -49,7 +49,7 @@ export default class MarkerBoundary {
     this.layer = L.geoJSON(geo, {
       style: {
         color: "#ff6600",
-        weight: 3,
+        weight: 2,
         fill: false,
       },
     });
