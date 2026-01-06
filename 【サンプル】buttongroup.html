@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>3 Patterns of Button Handler</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100%; }
+
+        /* ボタンスタイル */
+        .leaflet-control.leaflet-bar a {
+            width: 34px; height: 34px; line-height: 34px;
+            text-align: center; text-decoration: none; color: #333;
+            background-color: white; display: block; cursor: pointer; font-size: 18px;
+        }
+        .leaflet-control.leaflet-bar a:hover { background-color: #f4f4f4; }
+        
+        /* 状態：input（ファイル入力待ち）の時のスタイル */
+        .leaflet-control.leaflet-bar a.status-input {
+            background-color: #ffeb3b; /* 黄色 */
+            color: black;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+// --------------------------------------------------------------------------
+// L.Control.ButtonGroup 定義
+// --------------------------------------------------------------------------
+L.Control.ButtonGroup = L.Control.extend({
+  options: { position: "topleft", buttons: [] },
+
+  onAdd: function (map) {
+    const container = L.DomUtil.create("div", "leaflet-control leaflet-bar");
+    L.DomEvent.disableClickPropagation(container);
+
+    this._map = map;
+    this._btnElems = {};
+    this._fileElems = {};
+
+    container.innerHTML = this.options.buttons.map(btn => `
+        <a href="#" id="${btn.id}" class="btn status-default" title="${btn.title || ""}">
+          ${btn.icon}
+        </a>
+        ${ btn.fileInput ? `<input type="file" id="${btn.id}_file" accept="${btn.accept || ""}" style="display:none;">` : "" }
+      `).join("");
+
+    this.options.buttons.forEach((btn) => {
+      this._btnElems[btn.id] = container.querySelector(`#${btn.id}`);
+      if (btn.fileInput) this._fileElems[btn.id] = container.querySelector(`#${btn.id}_file`);
+    });
+
+    return container;
+  },
+
+  // ★ 汎用ハンドラ設定メソッド
+  setButtonHandler: function (btnId, handlers) {
+    const btn = this._btnElems[btnId];
+    const fileInput = this._fileElems[btnId];
+    const { onClick, onFile, cndFileInput } = handlers;
+
+    if (!btn) return;
+
+    // クリックイベント
+    L.DomEvent.on(btn, "click", (e) => {
+      L.DomEvent.preventDefault(e);
+      
+      // 条件判定ロジック
+      let isFileMode = false;
+      if (typeof cndFileInput === 'function') {
+        // 関数なら実行結果を使う (併用モード)
+        isFileMode = cndFileInput(this._map, btnId);
+      } else {
+        // 値ならその真偽値を使う (true: ファイル専用 / undefined or false: クリック専用)
+        isFileMode = !!cndFileInput;
+      }
+
+      if (isFileMode) {
+        if (fileInput) {
+          fileInput.value = ''; 
+          fileInput.click();
+        } else {
+          console.warn(`Button ${btnId} needs fileInput: true`);
+        }
+      } else {
+        if (onClick) onClick(this._map, e);
+      }
+    });
+
+    // ファイル選択イベント
+    if (fileInput && onFile) {
+      L.DomEvent.on(fileInput, "change", (e) => {
+        if (e.target.files && e.target.files[0]) {
+          onFile(this._map, e.target.files[0], e);
+        }
+      });
+    }
+  },
+
+  // ステータス管理用
+  setStatus: function (btnId, status) {
+    const el = this._btnElems[btnId];
+    if (el) el.className = `btn status-${status}`;
+  },
+  getStatus: function (btnId) {
+    const el = this._btnElems[btnId];
+    if (!el) return null;
+    const cls = [...el.classList].find((c) => c.startsWith("status-"));
+    return cls ? cls.replace("status-", "") : null;
+  }
+});
+L.control.buttonGroup = (opts) => new L.Control.ButtonGroup(opts);
+
+
+// --------------------------------------------------------------------------
+// 実装コード
+// --------------------------------------------------------------------------
+
+const map = L.map('map').setView([35.68, 139.76], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+const controls = L.control.buttonGroup({
+  position: "topleft",
+  buttons: [
+    { id: "btn-click",  icon: "👆", title: "クリックのみ" },
+    { id: "btn-file",   icon: "📂", title: "ファイルのみ", fileInput: true },
+    { id: "btn-hybrid", icon: "🔄", title: "併用モード",   fileInput: true }
+  ]
+}).addTo(map);
+
+
+// ==========================================
+// パターン1: 通常時（クリックのみ）
+// ==========================================
+controls.setButtonHandler("btn-click", {
+  // cndFileInput: 指定なし (undefined -> false扱い)
+  onClick: (map, e) => {
+    alert("パターン1: クリックイベント発生！\n(ファイル選択は開きません)");
+  }
+});
+
+
+// ==========================================
+// パターン2: ファイル入力専用
+// ==========================================
+controls.setButtonHandler("btn-file", {
+  cndFileInput: true, // ★ trueを指定 = 常にファイルモード
+
+  onFile: (map, file, e) => {
+    alert(`パターン2: ファイル選択完了！\n${file.name}`);
+  }
+  // onClickは指定しても無視されます
+});
+
+
+// ==========================================
+// パターン3: 併用モード（条件分岐）
+// ==========================================
+controls.setButtonHandler("btn-hybrid", {
+  
+  // ★ 関数を指定 = 実行結果(true/false)で分岐
+  cndFileInput: (map, btnId) => {
+    // 現在のステータスが 'input' なら true
+    return controls.getStatus(btnId) === 'input';
+  },
+
+  // 条件が false の時の処理
+  onClick: (map, e) => {
+    alert("パターン3: クリックモード\nこれから「ファイル入力モード」に切り替えます。");
+    controls.setStatus("btn-hybrid", "input"); // 黄色にする
+  },
+
+  // 条件が true の時の処理
+  onFile: (map, file, e) => {
+    alert(`パターン3: ファイル処理完了！\n${file.name}\n\n「通常モード」に戻します。`);
+    controls.setStatus("btn-hybrid", "default"); // 白に戻す
+  }
+});
+
+</script>
+</body>
+</html>
