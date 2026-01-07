@@ -1,43 +1,34 @@
 ﻿L.Control.SearchWithHistory = L.Control.extend({
-  // デフォルトオプション
   options: {
     position: "topleft",
     placeholder: "場所を検索...",
     maxHistory: 2000,
     historyKey: "leaflet_search_history_keyword_only",
-    nominatimUrl: "https://nominatim.openstreetmap.org/search",
+    // ★ 'gsi' (国土地理院) または 'nominatim' (OSM) を指定
+    provider: "gsi", 
     autoCollapse: true,
     onLocationSelected: null,
   },
 
-  // コンストラクタ
   initialize: function (options) {
-    // ここで引数 options とデフォルトの options をマージする
     L.setOptions(this, options);
   },
 
   onAdd: function (map) {
     this._map = map;
+    const container = L.DomUtil.create("div", "leaflet-search-control leaflet-bar");
 
-    // CSSクラス名は Leaflet の標準に従い 'leaflet-bar' などを混ぜるとスタイルが安定します
-    const container = L.DomUtil.create(
-      "div",
-      "leaflet-search-control leaflet-bar"
-    );
-
-    // イベント伝播の防止
     L.DomEvent.disableClickPropagation(container);
     L.DomEvent.disableScrollPropagation(container);
 
     this._input = L.DomUtil.create("input", "leaflet-search-input", container);
     this._input.type = "text";
-    this._input.placeholder = this.options.placeholder; // this.options を使用
+    this._input.placeholder = this.options.placeholder;
     this._input.autocomplete = "off";
 
     this._ul = L.DomUtil.create("ul", "leaflet-search-suggestions", container);
     this._debounceTimer = null;
 
-    // --- イベント設定 ---
     L.DomEvent.on(this._input, "input", this._onInput, this);
     L.DomEvent.on(this._input, "focus", this._onFocus, this);
 
@@ -49,7 +40,6 @@
     return container;
   },
 
-  // --- メソッド分離（可読性とバグ防止のため） ---
   _onInput: function (e) {
     const query = e.target.value.trim();
     clearTimeout(this._debounceTimer);
@@ -64,49 +54,58 @@
     if (this._input.value === "") {
       const history = this._getHistory();
       if (history.length > 0) {
-        this._renderSuggestions(
-          history.map((h) => ({ ...h, source: "history" }))
-        );
+        this._renderSuggestions(history.map((h) => ({ ...h, source: "history" })));
       }
     }
   },
 
-  // 既存のメソッド群（bindOnLocationSelected, _performSearch, etc...）をここに続ける
-  bindOnLocationSelected: function (fn) {
-    this.options.onLocationSelected = fn;
-    return this;
-  },
-
+  // ★ 検索実行ロジックの切り分け
   _performSearch: async function (query) {
     const qLower = query.toLowerCase();
     const history = this._getHistory();
 
+    // 1. 履歴からのフィルタリング
     const historyResults = history
       .filter((item) => {
-        if (item.extensions && item.extensions.keyword) {
-          return item.extensions.keyword.toLowerCase().includes(qLower);
-        }
-        return item.name.toLowerCase().includes(qLower);
+        const keyword = item.extensions?.keyword || item.name;
+        return keyword.toLowerCase().includes(qLower);
       })
       .map((item) => ({ ...item, source: "history" }));
 
     try {
-      const res = await fetch(
-        `${this.options.nominatimUrl}?format=json&countrycodes=jp&accept-language=ja&q=${encodeURIComponent(
-          query
-        )}`
-      );
-      const data = await res.json();
-      const webResults = data.map((item) => ({
-        lat: parseFloat(item.lat),
-        lon: parseFloat(item.lon),
-        name: item.name || item.display_name.split(",")[0],
-        desc: item.display_name,
-        extensions: { keyword: query },
-        source: "web",
-      }));
+      let webResults = [];
+
+      // 2. プロバイダーごとのフェッチとパース
+      if (this.options.provider === "gsi") {
+        // --- 国土地理院 (GSI) ---
+        const res = await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        webResults = data.map((item) => ({
+          lat: item.geometry.coordinates[1],
+          lon: item.geometry.coordinates[0],
+          name: item.properties.title,
+          desc: "国土地理院 地名検索",
+          extensions: { keyword: query },
+          source: "web",
+        }));
+      } else {
+        // --- Nominatim (OSM) ---
+        const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=jp&accept-language=ja&q=${encodeURIComponent(query)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        webResults = data.map((item) => ({
+          lat: parseFloat(item.lat),
+          lon: parseFloat(item.lon),
+          name: item.name || item.display_name.split(",")[0],
+          desc: item.display_name,
+          extensions: { keyword: query },
+          source: "web",
+        }));
+      }
+
       this._renderSuggestions([...historyResults, ...webResults]);
     } catch (err) {
+      console.error("Search Error:", err);
       this._renderSuggestions(historyResults);
     }
   },
@@ -120,16 +119,16 @@
     results.slice(0, 10).forEach((item) => {
       const li = L.DomUtil.create("li", "", this._ul);
       const isHistory = item.source === "history";
-      let metaText =
-        isHistory && item.extensions ? `${item.extensions.count || 1}回` : "";
+      const badgeText = isHistory ? "履歴" : (this.options.provider === "gsi" ? "地理院" : "Web");
+      
+      let metaText = isHistory && item.extensions ? `${item.extensions.count || 1}回` : "";
 
       li.innerHTML = `
-        <span class="ls-badge ${
-          isHistory ? "ls-badge-history" : "ls-badge-web"
-        }">${isHistory ? "履歴" : "Web"}</span>
-        <div class="item-content"><span class="item-name">${
-          item.name
-        }</span><span class="item-desc">${item.desc || ""}</span></div>
+        <span class="ls-badge ${isHistory ? "ls-badge-history" : "ls-badge-web"}">${badgeText}</span>
+        <div class="item-content">
+          <span class="item-name">${item.name}</span>
+          <span class="item-desc">${item.desc || ""}</span>
+        </div>
         <span class="ls-meta">${metaText}</span>
       `;
       L.DomEvent.on(li, "click", () => this._selectItem(item));
@@ -139,15 +138,12 @@
 
   _selectItem: function (item) {
     if (this.options.autoCollapse) this._ul.style.display = "none";
-
     const savedItem = this._saveToHistory(item);
-    const targetId = savedItem._id; // このIDをクロージャに閉じ込める
+    const targetId = savedItem._id;
 
-    // 更新用関数: _idを元に特定の履歴を更新する
     const updateHistory = (params) => {
       const history = this._getHistory();
       const target = history.find((h) => h._id === targetId);
-
       if (target) {
         if (params.lat !== undefined) target.lat = params.lat;
         if (params.lon !== undefined) target.lon = params.lon;
@@ -158,19 +154,12 @@
           target.extensions.keyword = params.keyword;
         }
         target.extensions.timestamp = new Date().toISOString();
-
         localStorage.setItem(this.options.historyKey, JSON.stringify(history));
-        console.log("履歴詳細更新完了:", target);
       }
     };
 
     if (this.options.onLocationSelected) {
-      this.options.onLocationSelected(
-        savedItem,
-        this._map,
-        this,
-        updateHistory
-      );
+      this.options.onLocationSelected(savedItem, this._map, this, updateHistory);
     }
   },
 
@@ -182,9 +171,7 @@
   _saveToHistory: function (newItem) {
     let history = this._getHistory();
     const now = new Date().toISOString();
-
-    const existingIndex = history.findIndex(
-      (h) =>
+    const existingIndex = history.findIndex((h) =>
         h.extensions?.keyword === newItem.extensions?.keyword &&
         Math.abs(h.lat - newItem.lat) < 0.0001 &&
         Math.abs(h.lon - newItem.lon) < 0.0001
@@ -199,13 +186,13 @@
       history.splice(existingIndex, 1);
     } else {
       targetItem = {
-        _id: "ID_" + Date.now() + Math.random(), // ユニークIDの発行
+        _id: "ID_" + Date.now() + Math.random(),
         lat: newItem.lat,
         lon: newItem.lon,
         name: newItem.name,
         desc: newItem.desc || "",
         extensions: {
-          keyword: (newItem.extensions && newItem.extensions.keyword) || "",
+          keyword: newItem.extensions?.keyword || "",
           timestamp: now,
           count: 1,
         },
@@ -215,6 +202,11 @@
     if (history.length > this.options.maxHistory) history.pop();
     localStorage.setItem(this.options.historyKey, JSON.stringify(history));
     return targetItem;
+  },
+
+  bindOnLocationSelected: function (fn) {
+    this.options.onLocationSelected = fn;
+    return this;
   },
 });
 

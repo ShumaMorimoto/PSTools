@@ -1,0 +1,96 @@
+﻿/*
+ポイントリストパネル
+*/
+/* マーカーリスト用サイドパネル */
+/* パネルの基本設定 */
+/* leaflet-side-panel のスタイルをこれに差し替えてみてください */
+.leaflet-side-panel {
+  position: absolute;
+  top: 0;
+  left: 44px;
+  /* 左ボタン群のすぐ右から開始 */
+  width: 280px;
+  height: 100%;
+  background: white !important;
+  /* 背景色を確実に白に */
+  z-index: 3000 !important;
+  /* 他のすべてのLeaflet要素より上に */
+
+  /* 初期状態：左側に完全に隠す */
+  transform: translateX(-150%);
+  transition: transform 0.3s ease-out;
+
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  /* パネル内を触れるようにする */
+  display: flex;
+  flex-direction: column;
+}
+
+/* クラスが付与されたときに見えるようにする */
+.leaflet-side-panel.open {
+  transform: translateX(0) !important;
+}
+
+/* パネル内部が真っ白で見えないのを防ぐ */
+.panel-header {
+  padding: 15px;
+  background: #eee;
+  color: black;
+  border-bottom: 1px solid #ccc;
+}
+
+/* パネル内のコンテンツエリアをスクロール可能にする */
+.panel-content {
+  flex: 1;
+  /* ヘッダー以外の残りの高さをすべて使う */
+  overflow-y: auto;
+  /* 縦方向に溢れたらスクロールバーを出す */
+  -webkit-overflow-scrolling: touch;
+  /* iOSでのスクロールを滑らかにする */
+}
+
+/* リスト自体の余白をリセット（念のため） */
+.point-list-ul {
+  margin: 0;
+  padding: 0;
+}
+
+/* リストアイテムの文字を大きく、読みやすく */
+.point-list-item {
+  padding: 12px 15px;
+  /* 余白を広げて押しやすく */
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  list-style: none;
+  font-size: 15px;
+  /* 14pxから15〜16pxにアップ */
+  line-height: 1.4;
+  color: #333;
+  transition: background-color 0.2s;
+}
+
+/* 拠点番号の強調 */
+.point-list-item strong {
+  color: #007bff;
+  /* 番号を青色にして目立たせる */
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+/* マウスを乗せた時 */
+.point-list-item:hover {
+  background-color: #f8f9fa;
+}
+
+/* クリックした瞬間のフィードバック */
+.point-list-item:active {
+  background-color: #e9ecef;
+}
+
+/* ヘッダーのタイトルも少し大きく */
+.panel-header span {
+  font-size: 18px;
+  font-weight: bold;
+}
+

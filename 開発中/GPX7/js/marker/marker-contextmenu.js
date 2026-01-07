@@ -68,7 +68,7 @@ export default class MarkerContextMenu {
 
   async _updateAddress(e) {
     const m = e.relatedTarget; // ← 右クリックされた Marker
-    const entry = this.handler.core.markers.find((x) => x.m === m);
+    const entry = this.handler.getEntry(m);
     const point = entry.point;
     await this.handler.address.updateAddress(point);
   }
@@ -86,7 +86,7 @@ export default class MarkerContextMenu {
 
   _editAttributes(e) {
     const m = e.relatedTarget;
-    const entry = this.handler.core.markers.find((x) => x.m === m);
+    const entry = this.handler.getEntry(m);
     if (!entry) return;
 
     const point = entry.point;

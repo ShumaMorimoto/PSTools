@@ -1,8 +1,7 @@
 ﻿import { notify } from "./../api-utils.js";
 
 export default class MarkerPreview {
-  constructor(selector, handler) {
-    this.selector = selector;
+  constructor(handler) {
     this.handler = handler;
     this.previewMarkers = [];
 
@@ -37,9 +36,9 @@ export default class MarkerPreview {
     const pm = L.marker(center, {
       draggable: true,
       icon: previewIcon,
-    }).addTo(this.selector.map);
+    }).addTo(this.handler.map);
 
-    this.selector.map.setView(center, 16);
+    this.handler.map.setView(center, 16);
 
     const container = document.createElement("div");
     container.style.width = "200px";
@@ -93,7 +92,7 @@ export default class MarkerPreview {
 
   remove(pm) {
     clearTimeout(pm._timer);
-    this.selector.map.removeLayer(pm);
+    this.handler.map.removeLayer(pm);
     this.previewMarkers = this.previewMarkers.filter((x) => x !== pm);
   }
 

@@ -2,8 +2,8 @@
 import { fetchAddressAsync } from "./../api-utils.js";
 
 export default class MarkerAddress {
-  constructor(core) {
-    this.core = core;
+  constructor(handler) {
+    this.handler = handler;
     this.requestSeq = 0;
     this.seqTable = new Map(); // key: point, value: seq
   }
@@ -12,7 +12,7 @@ export default class MarkerAddress {
   // reFetchAllAddresses
   // ---------------------------------------------------
   reFetchAllAddresses() {
-    const pts = this.core.getPoints();
+    const pts = this.handler.getPoints();
     pts.forEach((tp) => this.updateAddress(tp));
   }
 
@@ -30,10 +30,17 @@ export default class MarkerAddress {
   applyAddress(point, address, seq) {
     if (this.seqTable.get(point) !== seq) return;
 
-    this.core.updatePoint(point, {
-      name: address.name || "",
+    // 基本となる更新オブジェクト
+    const updateData = {
       desc: address.display_name || "",
       extensions: address.address || {},
-    });
+    };
+
+    // nameが存在する場合のみ、更新用オブジェクトにキーを追加する
+    if (address.name) {
+      updateData.name = address.name;
+    }
+
+    this.handler.updatePoint(point, updateData);
   }
 }

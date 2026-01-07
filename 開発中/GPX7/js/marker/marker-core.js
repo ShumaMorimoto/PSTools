@@ -3,9 +3,9 @@
 import { callApi } from "/runapp/lib/js/api.js";
 
 export default class MarkerCore {
-  constructor(selector, gpxService) {
-    this.selector = selector;
-    this.gpxService = gpxService;
+  constructor(handler) {
+    this.handler = handler;
+    this.gpxService = handler.gpxService;
     this.markers = []; // { m: marker, point: tp, selected: false }
     this._snapshotMarkers = null;
   }
@@ -16,21 +16,21 @@ export default class MarkerCore {
     pts.forEach((tp) => {
       this.addMarker(tp); // モデル更新なし
     });
-    this.selector.updateListUI();
+    this.handler.selector.updateListUI();
   }
 
   addMarker(tp) {
     const marker = this._buildMarkerInstance(tp);
     const entry = { m: marker, point: tp, selected: false };
     this.markers.push(entry);
-    marker.addTo(this.selector.map);
+    marker.addTo(this.handler.map);
     this.renumberMarkers();
     return entry;
   }
   addPoint(p) {
-    const tp = this.selector.gpxService.appendTrkpt(p);
+    const tp = this.gpxService.appendTrkpt(p);
     const entry = this.addMarker(tp);
-    this.selector.updateListUI();
+    this.handler.selector.updateListUI();
     return entry;
   }
 
@@ -69,7 +69,7 @@ export default class MarkerCore {
     Object.assign(point, rest);
 
     marker.bindPopup(point.name || point.desc).openPopup();
-    this.selector.updateListUI();
+    this.handler.selector.updateListUI();
   }
 
   // ---------------------------------------------------
@@ -100,13 +100,13 @@ export default class MarkerCore {
 
     toRemove.forEach((entry) => {
       this.gpxService.removeTrkpt(entry.point);
-      this.selector.map.removeLayer(entry.m);
+      this.handler.map.removeLayer(entry.m);
     });
 
     this.markers = this.markers.filter((e) => !toRemove.includes(e));
 
     this.renumberMarkers();
-    this.selector.updateListUI();
+    this.handler.selector.updateListUI();
   }
 
   // ---------------------------------------------------
@@ -116,21 +116,18 @@ export default class MarkerCore {
     const pts = this.gpxService.getTrkpts();
     pts.length = 0;
     this.markers.forEach((entry) => {
-      this.selector.map.removeLayer(entry.m);
+      this.handler.map.removeLayer(entry.m);
     });
     this.markers = [];
   }
 
   async reorderByTSP() {
-    const snapshot = this.snapshotMarkers();
-    const input = snapshot.map((p) => ({
-      lat: p.lat,
-      lon: p.lon,
+    const input = this.markers.map((e) => ({
+      lat: e.point.lat,
+      lon: e.point.lon,
     }));
-
     const newindices = await callApi("TSPSolver", input);
     console.log("TSPResolver:", newindices);
-
     this.reorderMarkers(newindices);
   }
 
@@ -147,11 +144,9 @@ export default class MarkerCore {
     this.markers = newTrkpts.map((tp) =>
       this.markers.find((x) => x.point === tp)
     );
-    this._snapshotMarkers = null;
-    this._latestIndices = null;
 
     this.renumberMarkers();
-    this.selector.updateListUI();
+    this.handler.selector.updateListUI();
   }
 
   jumpMarker(m, n = null) {
@@ -181,29 +176,7 @@ export default class MarkerCore {
 
     // --- 表示更新 ---
     this.renumberMarkers();
-    this.selector.updateListUI();
-  }
-
-  // プレビューモード
-  snapshotMarkers() {
-    this._snapshotMarkers = [...this.markers]; // markers の順序スナップショット
-    this._latestIndices = null; // 最新 index を保持する領域
-    return this.gpxService.getTrkpts();
-  }
-  previewReorder(indices) {
-    if (!this.snapshotMarkers) {
-      return;
-    }
-    this._latestIndices = indices; // 最新 index を保持
-    this.markers = indices.map((i) => this._snapshotMarkers[i]);
-    this.renumberMarkers();
-  }
-  cancelReorder() {
-    const trkpts = this.gpxService.getTrkpts();
-    this.markers = trkpts.map((tp) => this.markers.find((x) => x.point === tp));
-    this._snapshotMarkers = null;
-    this._latestIndices = null;
-    this.renumberMarkers();
+    this.handler.selector.updateListUI();
   }
 
   getMarkers() {
@@ -220,6 +193,35 @@ export default class MarkerCore {
 
   getPoint(index) {
     return this.gpxService.getTrkpts()[index];
+  }
+
+  getEntry(marker){
+     return this.markers.find((x) => x.m === marker);
+  }
+
+  /**
+   * 指定した座標(latlng)に最も近いマーカーを返す。
+   * @param {L.LatLng} latlng - 基準となる座標
+   * @param {L.Marker} [excludeMarker] - 検索対象から除外するマーカー（任意）
+   */
+  getNearestMarker(latlng, excludeMarker = null) {
+    const pos = this.handler.map.latLngToContainerPoint(latlng);
+    let minDist = Infinity;
+    let nearest = null;
+
+    this.markers.forEach((entry) => {
+      // 除外対象（ドラッグ中の自分など）がいればスキップ
+      if (excludeMarker && entry.m === excludeMarker) return;
+
+      const p = this.handler.map.latLngToContainerPoint(entry.m.getLatLng());
+      const d = pos.distanceTo(p);
+
+      if (d < minDist) {
+        minDist = d;
+        nearest = { marker: entry.m, dist: d };
+      }
+    });
+    return nearest;
   }
 
   debugModel() {

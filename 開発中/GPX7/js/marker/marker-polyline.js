@@ -1,8 +1,7 @@
 ﻿// marker-polyline.js
 export default class MarkerPolyline {
-  constructor(selector, core) {
-    this.selector = selector;
-    this.core = core;
+  constructor(handler) {
+    this.handler = handler;
 
     this.show = true; // ← フラグはここに持つ
     this.polyline = L.polyline([], { color: "#ff8800", weight: 3 });
@@ -22,17 +21,17 @@ export default class MarkerPolyline {
   }
 
   render() {
-    const latlngs = this.core.markers.map((entry) => entry.m.getLatLng());
+    const latlngs = this.handler.getMarkers().map(({ m }) => m.getLatLng());
     this.polyline.setLatLngs(latlngs);
 
-    if (!this.selector.map.hasLayer(this.polyline)) {
-      this.polyline.addTo(this.selector.map);
+    if (!this.handler.map.hasLayer(this.polyline)) {
+      this.polyline.addTo(this.handler.map);
     }
   }
 
   clear() {
-    if (this.selector.map.hasLayer(this.polyline)) {
-      this.selector.map.removeLayer(this.polyline);
+    if (this.handler.map.hasLayer(this.polyline)) {
+      this.handler.map.removeLayer(this.polyline);
     }
   }
 }

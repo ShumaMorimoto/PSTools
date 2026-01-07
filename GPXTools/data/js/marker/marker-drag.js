@@ -1,10 +1,7 @@
 ﻿// marker-drag.js
 export default class MarkerDrag {
-  constructor(selector, handler, core) {
-    this.selector = selector;
+  constructor(handler) {
     this.handler = handler;
-    this.core = core;
-
     this.REORDER_THRESHOLD = 30; // px距離で判定
   }
 
@@ -19,25 +16,25 @@ export default class MarkerDrag {
   // ---------------------------------------------------
   _onMarkerDragStart(e, m) {}
   _onMarkerDrag(e, m) {
-    const nearest = this._findNearestMarker(m, e.latlng);
+    const nearest = this.handler.getNearestMarker(e.latlng, m);
 
     if (nearest && nearest.dist < this.REORDER_THRESHOLD) {
       this._highlightReorderTarget(nearest.marker);
-      this.selector.map._container.style.cursor = "copy";
+      this.handler.map._container.style.cursor = "copy";
     } else {
       this._clearReorderTarget();
-      this.selector.map._container.style.cursor = "";
+      this.handler.map._container.style.cursor = "";
     }
   }
   _onMarkerDragEnd(e, m) {
-    const entry = this.core.markers.find((x) => x.m === m);
+    const entry = this.handler.getEntry(m);
     const point = entry.point;
     const finalPos = m.getLatLng();
-    const nearest = this._findNearestMarker(m, finalPos);
+    const nearest = this.handler.getNearestMarker(finalPos, m);
     this._clearReorderTarget();
     // 並び替え
     if (nearest && nearest.dist < this.REORDER_THRESHOLD) {
-      this.core.jumpMarker(m, nearest.marker);
+      this.handler.jumpMarker(m, nearest.marker);
       m.setLatLng([point.lat, point.lon]); // UI を元に戻す
       this.handler.redraw();
       return;
@@ -49,28 +46,6 @@ export default class MarkerDrag {
 
     this.handler.redraw();
     this.handler.address.updateAddress(point);
-  }
-
-  // ---------------------------------------------------
-  // ★ 最近傍マーカー（現在位置で判定）
-  // ---------------------------------------------------
-  _findNearestMarker(marker, currentLatLng) {
-    const pos = this.selector.map.latLngToContainerPoint(currentLatLng);
-    let minDist = Infinity;
-    let nearest = null;
-
-    this.core.markers.forEach((entry) => {
-      if (entry.m === marker) return;
-
-      const p = this.selector.map.latLngToContainerPoint(entry.m.getLatLng());
-      const d = pos.distanceTo(p);
-
-      if (d < minDist) {
-        minDist = d;
-        nearest = { marker: entry.m, dist: d };
-      }
-    });
-    return nearest;
   }
 
   // ---------------------------------------------------

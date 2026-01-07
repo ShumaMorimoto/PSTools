@@ -1,4 +1,10 @@
-﻿html,
+﻿/* コンポーネントごとのCSSを読み込む */
+@import "./components/marker-popup.css";
+@import "./components/leaflet-buttongroup.css";
+@import "./components/leaflet-search.css";
+@import "./components/leaflet-pointlist.css";
+
+html,
 body {
   height: 100%;
   margin: 0;
@@ -28,56 +34,6 @@ body {
 }
 
 
-/* グループボタン用*/
-/* 共通ボタン */
-.btn {
-  padding: 6px 8px;
-  cursor: pointer;
-  background: #f0f0f0;
-  border: 1px solid #ccc;
-}
-
-/* IDLE 状態（初期・待機） */
-.status-idle {
-  background: white !important;
-  /* 薄グレー */
-  color: #333 !important;
-  border-color: #bbb;
-}
-
-/* SELECTING 状態（選択中・アクティブ） */
-.status-selecting {
-  background: #4caf50 !important;
-  /* 緑 */
-  color: white !important;
-  border-color: #3e8e41;
-}
-
-/* PREVIEW 状態（確認・登録前） */
-.status-preview {
-  background: #2196f3 !important;
-  /* 青 */
-  color: white !important;
-  border-color: #1976d2;
-}
-
-.status-on {
-  background: #4caf50 !important;
-  color: rgb(94, 17, 167) !important;
-}
-
-.status-off {
-  background: white !important;
-  color: #333 !important;
-  border-color: #bbb;
-}
-
-/* disabled（透明化） */
-.disabled {
-  opacity: 0.4;
-  pointer-events: none;
-}
-
 /* ズームボタンの大きさを変更（例: 幅・高さを50px、フォントサイズを大きく） */
 .leaflet-control-zoom a {
   width: 48px !important;
@@ -89,105 +45,6 @@ body {
   font-weight: bold !important;
 }
 
-
-/*
-ポイントリストパネル
-*/
-/* マーカーリスト用サイドパネル */
-/* パネルの基本設定 */
-/* leaflet-side-panel のスタイルをこれに差し替えてみてください */
-.leaflet-side-panel {
-  position: absolute;
-  top: 0;
-  left: 44px;
-  /* 左ボタン群のすぐ右から開始 */
-  width: 280px;
-  height: 100%;
-  background: white !important;
-  /* 背景色を確実に白に */
-  z-index: 3000 !important;
-  /* 他のすべてのLeaflet要素より上に */
-
-  /* 初期状態：左側に完全に隠す */
-  transform: translateX(-150%);
-  transition: transform 0.3s ease-out;
-
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
-  pointer-events: auto;
-  /* パネル内を触れるようにする */
-  display: flex;
-  flex-direction: column;
-}
-
-/* クラスが付与されたときに見えるようにする */
-.leaflet-side-panel.open {
-  transform: translateX(0) !important;
-}
-
-/* パネル内部が真っ白で見えないのを防ぐ */
-.panel-header {
-  padding: 15px;
-  background: #eee;
-  color: black;
-  border-bottom: 1px solid #ccc;
-}
-
-/* パネル内のコンテンツエリアをスクロール可能にする */
-.panel-content {
-  flex: 1;
-  /* ヘッダー以外の残りの高さをすべて使う */
-  overflow-y: auto;
-  /* 縦方向に溢れたらスクロールバーを出す */
-  -webkit-overflow-scrolling: touch;
-  /* iOSでのスクロールを滑らかにする */
-}
-
-/* リスト自体の余白をリセット（念のため） */
-.point-list-ul {
-  margin: 0;
-  padding: 0;
-}
-
-/* リストアイテムの文字を大きく、読みやすく */
-.point-list-item {
-  padding: 12px 15px;
-  /* 余白を広げて押しやすく */
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
-  list-style: none;
-  font-size: 15px;
-  /* 14pxから15〜16pxにアップ */
-  line-height: 1.4;
-  color: #333;
-  transition: background-color 0.2s;
-}
-
-/* 拠点番号の強調 */
-.point-list-item strong {
-  color: #007bff;
-  /* 番号を青色にして目立たせる */
-  margin-right: 8px;
-  font-size: 16px;
-}
-
-/* マウスを乗せた時 */
-.point-list-item:hover {
-  background-color: #f8f9fa;
-}
-
-/* クリックした瞬間のフィードバック */
-.point-list-item:active {
-  background-color: #e9ecef;
-}
-
-/* ヘッダーのタイトルも少し大きく */
-.panel-header span {
-  font-size: 18px;
-  font-weight: bold;
-}
-
-
-
 /* 座標表示 */
 .leaflet-control-mouseposition {
   background: transparent;
@@ -198,120 +55,6 @@ body {
   color: #7a0d44;
 }
 
-
-/* 検索ボックス */
-.leaflet-search-control {
-  background: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
-  padding: 10px;
-  width: 350px;
-  font-family: sans-serif;
-}
-
-.leaflet-search-input {
-  width: 100%;
-  padding: 8px;
-  box-sizing: border-box;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.leaflet-search-suggestions {
-  list-style: none;
-  margin: 5px 0 0 0;
-  padding: 0;
-  border: 1px solid #eee;
-  border-top: none;
-  max-height: 300px;
-  overflow-y: auto;
-  background: white;
-  display: none;
-}
-
-.leaflet-search-suggestions li {
-  padding: 8px;
-  cursor: pointer;
-  border-bottom: 1px solid #eee;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-}
-
-.leaflet-search-suggestions li:hover {
-  background-color: #f8f9fa;
-}
-
-.ls-badge {
-  font-size: 10px;
-  padding: 2px 5px;
-  border-radius: 3px;
-  margin-right: 8px;
-  color: white;
-  min-width: 35px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.ls-badge-history {
-  background-color: #28a745;
-}
-
-.ls-badge-web {
-  background-color: #007bff;
-}
-
-.ls-meta {
-  font-size: 10px;
-  color: #888;
-  margin-left: auto;
-  padding-left: 10px;
-  white-space: nowrap;
-}
-
-.item-content {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.item-name {
-  font-weight: bold;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.item-desc {
-  font-size: 11px;
-  color: #666;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-
-
-
-/* button,
-label.btn {
-  box-sizing: border-box;
-  padding: 0 12px;
-  cursor: pointer;
-  border: none;
-  background: #007bff;
-  color: #fff;
-  border-radius: 4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 34px;
-  line-height: 34px;
-  font-size: 14px;
-  white-space: nowrap;
-} */
 
 .center-handle-ui {
   width: 20px;

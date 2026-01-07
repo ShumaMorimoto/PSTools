@@ -22,20 +22,22 @@ export default class MarkerHandler {
     this.selector = selector;
     this.gpxService = selector.gpxService;
     this.state = MarkerHandler.State.IDLE;
-    this.core = new MarkerCore(selector, this.gpxService);
+    this.core = new MarkerCore(this);
     this.menu = new MarkerContextMenu(this);
-    this.drag = new MarkerDrag(selector, this, this.core);
-    this.address = new MarkerAddress(this.core);
-    this.polyline = new MarkerPolyline(selector, this.core);
-    this.cluster = new MarkerCluster(selector, this.core);
-    this.boundary = new MarkerBoundary(selector, this.core);
-    this.preview = new MarkerPreview(selector, this.core);
+    this.drag = new MarkerDrag(this);
+    this.address = new MarkerAddress(this);
+    this.polyline = new MarkerPolyline(this);
+    this.cluster = new MarkerCluster(this);
+    this.boundary = new MarkerBoundary(this);
+    this.preview = new MarkerPreview(this);
   }
 
   // ---------------------------------------------------
   // init
   // ---------------------------------------------------
-  init() {}
+  init() {
+    this.map = this.selector.map;
+  }
 
   setModel(initData) {
     this.core.setModel(initData);
@@ -71,7 +73,7 @@ export default class MarkerHandler {
     for (let i = 0; i < points.length - 1; i++) {
       const p1 = points[i];
       const p2 = points[i + 1];
-      total += this.selector.map.distance(p1, p2);
+      total += this.map.distance(p1, p2);
     }
     return total;
   }
@@ -92,7 +94,7 @@ export default class MarkerHandler {
   // markerClick
   // ---------------------------------------------------
   handleMarkerClick(e, marker) {
-    const entry = this.core.markers.find((x) => x.m === marker);
+    const entry = this.getEntry(marker);
     if (!entry) return;
     const isMulti = e.originalEvent.shiftKey || e.originalEvent.ctrlKey;
     if (isMulti) {
@@ -130,6 +132,34 @@ export default class MarkerHandler {
       this._addPoint(p);
     });
     this.redraw();
+  }
+
+  getMarkers() {
+    return this.core.markers;
+  }
+
+  getMarker(index) {
+    return this.core.markers[index].m;
+  }
+
+  getNearestMarker(latlng, excludeMarker = null) {
+    return this.core.getNearestMarker(latlng,excludeMarker);
+  }
+
+  getPoints() {
+    return this.core.gpxService.getTrkpts();
+  }
+
+  getPoint(index) {
+    return this.core.gpxService.getTrkpts()[index];
+  }
+
+  getEntry(marker){
+     return this.core.getEntry(marker);
+  }
+
+  updatePoint(point, info) {
+    return this.core.updatePoint(point, info);
   }
 
   // ---------------------------------------------------
@@ -180,6 +210,6 @@ export default class MarkerHandler {
     this.zoomToMarker(this.core.getMarker(idx));
   }
   zoomToMarker(marker) {
-    this.selector.map.setView(marker.getLatLng(), 18);
+    this.map.setView(marker.getLatLng(), 18);
   }
 }

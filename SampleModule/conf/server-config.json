@@ -1,0 +1,9 @@
+{
+    "Server": {
+        "Port": 8000,
+        "DefaultFile": "index.html"
+    },
+    "ApiMappings": [
+        { "Path": "/api/process", "Method": "POST", "Command": "Invoke-SampleProcess" }
+    ]
+}

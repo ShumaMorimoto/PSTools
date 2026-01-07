@@ -1,0 +1,64 @@
+﻿/* グループボタン用*/
+/* 共通ボタン */
+.btn {
+  padding: 6px 8px;
+  cursor: pointer;
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+}
+
+/* ボタン自体のサイズを大きくする（例: 34px） */
+.leaflet-control.leaflet-bar a.btn {
+    width: 34px;
+    height: 34px;
+    line-height: 34px; /* アイコンを垂直中央に */
+    font-size: 20px;    /* アイコンのサイズ（FontAwesomeなどの場合） */
+}
+
+/* 画像（imgタグ）をアイコンに使っている場合 */
+.leaflet-control.leaflet-bar a.btn img {
+    width: 24px;
+    height: 24px;
+    vertical-align: middle;
+}
+
+/* IDLE 状態（初期・待機） */
+.status-idle {
+  background: white !important;
+  /* 薄グレー */
+  color: #333 !important;
+  border-color: #bbb;
+}
+
+/* SELECTING 状態（選択中・アクティブ） */
+.status-selecting {
+  background: #4caf50 !important;
+  /* 緑 */
+  color: white !important;
+  border-color: #3e8e41;
+}
+
+/* PREVIEW 状態（確認・登録前） */
+.status-preview {
+  background: #2196f3 !important;
+  /* 青 */
+  color: white !important;
+  border-color: #1976d2;
+}
+
+.status-on {
+  background: #4caf50 !important;
+  color: rgb(94, 17, 167) !important;
+}
+
+.status-off {
+  background: white !important;
+  color: #333 !important;
+  border-color: #bbb;
+}
+
+/* disabled（透明化） */
+.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}

@@ -2,10 +2,8 @@
 import { fetchMuniInfo, fetchBoundary } from "./../api-utils.js";
 
 export default class MarkerBoundary {
-  constructor(selector, core) {
-    this.selector = selector;
-    this.core = core;
-
+  constructor(handler) {
+    this.handler = handler;
     this.show = false;
     this.layer = null;
 
@@ -27,7 +25,7 @@ export default class MarkerBoundary {
   }
 
   async render() {
-    const center = this.selector.map.getCenter();
+    const center = this.handler.map.getCenter();
     this.drawBorder(center);
   }
 
@@ -54,13 +52,13 @@ export default class MarkerBoundary {
       },
     });
 
-    this.layer.addTo(this.selector.map);
+    this.layer.addTo(this.handler.map);
     this.currentMuniCd5 = newMuniCd5;
   }
 
   clear() {
-    if (this.layer && this.selector.map.hasLayer(this.layer)) {
-      this.selector.map.removeLayer(this.layer);
+    if (this.layer && this.handler.map.hasLayer(this.layer)) {
+      this.handler.map.removeLayer(this.layer);
     }
     this.layer = null;
     this.currentMuniCd5 = null; // ★ クリア時にリセット

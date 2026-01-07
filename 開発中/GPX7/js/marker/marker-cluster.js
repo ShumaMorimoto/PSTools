@@ -2,9 +2,8 @@
 import { callApi } from "/runapp/lib/js/api.js";
 
 export default class MarkerCluster {
-  constructor(selector, core) {
-    this.selector = selector;
-    this.core = core;
+  constructor(handler) {
+    this.handler = handler;
 
     this.show = false;
     this.layers = [];
@@ -15,12 +14,15 @@ export default class MarkerCluster {
 
   toggle() {
     this.show = !this.show;
-    this.core.renumberMarkers()
+//    this.handler.renumberMarkers();
     this.redraw();
   }
 
   async redraw() {
-    if (!this.show || this.core.markers.length <10) {
+    this.markers = this.handler.getMarkers();
+
+    // マーカーが10個未満、または非表示ならクリア
+    if (!this.show || this.markers.length < 10) {
       this.clear();
       return;
     }
@@ -28,121 +30,98 @@ export default class MarkerCluster {
     this.generation++;
     const gen = this.generation;
 
-    const points = this.core.markers.map((e) => ({
-      lat: e.point.lat,
-      lon: e.point.lon,
-    }));
-
-    // ★ 外部 or ローカル切り替え
+    // ★ クラスタリング (APIまたはローカル)
     const clusterIndexList = this.useLocal
-      ? this._clusterLocal(points) // number[][]
-      : await this._callExternalClusterAPI(points); // number[][]
+      ? this._clusterLocal(this.markers)
+      : await this._callExternalClusterAPI(this.markers);
 
-    // ★ モデルが変わっていたら破棄
     if (gen !== this.generation) return;
 
     this.clear();
-    this._drawClusters(clusterIndexList, points);
+    this._drawClusters(clusterIndexList); // markerはthis.coreから参照
   }
 
   clear() {
-    this.layers.forEach((l) => this.selector.map.removeLayer(l));
+    this.layers.forEach((l) => this.handler.map.removeLayer(l));
     this.layers = [];
   }
 
-  // ----------------------------------------
-  // ★ 外部クラスタリングAPI（本番）
-  // ----------------------------------------
-  async _callExternalClusterAPI(points) {
-    const input = points.map((p) => ({ lat: p.lat, lon: p.lon }));
+  // --- API呼び出しの修正 ---
+  async _callExternalClusterAPI(markers) {
+    // API送信用にlat/lonのリストに変換
+    const input = markers.map((m) => {
+      const ll = m.m.getLatLng(); // entry.m が L.Marker と想定
+      return { lat: ll.lat, lon: ll.lng };
+    });
     const clusters = await callApi("KMeansCluster", input);
-
-    console.log("Clusters:", clusters);
-    // clusters は number[][] の前提
     return clusters;
   }
 
   // ----------------------------------------
   // ★ 内部クラスタロジック（テスト用）
   // ----------------------------------------
-  _clusterLocal(points) {
+  _clusterLocal(markers) {
     const grid = 0.05;
     const buckets = new Map();
 
-    points.forEach((p, idx) => {
-      const key = `${Math.round(p.lat / grid)},${Math.round(p.lon / grid)}`;
+    markers.forEach((entry, idx) => {
+      const ll = entry.m.getLatLng();
+      const key = `${Math.round(ll.lat / grid)},${Math.round(ll.lng / grid)}`;
       if (!buckets.has(key)) buckets.set(key, []);
       buckets.get(key).push(idx);
     });
 
-    return [...buckets.values()]; // number[][]
+    return [...buckets.values()];
   }
 
   // ----------------------------------------
   // ★ 描画本体（center/radius はここで計算）
   // ----------------------------------------
-  _drawClusters(clusterIndexList, points) {
+  // --- 描画ロジックの修正 ---
+  _drawClusters(clusterIndexList) {
     clusterIndexList.forEach((indices, i) => {
       if (indices.length === 0) return;
 
       const color = this._getColor(i);
+      const targetMarkers = indices.map((idx) => this.markers[idx]);
 
-      // --- center 計算 ---
-      const center = this._computeCenter(indices, points);
+      // center / radius 計算をマーカー群から直接行う
+      const center = this._computeCenter(targetMarkers);
+      const radius = this._computeRadius(center, targetMarkers);
 
-      // --- radius 計算 ---
-      const radius = this._computeRadius(center, indices, points);
-
-      // --- 円 ---
       const circle = L.circle(center, {
         radius,
         color,
         fillColor: color,
         fillOpacity: 0.15,
-      }).addTo(this.selector.map);
+      }).addTo(this.handler.map);
 
       this.layers.push(circle);
 
-      // --- マーカー色変更 ---
-      indices.forEach((idx) => {
-        const entry = this.core.markers[idx];
+      // マーカーの色を変更
+      targetMarkers.forEach((entry) => {
         entry.m.setIcon(this._coloredIcon(color));
       });
     });
   }
 
-  _computeCenter(indices, points) {
+  _computeCenter(markers) {
     let sumLat = 0,
-      sumLon = 0;
-    indices.forEach((idx) => {
-      sumLat += points[idx].lat;
-      sumLon += points[idx].lon;
+      sumLng = 0;
+    markers.forEach((entry) => {
+      const ll = entry.m.getLatLng();
+      sumLat += ll.lat;
+      sumLng += ll.lng;
     });
-    return {
-      lat: sumLat / indices.length,
-      lon: sumLon / indices.length,
-    };
+    return L.latLng(sumLat / markers.length, sumLng / markers.length);
   }
 
-  _computeRadius(center, indices, points) {
-    const R = 6371000;
-    const toRad = (d) => (d * Math.PI) / 180;
-
+  _computeRadius(center, markers) {
     let maxDist = 0;
-
-    indices.forEach((idx) => {
-      const p = points[idx];
-      const dLat = toRad(p.lat - center.lat);
-      const dLon = toRad(p.lon - center.lon);
-      const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(toRad(center.lat)) *
-          Math.cos(toRad(p.lat)) *
-          Math.sin(dLon / 2) ** 2;
-      const dist = 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    markers.forEach((entry) => {
+      const dist = center.distanceTo(entry.m.getLatLng()); // Leaflet標準の計算を利用
       maxDist = Math.max(maxDist, dist);
     });
-
     return Math.max(150, maxDist * 1.3);
   }
 
