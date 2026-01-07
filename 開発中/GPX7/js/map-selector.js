@@ -6,7 +6,6 @@ import ImageHandler from "./image-handler.js";
 import TownHandler from "./town-handler.js";
 import AreaHandler from "./area-handler.js";
 import UIManager from "./ui-manager.js";
-import SearchService from "./search-service.js";
 import { initToast } from "./api-utils.js";
 
 export default class MapSelector {
@@ -56,7 +55,6 @@ export default class MapSelector {
       this.handlers[mode] = new cfg.handlerClass(this);
     });
 
-    this.searchService = new SearchService(this);
     this.uiManager = new UIManager(this);
     this.mapInitializer = new MapInitializer(this);
   }

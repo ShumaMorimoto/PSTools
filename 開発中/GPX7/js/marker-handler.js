@@ -23,7 +23,7 @@ export default class MarkerHandler {
     this.gpxService = selector.gpxService;
     this.state = MarkerHandler.State.IDLE;
     this.core = new MarkerCore(selector, this.gpxService);
-    this.menu = new MarkerContextMenu(this, this.core);
+    this.menu = new MarkerContextMenu(this);
     this.drag = new MarkerDrag(selector, this, this.core);
     this.address = new MarkerAddress(this.core);
     this.polyline = new MarkerPolyline(selector, this.core);
@@ -146,6 +146,15 @@ export default class MarkerHandler {
   // ---------------------------------------------------
   removeMarker(m, split = false) {
     this.core.removeMarker(m, split);
+    this.redraw();
+    this.changeState(MarkerHandler.State.IDLE);
+  }
+
+  // ---------------------------------------------------
+  // jumpMarker
+  // ---------------------------------------------------
+  jumpMarker(m) {
+    this.core.jumpMarker(m);
     this.redraw();
     this.changeState(MarkerHandler.State.IDLE);
   }

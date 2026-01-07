@@ -1,9 +1,8 @@
 ﻿import { notify } from "./../api-utils.js";
 
 export default class MarkerPreview {
-  constructor(selector, handler) {
+  constructor(selector) {
     this.selector = selector;
-    this.handler = handler;
     this.previewMarkers = [];
 
     // SearchControlへ注入するために自身のメソッドをbind
@@ -72,7 +71,7 @@ export default class MarkerPreview {
       // 本登録
       container.querySelector(".confirm-btn").onclick = () => {
         const pos = pm.getLatLng();
-        this.handler.addPoint({
+        this.selector.addPoint({
           lat: pos.lat,
           lon: pos.lng,
           name: nameInp.value,

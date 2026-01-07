@@ -1,6 +1,6 @@
 ﻿// marker-drag.js
 export default class MarkerDrag {
-  constructor(selector, handler, core) {
+  constructor(selector,  handler, core) {
     this.selector = selector;
     this.handler = handler;
     this.core = core;

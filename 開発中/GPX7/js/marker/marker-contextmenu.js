@@ -3,9 +3,8 @@
 import { notify } from "./../api-utils.js";
 
 export default class MarkerContextMenu {
-  constructor(handler, core) {
+  constructor(handler) {
     this.handler = handler;
-    this.core = core;
   }
 
   bindContextMenu(m) {
@@ -50,18 +49,18 @@ export default class MarkerContextMenu {
 
   _deleteMarker(e) {
     const m = e.relatedTarget; // ← 右クリックされた Marker
-    this.core.removeMarker(m);
+    this.handler.removeMarker(m);
     this.handler.redraw();
   }
   _splitRoute(e) {
     const m = e.relatedTarget; // ← 右クリックされた Marker
-    this.core.removeMarker(m, true);
+    this.handler.removeMarker(m, true);
     this.handler.redraw();
   }
   async _setAsStart(e) {
     const m = e.relatedTarget; // ← 右クリックされた Marker
-    this.core.jumpMarker(m);
-    await this.core.reorderByTSP();
+    this.handler.jumpMarker(m);
+    await this.handler.reorderMarkers();
     this.handler.redraw();
   }
 
@@ -69,86 +68,211 @@ export default class MarkerContextMenu {
 
   async _updateAddress(e) {
     const m = e.relatedTarget; // ← 右クリックされた Marker
-    const entry = this.core.markers.find((x) => x.m === m);
+    const entry = this.handler.core.markers.find((x) => x.m === m);
     const point = entry.point;
     await this.handler.address.updateAddress(point);
   }
 
   _editAttributes(e) {
     const m = e.relatedTarget; // ← 右クリックされた Marker
-    this.openEditPopup(m);
+    this.createPopupTemplate(m);
   }
   _showBoundary(e) {}
   _duplicateMarker(e) {}
   _lockMarker(e) {}
   _openInfoPanel(e) {}
 
-  /**
-   * マーカーの近くに編集用ポップアップを表示する
-   * @param {L.Marker} marker 対象のマーカー
-   */
-  openEditPopup(marker) {
-    // 現在保持しているデータを取得（なければデフォルト値）
-    const currentName = marker.options.title || "";
-    const currentDesc = marker.options.description || "";
+  // --- 内部アクション ---
 
-    // ポップアップ内に表示するHTMLを構築
-    const formHtml = `
-        <div class="edit-popup-form" style="min-width: 200px; padding: 5px;">
-            <strong style="display: block; margin-bottom: 8px; font-size: 14px;">拠点の詳細編集</strong>
-            
-            <label style="font-size: 12px; color: #666;">拠点名</label>
-            <input type="text" id="pop-edit-name" value="${currentName}" 
-                   style="width: 100%; margin-bottom: 10px; padding: 4px; box-sizing: border-box; border: 1px solid #ccc;">
+  _editAttributes(e) {
+    const m = e.relatedTarget;
+    const entry = this.handler.core.markers.find((x) => x.m === m);
+    if (!entry) return;
 
-            <label style="font-size: 12px; color: #666;">備考</label>
-            <textarea id="pop-edit-desc" rows="3" 
-                      style="width: 100%; margin-bottom: 10px; padding: 4px; box-sizing: border-box; border: 1px solid #ccc;">${currentDesc}</textarea>
+    const point = entry.point;
 
-            <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                <button id="pop-save-btn" style="background: #007bff; color: #fff; border: none; padding: 5px 12px; border-radius: 3px; cursor: pointer;">保存</button>
-                <button id="pop-cancel-btn" style="background: #ccc; color: #333; border: none; padding: 5px 12px; border-radius: 3px; cursor: pointer;">閉じる</button>
+    // 1. ページ（DOM）の生成
+    const $page = this._createPopupTemplate(point);
+
+    // 2. アクションの紐付け
+    this._bindPageAction($page, m, point, (newData) => {
+      // 保存時のコールバック: データの更新
+      point.name = newData.name;
+      point.description = newData.desc;
+      if (!point.extensions) point.extensions = {};
+      point.extensions.keyword = newData.keyword;
+
+      // マーカーの表示更新
+      m.options.title = point.name;
+      if (m.getTooltip()) {
+        m.setTooltipContent(`${m.options.index || ""}. ${point.name}`);
+      }
+
+      // 一覧パネル等の外部更新
+      if (window.pointListInstance) {
+        window.pointListInstance.updateList();
+      }
+
+      notify("✅ 保存しました");
+    });
+
+    // 3. Leafletポップアップとして表示
+    m.bindPopup($page, { minWidth: 220, closeButton: false }).openPopup();
+  }
+
+  // --- テンプレート・表示制御ロジック ---
+
+  _createPopupTemplate(point) {
+    const { lat, lon, name, desc, extensions = {} } = point;
+    const { keyword = "", ...others } = extensions;
+
+    const div = document.createElement("div");
+    div.className = "popup-container";
+    div.setAttribute("data-mode", "show");
+
+    // extensionsのループ：キーの幅を揃えるレイアウト
+    const extensionsHtml = Object.entries(others)
+      .map(
+        ([k, v]) => `
+      <div class="ext-row">
+        <span class="ext-key">${k}:</span>
+        <span class="ext-val">${v}</span>
+      </div>
+    `
+      )
+      .join("");
+
+    div.innerHTML = `
+    <div class="popup-body">
+      <div class="popup-field">
+        <label>座標</label>
+        <div class="val" style="color:#aaa">${lat.toFixed(6)}, ${lon.toFixed(
+      6
+    )}</div>
+      </div>
+
+      <div class="popup-field">
+        <label>名称</label>
+        <div class="view-mode val">${name || "---"}</div>
+        <input type="text" class="edit-mode" name="name" value="${name || ""}">
+      </div>
+
+      <div class="popup-field">
+        <label>備考</label>
+        <div class="view-mode val">${desc || "---"}</div>
+        <textarea class="edit-mode" name="desc" rows="2">${
+          desc || ""
+        }</textarea>
+      </div>
+
+      <div class="popup-field">
+        <label>キーワード</label>
+        <div class="view-mode val"><code>${keyword || "---"}</code></div>
+        <input type="text" class="edit-mode" name="keyword" value="${
+          keyword || ""
+        }">
+      </div>
+
+      <div class="extensions-list">
+        <label>拡張属性</label>
+        ${
+          extensionsHtml ||
+          '<div style="color:#ccc; font-size:10px;">なし</div>'
+        }
+      </div>
+    </div>
+
+    <div class="popup-actions">
+      <button class="btn-update view-mode">更新</button>
+      <button class="btn-edit view-mode">編集</button>
+      <button class="btn-close view-mode">戻る</button>
+
+      <button class="btn-save edit-mode">保存</button>
+      <button class="btn-cancel edit-mode">戻る</button>
+    </div>
+  `;
+    return div;
+  }
+
+  _bindPageAction($page, marker, point, onSave) {
+    // 更新ボタンのアクション
+    $page.querySelector(".btn-update").onclick = async () => {
+      const btn = $page.querySelector(".btn-update");
+      const listContainer = $page.querySelector(".extensions-list");
+
+      // 1. ローディング状態の表示
+      const originalText = btn.textContent;
+      btn.textContent = "更新中...";
+      btn.disabled = true;
+      listContainer.style.opacity = "0.5";
+
+      try {
+        // 2. 住所情報の取得（api-utilsの関数を想定）
+        // point.lat, point.lon を元に最新データを取得
+        // const newData = await this.handler.address.fetchAddressAsync({
+        //   lat: point.lat,
+        //   lon: point.lon,
+        // });
+
+        if (newData && newData.address) {
+          // pointオブジェクトのextensionsを最新に更新
+          point.extensions = { ...point.extensions, ...newData.address };
+
+          // 3. 画面上の拡張属性リストだけを書き換える
+          const { keyword, ...others } = point.extensions;
+          const newExtensionsHtml = Object.entries(others)
+            .map(
+              ([k, v]) => `
+            <div class="ext-row">
+              <span class="ext-key">${k}:</span>
+              <span class="ext-val">${v}</span>
             </div>
-        </div>
-    `;
+          `
+            )
+            .join("");
 
-    // マーカーにポップアップをセットして開く
-    marker
-      .bindPopup(formHtml, {
-        closeButton: false, // 独自ボタンで制御するため隠す
-        offset: L.point(0, -20), // 吹き出しの位置調整
-      })
-      .openPopup();
+          listContainer.innerHTML = `<label>拡張属性</label>${newExtensionsHtml}`;
 
-    // 描画後にDOM要素にイベントを紐付ける（setTimeoutで確実にDOMが作られた後に実行）
-    setTimeout(() => {
-      // 保存ボタン
-      document.getElementById("pop-save-btn").onclick = () => {
-        const newName = document.getElementById("pop-edit-name").value;
-        const newDesc = document.getElementById("pop-edit-desc").value;
+          // 備考欄なども必要に応じて更新（例：住所文字列を備考に入れる場合）
+          // $page.querySelector('.view-mode.val').textContent = point.name;
 
-        // マーカー本体のデータを更新
-        marker.options.title = newName;
-        marker.options.description = newDesc;
-
-        // ツールチップ（アイコン横の数字/名前）も更新
-        if (marker.getTooltip()) {
-          marker.setTooltipContent(`${marker.options.index}. ${newName}`);
+          notify("🏠 住所情報を更新しました");
         }
+      } catch (error) {
+        console.error(error);
+        notify("❌ 更新に失敗しました");
+      } finally {
+        // 4. 状態を元に戻す
+        btn.textContent = originalText;
+        btn.disabled = false;
+        listContainer.style.opacity = "1";
+      }
+    };
 
-        // 【重要】左側の拠点一覧パネルも同期して更新
-        if (window.pointListInstance) {
-          window.pointListInstance.updateList();
-        }
+    // 編集モードへ
+    $page.querySelector(".btn-edit").onclick = () => {
+      $page.setAttribute("data-mode", "editable");
+    };
 
-        marker.closePopup();
-        console.log("Saved:", marker.options.title);
+    // 戻る/閉じる（表示モード時）
+    $page.querySelector(".btn-close").onclick = () => {
+      marker.closePopup();
+    };
+
+    // 戻る/キャンセル（編集モード時）
+    $page.querySelector(".btn-cancel").onclick = () => {
+      $page.setAttribute("data-mode", "show");
+    };
+
+    // 保存
+    $page.querySelector(".btn-save").onclick = () => {
+      const newData = {
+        name: $page.querySelector('[name="name"]').value,
+        desc: $page.querySelector('[name="desc"]').value,
+        keyword: $page.querySelector('[name="keyword"]').value,
       };
-
-      // キャンセルボタン
-      document.getElementById("pop-cancel-btn").onclick = () => {
-        marker.closePopup();
-      };
-    }, 10);
+      onSave(newData);
+      marker.closePopup();
+    };
   }
 }
