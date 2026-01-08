@@ -1,11 +1,20 @@
-﻿L.Control.SearchWithHistory = L.Control.extend({
+﻿let muniCache = null; // キャッシュ用変数をファイルスコープで定義
+
+async function loadMunicipalitiesInternal() {
+  if (muniCache) return muniCache;
+  // パスは実行環境に合わせて調整してください
+  const res = await fetch("./../../municipalities.json");
+  muniCache = await res.json();
+  return muniCache;
+}
+L.Control.SearchWithHistory = L.Control.extend({
   options: {
     position: "topleft",
     placeholder: "場所を検索...",
     maxHistory: 2000,
     historyKey: "leaflet_search_history_keyword_only",
     // ★ 'gsi' (国土地理院) または 'nominatim' (OSM) を指定
-    provider: "gsi", 
+    provider: "gsi",
     autoCollapse: true,
     onLocationSelected: null,
   },
@@ -16,7 +25,10 @@
 
   onAdd: function (map) {
     this._map = map;
-    const container = L.DomUtil.create("div", "leaflet-search-control leaflet-bar");
+    const container = L.DomUtil.create(
+      "div",
+      "leaflet-search-control leaflet-bar"
+    );
 
     L.DomEvent.disableClickPropagation(container);
     L.DomEvent.disableScrollPropagation(container);
@@ -54,11 +66,13 @@
     if (this._input.value === "") {
       const history = this._getHistory();
       if (history.length > 0) {
-        this._renderSuggestions(history.map((h) => ({ ...h, source: "history" })));
+        this._renderSuggestions(
+          history.map((h) => ({ ...h, source: "history" }))
+        );
       }
     }
   },
-
+  
   // ★ 検索実行ロジックの切り分け
   _performSearch: async function (query) {
     const qLower = query.toLowerCase();
@@ -78,19 +92,46 @@
       // 2. プロバイダーごとのフェッチとパース
       if (this.options.provider === "gsi") {
         // --- 国土地理院 (GSI) ---
-        const res = await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(query)}`);
+        const res = await fetch(
+          `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(
+            query
+          )}`
+        );
         const data = await res.json();
-        webResults = data.map((item) => ({
-          lat: item.geometry.coordinates[1],
-          lon: item.geometry.coordinates[0],
-          name: item.properties.title,
-          desc: "国土地理院 地名検索",
-          extensions: { keyword: query },
-          source: "web",
-        }));
+
+        // 自治体マスタをロード
+        const muniData = await loadMunicipalitiesInternal();
+
+        webResults = data.map((item) => {
+          const props = item.properties;
+          let muniInfo = null;
+
+          // addressCode（自治体コード）が存在する場合、マスタから検索
+          if (props.addressCode) {
+            // muniCd5 (5桁) で照合
+            muniInfo =
+              muniData.municipalities.find(
+                (m) => m.muniCd5 === props.addressCode
+              ) || null;
+          }
+
+          return {
+            lat: item.geometry.coordinates[1],
+            lon: item.geometry.coordinates[0],
+            name: props.title,
+            desc: "国土地理院 地名検索",
+            extensions: {
+              keyword: query,
+              ...(muniInfo || {}), // 見つかった場合のみ展開してマージ
+            },
+            source: "web",
+          };
+        });
       } else {
         // --- Nominatim (OSM) ---
-        const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=jp&accept-language=ja&q=${encodeURIComponent(query)}`;
+        const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=jp&accept-language=ja&q=${encodeURIComponent(
+          query
+        )}`;
         const res = await fetch(url);
         const data = await res.json();
         webResults = data.map((item) => ({
@@ -119,12 +160,19 @@
     results.slice(0, 10).forEach((item) => {
       const li = L.DomUtil.create("li", "", this._ul);
       const isHistory = item.source === "history";
-      const badgeText = isHistory ? "履歴" : (this.options.provider === "gsi" ? "地理院" : "Web");
-      
-      let metaText = isHistory && item.extensions ? `${item.extensions.count || 1}回` : "";
+      const badgeText = isHistory
+        ? "履歴"
+        : this.options.provider === "gsi"
+        ? "地理院"
+        : "Web";
+
+      let metaText =
+        isHistory && item.extensions ? `${item.extensions.count || 1}回` : "";
 
       li.innerHTML = `
-        <span class="ls-badge ${isHistory ? "ls-badge-history" : "ls-badge-web"}">${badgeText}</span>
+        <span class="ls-badge ${
+          isHistory ? "ls-badge-history" : "ls-badge-web"
+        }">${badgeText}</span>
         <div class="item-content">
           <span class="item-name">${item.name}</span>
           <span class="item-desc">${item.desc || ""}</span>
@@ -159,7 +207,12 @@
     };
 
     if (this.options.onLocationSelected) {
-      this.options.onLocationSelected(savedItem, this._map, this, updateHistory);
+      this.options.onLocationSelected(
+        savedItem,
+        this._map,
+        this,
+        updateHistory
+      );
     }
   },
 
@@ -171,7 +224,8 @@
   _saveToHistory: function (newItem) {
     let history = this._getHistory();
     const now = new Date().toISOString();
-    const existingIndex = history.findIndex((h) =>
+    const existingIndex = history.findIndex(
+      (h) =>
         h.extensions?.keyword === newItem.extensions?.keyword &&
         Math.abs(h.lat - newItem.lat) < 0.0001 &&
         Math.abs(h.lon - newItem.lon) < 0.0001
