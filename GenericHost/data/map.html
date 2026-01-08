@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MapSelector</title>
+    <link rel="icon" href="data:," />
+
+    <!-- Leaflet 本体 -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- leaflet-toolbar -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-toolbar/dist/leaflet.toolbar.css"
+    />
+    <script src="https://unpkg.com/leaflet-toolbar/dist/leaflet.toolbar.js"></script>
+
+    <!-- leaflet-distortableimage -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-distortableimage/dist/leaflet.distortableimage.css"
+    />
+    <script src="https://unpkg.com/leaflet-distortableimage/dist/leaflet.distortableimage.js"></script>
+
+    <!-- ExtraMarkers -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.2.2/dist/css/leaflet.extra-markers.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-extra-markers@1.2.2/dist/js/leaflet.extra-markers.min.js"></script>
+
+    <!-- leaflet-contextmenu -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-contextmenu/dist/leaflet.contextmenu.css"
+    />
+    <script src="https://unpkg.com/leaflet-contextmenu/dist/leaflet.contextmenu.js"></script>
+
+    <!-- Geocoder -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"
+    />
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+    <!-- GeoSearch -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet-geosearch/dist/geosearch.css"
+    />
+    <script src="https://unpkg.com/leaflet-geosearch/dist/geosearch.umd.js"></script>
+
+    <!-- スクリプトの追加（HTMLの<head>または適切な場所に） -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/css/autoComplete.01.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tarekraafat/autocomplete.js@10.2.7/dist/autoComplete.min.js"></script>
+
+    <!-- FontAwesome -->
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"
+    />
+
+    <script src="./js/components/Leaflet-buttongroup.js"></script>
+    <script src="./js/components/Leaflet-search.js"></script>
+    <script src="./js/components/Leaflet-pointlist.js"></script>
+
+    <link rel="stylesheet" href="./css/map.css" />
+  </head>
+
+  <body>
+    <div id="map"></div>
+
+    <!-- トースト通知領域 -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script type="module">
+      import MapSelector from "./js/map-selector.js";
+      import { initialize } from "/runapp/lib/js/api.js";
+
+      const params = new URLSearchParams(window.location.search);
+
+      const DEFAULT_LAT = 35.677605;
+      const DEFAULT_LNG = 139.758496;
+      const DEFAULT_ZOOM = 16;
+
+      const initialLat = parseFloat(params.get("lat")) || DEFAULT_LAT;
+      const initialLng = parseFloat(params.get("lng")) || DEFAULT_LNG;
+      const initialZoom = parseInt(params.get("zoom"), 10) || DEFAULT_ZOOM;
+
+      const mapSelector = new MapSelector({
+        mapId: "map",
+        controls: {
+          toastId: "toast",
+        },
+        initialView: [initialLat, initialLng, initialZoom],
+      });
+
+      window.addEventListener("load", async () => {
+        const initData = await initialize();
+        mapSelector.init(initData);
+      });
+
+      window.addEventListener("beforeunload", () => {
+        navigator.sendBeacon("/shutdown", "{}");
+      });
+    </script>
+  </body>
+</html>

@@ -249,6 +249,12 @@ class ToshinDAO {
             npath = "(//td)[1]"
             cpath = "(//td)[2]"
         }
+        "2025120101" = [ordered]@{
+            url   = 'https://fund.monex.co.jp/detail/AL31125C'
+            bpath = "(//div[@class='basis-date-top'])[1]"
+            npath = "(//span[@class='price'])[1]"
+            cpath = "(//span[@class='price'])[2]"
+        }
         "nikkei"     = [ordered]@{
             url   = 'https://www.nikkei.com/nkd/fund/?fcode='
             bpath = "(//div[@class='m-stockPriceElm']/dl[1]/dt)"

@@ -1,0 +1,208 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>汎用 API Sample</title>
+
+    <script type="module">
+      import { callApi, pollApi, initialize } from "/runapp/lib/js/api.js";
+
+      // -----------------------------
+      // ページロード時に初期データを反映
+      // -----------------------------
+      window.addEventListener("load", async () => {
+        const initData = await initialize();
+        if (initData) {
+          document.getElementById("input").value = JSON.stringify(
+            initData,
+            null,
+            2
+          );
+        }
+      });
+
+      // -----------------------------
+      // API 操作
+      // -----------------------------
+      let stopPolling = null;
+
+      async function onStart() {
+        const input = document.getElementById("input").value;
+        let data = null;
+
+        try {
+          data = JSON.parse(input);
+        } catch {
+          alert("JSON が不正です");
+          return;
+        }
+
+        const res = await callApi("Start", data);
+        console.log("Start:", res);
+
+        if (stopPolling) stopPolling();
+        stopPolling = pollApi("Status", 1000, (st) => {
+          document.getElementById("status").textContent = JSON.stringify(
+            st,
+            null,
+            2
+          );
+        });
+      }
+
+      async function onStop() {
+        const res = await callApi("Stop");
+        console.log("Stop:", res);
+        if (stopPolling) stopPolling();
+      }
+
+      // -----------------------------
+      // ★ TSP Solver（APIズレ吸収 + INDEX対応 + 構造化表示）
+      // -----------------------------
+      async function onTsp() {
+        const input = document.getElementById("input").value;
+        let data = null;
+
+        try {
+          data = JSON.parse(input);
+        } catch {
+          alert("JSON が不正です");
+          return;
+        }
+
+        const res = await callApi("TSPSolver", data);
+        console.log("TSPSolver:", res);
+
+        // API のズレを吸収（Indexを追加）
+        const index = res.Index ?? res.Result?.Index;
+        const route = res.Route ?? res.Result?.Route ?? index; // IndexをRouteのフォールバックに
+        const dist = res.Distance ?? res.Result?.Distance;
+
+        // INDEXの配列を横に表示するためのフォーマット
+        const formatted = {
+          Index: index ? `[${index.join(', ')}]` : undefined,
+          Route: route ? `[${route.join(', ')}]` : undefined,
+          Distance: dist
+        };
+
+        document.getElementById("status").textContent = JSON.stringify(
+          formatted,
+          null,
+          2
+        );
+      }
+
+      // -----------------------------
+      // ★ Cluster 共通処理（Mesh / KMeans）
+      // -----------------------------
+      function formatClusterResult(res) {
+        // API のズレを吸収
+        const clusters = res.Clusters ?? res;
+
+        return clusters.map((cluster, i) => ({
+          clusterId: i,
+          count: cluster.length,
+          points: `[${cluster.join(', ')}]` // 配列を横にカンマ区切り文字列に変換
+        }));
+      }
+
+      // -----------------------------
+      // ★ Mesh Cluster
+      // -----------------------------
+      async function onMeshCluster() {
+        const input = document.getElementById("input").value;
+        let data = null;
+
+        try {
+          data = JSON.parse(input);
+        } catch {
+          alert("JSON が不正です");
+          return;
+        }
+
+        const res = await callApi("MeshCluster", data);
+        console.log("MeshCluster:", res);
+
+        const formatted = formatClusterResult(res);
+
+        document.getElementById("status").textContent = JSON.stringify(
+          formatted,
+          null,
+          2
+        );
+      }
+
+      // -----------------------------
+      // ★ KMeans Cluster
+      // -----------------------------
+      async function onKMeansCluster() {
+        const input = document.getElementById("input").value;
+        let data = null;
+
+        try {
+          data = JSON.parse(input);
+        } catch {
+          alert("JSON が不正です");
+          return;
+        }
+
+        const res = await callApi("KMeansCluster", data);
+        console.log("KMeansCluster:", res);
+
+        const formatted = formatClusterResult(res);
+
+        document.getElementById("status").textContent = JSON.stringify(
+          formatted,
+          null,
+          2
+        );
+      }
+
+      // グローバル公開
+      window.onStart = onStart;
+      window.onStop = onStop;
+      window.onTsp = onTsp;
+      window.onMeshCluster = onMeshCluster;
+      window.onKMeansCluster = onKMeansCluster;
+
+      // --- ブラウザ終了時に /shutdown を確実に送る ---
+      window.addEventListener("beforeunload", () => {
+        navigator.sendBeacon("/shutdown", JSON.stringify({}));
+      });
+    </script>
+
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+      }
+      textarea {
+        width: 100%;
+        height: 120px;
+      }
+      pre {
+        background: #eee;
+        padding: 10px;
+        white-space: pre-wrap;
+        word-wrap: break-word; /* 長い行を折り返す */
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>汎用 API Sample</h1>
+
+    <h2>入力データ(JSON)</h2>
+    <textarea id="input">{}</textarea>
+
+    <button onclick="onStart()">Start</button>
+    <button onclick="onStop()">Stop</button>
+    <button onclick="onTsp()">TSP Solver</button>
+
+    <button onclick="onMeshCluster()">Mesh Cluster</button>
+    <button onclick="onKMeansCluster()">KMeans Cluster</button>
+
+    <h2>Status / Result</h2>
+    <pre id="status">{}</pre>
+  </body>
+</html>

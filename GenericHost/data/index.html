@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Pode API Test</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; line-height: 1.6; }
+        .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        textarea { width: 100%; height: 100px; font-family: monospace; }
+        button { padding: 10px 20px; background: #0078d4; color: white; border: none; cursor: pointer; border-radius: 4px; }
+        button:hover { background: #005a9e; }
+        #response { background: #f4f4f4; padding: 10px; border-radius: 4px; white-space: pre-wrap; margin-top: 20px; border: 1px solid #ddd; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Pode API 送信テスト</h2>
+    <p>URL: <code>/api/gpx</code> へPOSTリクエストを送ります。</p>
+    
+    <label>送信するJSONデータ:</label>
+    <textarea id="jsonInput">{
+    "cityName": "葉山",
+    "clusters": 3
+}</textarea>
+    
+    <br><br>
+    <button id="sendBtn">APIを実行</button>
+
+    <h3>レスポンス:</h3>
+    <div id="response">ここに結果が表示されます</div>
+</div>
+
+<script>
+    document.getElementById('sendBtn').addEventListener('click', async () => {
+        const responseDiv = document.getElementById('response');
+        const jsonInput = document.getElementById('jsonInput').value;
+        
+        responseDiv.textContent = "送信中...";
+        responseDiv.classList.remove('error');
+
+        try {
+            const response = await fetch('/api/gpx', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: jsonInput
+            });
+
+            const result = await response.json();
+            responseDiv.textContent = JSON.stringify(result, null, 2);
+
+            if (!response.ok) {
+                responseDiv.classList.add('error');
+            }
+        } catch (err) {
+            responseDiv.textContent = "エラーが発生しました: " + err.message;
+            responseDiv.classList.add('error');
+        }
+    });
+</script>
+
+</body>
+</html>
