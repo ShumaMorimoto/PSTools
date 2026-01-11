@@ -1,0 +1,186 @@
+﻿/* ============================================================
+   Leaflet Popup Custom Styling
+   ============================================================ */
+
+/* Leaflet標準の外枠・余白をリセットして制御下に置く */
+.leaflet-popup-content-wrapper {
+    padding: 0 !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+}
+
+.leaflet-popup-content {
+    margin: 0 !important;
+    width: 240px !important; /* 幅を240pxに固定 */
+    line-height: 1.4 !important;
+}
+
+/* ポップアップを閉じる「×」ボタンの調整（任意） */
+.leaflet-popup-close-button {
+    top: 5px !important;
+    right: 5px !important;
+    color: #999 !important;
+}
+
+/* ============================================================
+   Popup Card Layout
+   ============================================================ */
+
+.popup-card {
+    padding: 14px;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #333;
+}
+
+/* 座標表示ヘッダー */
+.p-header {
+    background: #f4f6f8;
+    font-size: 15px; 
+    font-weight: bold;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    padding: 6px;
+    text-align: center;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    border: 1px solid #eee;
+    transition: background 0.2s;
+}
+
+.p-header:hover {
+    background: #e9ecef;
+}
+
+/* コンテンツエリア */
+.p-content {
+    min-height: 60px;
+}
+
+/* 表示モード用テキスト */
+.p-title {
+    font-size: 20px; 
+    font-weight: bold;
+    margin-bottom: 4px;
+    color: #000;
+    word-break: break-all;
+}
+
+.p-desc {
+    font-size: 15px;
+    color: #444;
+    margin-bottom: 6px;
+    word-break: break-all;
+}
+
+.p-tag {
+    font-size: 13px;
+    color: #007bff;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+/* 編集モード用ラベル・入力欄 */
+.p-label {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 2px;
+    margin-top: 8px;
+}
+
+.p-input {
+    width: 100% !important;
+    box-sizing: border-box;
+    font-size: 16px !important;
+    padding: 8px !important;
+    margin-bottom: 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    display: block;
+    background: #fff;
+}
+
+textarea.p-input {
+    resize: none;
+    font-family: inherit;
+}
+
+/* ============================================================
+   Footer & Buttons
+   ============================================================ */
+
+.p-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+.p-btns-right {
+    display: flex;
+    gap: 6px;
+}
+
+/* 基本ボタン */
+.btn-s {
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: bold;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #333;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-s:hover {
+    background: #f8f9fa;
+    border-color: #bbb;
+}
+
+/* プライマリボタン（保存・地点登録） */
+.btn-primary {
+    background: #007bff !important;
+    color: #fff !important;
+    border: none !important;
+}
+
+.btn-primary:hover {
+    background: #0069d9 !important;
+}
+
+/* アイコンボタン（更新） */
+.btn-icon {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #007bff;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.btn-icon:hover {
+    transform: rotate(30deg);
+}
+
+/* ============================================================
+   Mode Switching Logic
+   ============================================================ */
+
+/* data-mode 属性に基づいて表示を切り替え */
+.popup-card[data-mode="show"] .edit-mode {
+    display: none !important;
+}
+
+.popup-card[data-mode="editable"] .view-mode {
+    display: none !important;
+}

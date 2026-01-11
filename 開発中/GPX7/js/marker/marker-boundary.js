@@ -1,5 +1,4 @@
-﻿// marker-boundary.js
-import { fetchMuniInfo, fetchBoundary } from "./../api-utils.js";
+﻿import { geoService } from "../components/geo-service.js";
 
 export default class MarkerBoundary {
   constructor(handler) {
@@ -7,7 +6,7 @@ export default class MarkerBoundary {
     this.show = false;
     this.layer = null;
 
-    // ★ 前回描画した自治体コードを保持
+    // 前回描画した自治体コードを保持
     this.currentMuniCd5 = null;
   }
 
@@ -26,24 +25,32 @@ export default class MarkerBoundary {
 
   async render() {
     const center = this.handler.map.getCenter();
-    this.drawBorder(center);
+    // geo-serviceのIFに合わせて {lat, lon} を渡す
+    await this.drawBorder({ lat: center.lat, lon: center.lng });
   }
 
-  async drawBorder(m) {
-    const muniInfo = await fetchMuniInfo(m.lat, m.lng);
-    if (!muniInfo) return;
-    const newMuniCd5 = muniInfo.muniCd5;
+  async drawBorder(coord) {
+    // 1. 自治体情報の解決 (lv01Nmなども内部で解決されるが、ここではmuniCd5を使用)
+    const point = await geoService.resolve(coord);
+    const newMuniCd5 = point.extensions?.muniCd5;
 
+    if (!newMuniCd5) return;
+
+    // 同じ自治体なら何もしない
     if (this.layer && this.currentMuniCd5 === newMuniCd5) {
       return;
     }
+
+    // 別の自治体に移動したなら古いレイヤーを消す
     if (this.layer && this.currentMuniCd5 !== newMuniCd5) {
       this.clear();
     }
-    const geo = await fetchBoundary(muniInfo);
+
+    // 2. 境界データの取得 (geoServiceがキャッシュを持っているため高速)
+    const geo = await geoService.fetchBoundary(point);
     if (!geo) return;
 
-    // GeoJSON レイヤーを作成
+    // GeoJSON レイヤーを作成して地図に追加
     this.layer = L.geoJSON(geo, {
       style: {
         color: "#ff6600",
@@ -61,6 +68,6 @@ export default class MarkerBoundary {
       this.handler.map.removeLayer(this.layer);
     }
     this.layer = null;
-    this.currentMuniCd5 = null; // ★ クリア時にリセット
+    this.currentMuniCd5 = null;
   }
 }

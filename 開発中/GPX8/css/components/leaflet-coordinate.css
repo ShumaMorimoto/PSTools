@@ -1,0 +1,28 @@
+﻿/* 地図上の座標・距離表示パネルのスタイル */
+.leaflet-control-mouseposition {
+    background-color: rgba(255, 255, 255, 0.9); /* 白背景・高不透明度 */
+    padding: 6px 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px; /* 角丸 */
+    box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+    min-width: 140px;
+    font-family: "Lucida Console", Monaco, monospace; /* 等幅フォントで数字の揺れを防止 */
+    line-height: 1.4;
+}
+
+/* 上段：座標 (緯度, 経度) */
+.leaflet-control-mouseposition div:first-child {
+    color: #8e24aa; /* 画像に近い紫色 */
+    font-size: 24px;
+    font-weight: bold;
+    border-bottom: 1px solid #eee; /* 境界線 */
+    margin-bottom: 2px;
+    padding-bottom: 2px;
+}
+
+/* 下段：距離 (km) */
+.leaflet-control-mouseposition div:last-child {
+    color: #ff6d00; /* 画像に近い鮮やかなオレンジ */
+    font-size: 20px;
+    font-weight: 900; /* 太字 */
+}

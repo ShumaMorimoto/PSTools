@@ -2,22 +2,19 @@
 export default class MarkerPolyline {
   constructor(handler) {
     this.handler = handler;
-
-    this.show = true; // ← フラグはここに持つ
+    this.show = true;
     this.polyline = L.polyline([], { color: "#ff8800", weight: 3 });
-  }
 
-  toggle() {
-    this.show = !this.show;
-    this.redraw();
-  }
+    // --- 追加: イベントを購読する ---
+    // リスト構造が変わった（追加・削除・並び替え）時に redraw を実行
+    markerEvents.addEventListener(MarkerEventTypes.LIST_CHANGED, () => {
+      this.redraw();
+    });
 
-  redraw() {
-    if (this.show) {
-      this.render();
-    } else {
-      this.clear();
-    }
+    // 座標が動いた時にも線を引き直す必要がある場合
+    markerEvents.addEventListener(MarkerEventTypes.POINT_UPDATED, () => {
+      this.redraw();
+    });
   }
 
   render() {

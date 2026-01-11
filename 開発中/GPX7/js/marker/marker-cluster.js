@@ -1,5 +1,5 @@
 ﻿// marker-cluster.js
-import { callApi } from "/runapp/lib/js/api.js";
+import { callApi } from "/lib/js/api.js";
 
 export default class MarkerCluster {
   constructor(handler) {
@@ -14,7 +14,7 @@ export default class MarkerCluster {
 
   toggle() {
     this.show = !this.show;
-//    this.handler.renumberMarkers();
+    //    this.handler.renumberMarkers();
     this.redraw();
   }
 
@@ -48,12 +48,17 @@ export default class MarkerCluster {
 
   // --- API呼び出しの修正 ---
   async _callExternalClusterAPI(markers) {
-    // API送信用にlat/lonのリストに変換
+    // 1. API送信用にlat/lonのリストに変換（丸投げするデータそのもの）
     const input = markers.map((m) => {
-      const ll = m.m.getLatLng(); // entry.m が L.Marker と想定
+      const ll = m.m.getLatLng();
       return { lat: ll.lat, lon: ll.lng };
     });
+
+    // 2. API呼び出し
+    // ラッピング（{ Places: ... }）は不要。input（配列）をそのまま渡す。
     const clusters = await callApi("KMeansCluster", input);
+
+    // clusters は [[0, 2, 5], [1, 3, 4]] のような配列が返る想定
     return clusters;
   }
 

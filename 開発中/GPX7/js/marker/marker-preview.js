@@ -1,17 +1,15 @@
-﻿import { notify } from "./../api-utils.js";
+﻿import { geoService } from "./../components/geo-service.js"; // インスタンスをインポート
+import { notify } from "./../api-utils.js"; // notifyは既存のものを利用
 
 export default class MarkerPreview {
   constructor(handler) {
     this.handler = handler;
     this.previewMarkers = [];
-
-    // SearchControlへ注入するために自身のメソッドをbind
     this.onSelected = this.onSelected.bind(this);
   }
 
-  // DI用：検索コントロールから呼ばれるエントリポイント
   onSelected(item, map, control, updateHistory) {
-    this.clear(); // 以前のプレビューを消去
+    this.clear();
     this.add(item, updateHistory);
   }
 
@@ -51,7 +49,6 @@ export default class MarkerPreview {
       </div>
       <div style="display: flex; gap: 4px;">
         <button class="update-hist-btn" style="flex:1; font-size:10px; padding:4px 0; cursor:pointer; background:#f8f9fa; border:1px solid #ccc; color:#333;">履歴保存</button>
-        
         <button class="confirm-btn" style="flex:1; font-size:10px; padding:4px 0; cursor:pointer; background:#2196f3; border:1px solid #1976d2; color:white; font-weight:bold;">地点登録</button>
       </div>
     `;
@@ -62,22 +59,31 @@ export default class MarkerPreview {
       const nameInp = container.querySelector(".edit-name");
       const keyInp = container.querySelector(".edit-key");
 
-      // 履歴(localStorage)の更新
       container.querySelector(".update-hist-btn").onclick = () => {
         updateHistory({ name: nameInp.value, keyword: keyInp.value });
         notify("📋 履歴登録しました");
       };
 
-      // 本登録
-      container.querySelector(".confirm-btn").onclick = () => {
+      // 本登録ボタンのロジック
+      container.querySelector(".confirm-btn").onclick = async () => {
         const pos = pm.getLatLng();
+        
+        // ★ 登録直前に自治体・町字情報を解決
+        const resolved = await geoService.resolve({ lat: pos.lat, lon: pos.lng });
+
         this.handler.addPoint({
           lat: pos.lat,
           lon: pos.lng,
-          name: nameInp.value,
-          extensions: { keyword: keyInp.value },
+          // 入力があればそれを優先、なければGSIから取得した地名をセット
+          name: nameInp.value || resolved.name,
+          desc: resolved.desc,
+          extensions: {
+            ...(resolved.extensions || {}),
+            keyword: keyInp.value
+          },
         });
         this.remove(pm);
+        notify(`📍 ${nameInp.value || resolved.name} を登録しました`);
       };
     });
 

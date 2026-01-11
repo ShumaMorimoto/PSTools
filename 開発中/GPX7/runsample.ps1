@@ -1,11 +1,7 @@
-﻿using module D:\tool\Repository\PSTools\RouteOptimizer
-using module D:\tool\Repository\PSTools\GPXTools
+﻿# モジュールをインポート（パスで指定）
+using module D:\tool\Repository\PSTools\GPXTools\GPXTools.psd1
+#-Force
 
-
-#$towns = [GPXDocumentFactory]::FromCityTowns("葉山町")
-#$pso = [GPXDocument]::ElementToPSO($towns.documentElement)
-
-$pso = $null
-
-Start-Optimizer -Page D:\tool\Repository\PSTools\開発中\GPX7\map.html -PSO $pso
-
+# 名前またはパスで呼び出し
+Start-PodeHost -ModuleName "GPXTools" `
+               -PublicPath "D:\tool\Repository\PSTools\開発中\GPX7"

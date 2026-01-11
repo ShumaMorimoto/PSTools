@@ -1,5 +1,5 @@
 import GPXService from "./gpx-service.js";
-import { fetchMuniInfo } from "./api-utils.js";
+import { geoService } from "./components/geo-service.js";
 
 export default class UIManager {
   constructor(selector) {
@@ -30,7 +30,8 @@ export default class UIManager {
       const btnId = cfg.buttonId;
 
       // ★ 条件：カレントMODEと一致 or カレントMODEがDEFAULT
-      const shouldEnable = m === mode || mode === this.selector.constructor.Mode.DEFAULT;
+      const shouldEnable =
+        m === mode || mode === this.selector.constructor.Mode.DEFAULT;
 
       if (shouldEnable) {
         this.selector.mapInitializer.groups.modeOptions.enable(btnId);
@@ -80,10 +81,15 @@ export default class UIManager {
 
     const gpx = this.selector.gpxService.toXml();
 
+    // 現在の地図中心から自治体情報を解決
     const center = this.selector.map.getCenter();
-    const muni = await fetchMuniInfo(center.lat, center.lng);
+    const point = await geoService.resolve({
+      lat: center.lat,
+      lon: center.lng,
+    });
 
-    const filename = muni ? `【周辺】${muni.municipality}.gpx` : "route.gpx";
+    // resolveに成功していれば point.name に自治体名（"札幌市"など）が入っている
+    const filename = point.name ? `【周辺】${point.name}.gpx` : "route.gpx";
 
     await this.saveGpx(filename, gpx);
   };

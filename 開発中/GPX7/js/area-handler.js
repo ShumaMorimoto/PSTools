@@ -1,4 +1,4 @@
-﻿import { fetchOverpassPlaces } from "./api-utils.js";
+﻿import { geoService } from "./components/geo-service.js";
 
 export default class AreaHandler {
   static State = {
@@ -149,14 +149,14 @@ export default class AreaHandler {
     try {
       this.changeState(AreaHandler.State.PROCESSING);
 
-      this.previewTowns = await fetchOverpassPlaces(
-        this.center.lat,
-        this.center.lng,
+      const { lat, lng: lon } = this.center;
+      this.previewTowns = await geoService.fetchAreaTowns(
+        { lat, lon },
         this.radius
       );
 
       this.previewTowns.forEach((t) => {
-        L.circleMarker([t.lat, t.lng], {
+        L.circleMarker([t.lat, t.lon], {
           radius: 4,
           color: "#ff6600",
         }).addTo(this.previewLayer);
@@ -176,12 +176,12 @@ export default class AreaHandler {
   _confirm() {
     const pts = this.previewTowns.map((t) => ({
       lat: t.lat,
-      lon: t.lng,
+      lon: t.lon,
       name: t.name,
     }));
 
     this.selector.addPoints(pts);
-    this.selector.reorderMarkers()
+    this.selector.reorderMarkers();
 
     // 完了後は領域破棄
     this._clearAllLayers();

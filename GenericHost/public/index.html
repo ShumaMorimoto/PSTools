@@ -42,13 +42,11 @@
     <script>
         async function sendPost() {
             const data = {
-                name: document.getElementById('name').value,
-                city: document.getElementById('city').value,
-                message: document.getElementById('message').value
+                cityName: document.getElementById('city').value,
             };
 
             try {
-                const response = await fetch('/api/test', {
+                const response = await fetch('/api/gpx', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)

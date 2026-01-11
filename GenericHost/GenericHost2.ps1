@@ -58,9 +58,10 @@ function Start-GenericPodeHost {
 # --- 設定 ---
 $config = @{
     Port        = 8080
-    PublicPath  = Join-Path $PSScriptRoot "data"
-    ModulePaths = @( Join-Path $PSScriptRoot "GPXTools\GPXTools.psm1" )
-    ApiRoutes   = @{ "/api/gpx" = "Cluster-KMeans" }
+    PublicPath  = "D:\tool\Repository\PSTools\開発中\GPX7"
+    ModulePaths = @( "D:\tool\Repository\PSTools\GPXTools\GPXTools.psm1" )
+    ApiRoutes   = @{ "/api/TSPSolver" = "Invoke-TSPSolver";"/api/KMeansCluster" = "Invoke-KMeansCluster"
+    }
 }
 
 # 実行

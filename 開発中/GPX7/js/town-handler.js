@@ -1,4 +1,4 @@
-﻿import { fetchMuniInfo, fetchBoundary, fetchTowns } from "./api-utils.js";
+﻿import { geoService } from "./components/geo-service.js"; // インスタンスをインポート
 
 function drawBoundary(map, geojson) {
   return L.geoJSON(geojson, {
@@ -23,49 +23,29 @@ export default class TownHandler {
     this.selector = selector;
     this.state = TownHandler.State.IDLE;
 
-    this.tempData = null; // lat/lng
-    this.previewLayer = null; // 町字プレビュー
-    this.boundaryLayer = null; // 自治体境界
-    this.previewTowns = []; // 町字一覧
-    this.previewAdmin = null; // 自治体情報
+    this.tempPoint = null;      // 統一IF形式のPointオブジェクトを保持
+    this.previewLayer = null; 
+    this.boundaryLayer = null; 
+    this.previewTowns = [];    // geoServiceから返るPoint配列
   }
 
-  // ---------------------------------------------------
-  // 初期化
-  // ---------------------------------------------------
+  // ... (init, onActionButtonClick, handleCancel は変更なし) ...
   init() {}
 
-  // ---------------------------------------------------
-  // ボタン押下
-  // ---------------------------------------------------
   onActionButtonClick() {
     switch (this.state) {
-      case TownHandler.State.IDLE:
-        this._start();
-        break;
-
-      case TownHandler.State.SELECTING:
-        this._preview();
-        break;
-
-      case TownHandler.State.PREVIEW:
-        this._confirm();
-        break;
+      case TownHandler.State.IDLE:      this._start(); break;
+      case TownHandler.State.SELECTING: this._preview(); break;
+      case TownHandler.State.PREVIEW:   this._confirm(); break;
     }
   }
 
-  // ---------------------------------------------------
-  // キャンセル（PREVIEW → SELECTING に戻す）
-  // ---------------------------------------------------
   handleCancel() {
     if (this.state === TownHandler.State.PREVIEW) {
-      // PREVIEW → SELECTING（元コードと同じ挙動）
       this._clearPreviewOnly();
       this.changeState(TownHandler.State.SELECTING);
       return;
     }
-
-    // IDLE / SELECTING はテンプレ通り
     this.changeState(TownHandler.State.IDLE);
     this.selector.setMode(this.selector.constructor.Mode.DEFAULT);
   }
@@ -74,11 +54,11 @@ export default class TownHandler {
   // Map click
   // ---------------------------------------------------
   async handleMapClick(e) {
-    if (this.selector.currentMode !== this.selector.constructor.Mode.TOWN_MODE)
-      return;
+    if (this.selector.currentMode !== this.selector.constructor.Mode.TOWN_MODE) return;
 
     if (this.state === TownHandler.State.SELECTING) {
-      this.tempData = { lat: e.latlng.lat, lng: e.latlng.lng };
+      // クリック地点を初期Pointとして保持
+      this.tempPoint = { lat: e.latlng.lat, lon: e.latlng.lng };
       await this._loadPreviewData();
       this.changeState(TownHandler.State.PREVIEW);
     } else if (this.state === TownHandler.State.PREVIEW) {
@@ -87,149 +67,105 @@ export default class TownHandler {
   }
 
   // ---------------------------------------------------
-  // 状態遷移
-  // ---------------------------------------------------
-  changeState(newState) {
-    this.state = newState;
-
-    switch (newState) {
-      case TownHandler.State.IDLE:
-        this._clear();
-        break;
-
-      case TownHandler.State.SELECTING:
-        this._prepareSelecting();
-        break;
-
-      case TownHandler.State.PREVIEW:
-        this._preparePreview();
-        break;
-    }
-
-    this.selector.onHandlerStateChanged({
-      state: newState,
-      ...TownHandler.StateInfo[newState],
-    });
-  }
-
-  // ---------------------------------------------------
   // 内部ロジック
   // ---------------------------------------------------
 
-  // IDLE → SELECTING
-  _start() {
-    this.selector.setMode(this.selector.constructor.Mode.TOWN_MODE);
-    this.changeState(TownHandler.State.SELECTING);
-  }
-
-  // SELECTING → PREVIEW（ボタン確定）
-  async _preview() {
-    if (!this.tempData) return;
-    await this._loadPreviewData();
-    this.changeState(TownHandler.State.PREVIEW);
-  }
-
   // PREVIEW → IDLE（登録）
   _confirm() {
-    const { name: muniName, prefecture: prefName, muniCd6 } = this.previewAdmin;
+    if (!this.previewTowns.length) return;
 
-    // まず配列 ps を作る（データ生成のみ）
-    const pts = this.previewTowns.map((t) => ({
-      lat: t.lat,
-      lon: t.lng,
-      name: t.town,
-      desc: `${prefName}${muniName}${t.town}`,
+    // geoServiceから返ってきたPoint配列(this.previewTowns)を
+    // そのままセレクターの addPoints に渡せる（IFが統一されているため）
+    // もし既存の extensions 構造を厳格に維持したい場合は map で調整
+    const pts = this.previewTowns.map(pt => ({
+      lat: pt.lat,
+      lon: pt.lon,
+      name: pt.name,
+      desc: pt.desc,
       extensions: {
-        quarter: t.town,
-        muni: muniName,
-        province: prefName,
-        muniCd: muniCd6,
+        quarter: pt.name,
+        muni: pt.extensions.municipality,
+        province: pt.extensions.prefecture,
+        muniCd: pt.extensions.muniCd6,
         country: "日本",
         country_code: "jp",
-      },
+      }
     }));
 
-    // 最後に一括追加
     this.selector.addPoints(pts);
-    this.selector.reorderMarkers()
+    this.selector.reorderMarkers();
 
-    console.log(`✅ GPX + Marker 登録完了: ${this.previewTowns.length} 件`);
-
+    console.log(`✅ 登録完了: ${pts.length} 件`);
     this.changeState(TownHandler.State.IDLE);
     this.selector.setMode(this.selector.constructor.Mode.DEFAULT);
   }
 
-  // ---------------------------------------------------
-  // 内部処理
-  // ---------------------------------------------------
-
   async _loadPreviewData() {
-    const { lat, lng } = this.tempData;
+    // 1. 自治体情報の解決 (resolve)
+    // resolveを呼ぶことで this.tempPoint に extensions 等が補充される
+    this.tempPoint = await geoService.resolve(this.tempPoint);
+    if (!this.tempPoint.extensions) return;
 
-    // 自治体
-    const admin = await fetchMuniInfo(lat, lng);
-    if (!admin) return;
-    this.previewAdmin = admin;
-
-    // 境界
-    const geojson = await fetchBoundary(admin);
+    // 2. 境界線の取得と描画
+    const geojson = await geoService.fetchBoundary(this.tempPoint);
     if (geojson) {
-      if (this.boundaryLayer) {
-        this.selector.map.removeLayer(this.boundaryLayer);
-      }
+      if (this.boundaryLayer) this.selector.map.removeLayer(this.boundaryLayer);
       this.boundaryLayer = drawBoundary(this.selector.map, geojson);
       this.selector.map.fitBounds(this.boundaryLayer.getBounds());
     }
 
-    // 町字
-    const towns = await fetchTowns(admin);
+    // 3. 自治体内全町字の取得
+    const towns = await geoService.fetchCityTowns(this.tempPoint);
     this.previewTowns = towns;
 
-    // プレビュー描画
-    if (this.previewLayer) {
-      this.selector.map.removeLayer(this.previewLayer);
-    }
+    // 4. プレビュー描画
+    if (this.previewLayer) this.selector.map.removeLayer(this.previewLayer);
     this.previewLayer = L.layerGroup().addTo(this.selector.map);
 
     towns.forEach((t) => {
-      L.circleMarker([t.lat, t.lng], {
+      L.circleMarker([t.lat, t.lon], { // .lng ではなく .lon に統一
         radius: 4,
         color: "#ff6600",
       }).addTo(this.previewLayer);
     });
 
-    console.log(`👁️ 町字プレビュー: ${towns.length} 件`);
+    console.log(`👁️ 町字プレビュー: ${towns.length} 件 (${this.tempPoint.desc})`);
+  }
+
+  // ... (changeState, _start, _preview, _clear 等はロジックに変更なし) ...
+
+  changeState(newState) {
+    this.state = newState;
+    switch (newState) {
+      case TownHandler.State.IDLE:      this._clear(); break;
+      case TownHandler.State.SELECTING: this._prepareSelecting(); break;
+      case TownHandler.State.PREVIEW:   this._preparePreview(); break;
+    }
+    this.selector.onHandlerStateChanged({ state: newState, ...TownHandler.StateInfo[newState] });
+  }
+
+  _start() {
+    this.selector.setMode(this.selector.constructor.Mode.TOWN_MODE);
+    this.changeState(TownHandler.State.SELECTING);
+  }
+
+  async _preview() {
+    if (!this.tempPoint) return;
+    await this._loadPreviewData();
+    this.changeState(TownHandler.State.PREVIEW);
   }
 
   _clear() {
-    this.tempData = null;
-
-    if (this.previewLayer) {
-      this.selector.map.removeLayer(this.previewLayer);
-      this.previewLayer = null;
-    }
-
-    if (this.boundaryLayer) {
-      this.selector.map.removeLayer(this.boundaryLayer);
-      this.boundaryLayer = null;
-    }
-
+    this.tempPoint = null;
+    if (this.previewLayer) { this.selector.map.removeLayer(this.previewLayer); this.previewLayer = null; }
+    if (this.boundaryLayer) { this.selector.map.removeLayer(this.boundaryLayer); this.boundaryLayer = null; }
     this.previewTowns = [];
-    this.previewAdmin = null;
   }
 
   _clearPreviewOnly() {
-    if (this.previewLayer) {
-      this.selector.map.removeLayer(this.previewLayer);
-      this.previewLayer = null;
-    }
+    if (this.previewLayer) { this.selector.map.removeLayer(this.previewLayer); this.previewLayer = null; }
   }
 
-  _prepareSelecting() {
-    this.tempData = null;
-  }
-
-  _preparePreview() {
-    // previewLayer は _loadPreviewData 内で構築済み
-  }
+  _prepareSelecting() { this.tempPoint = null; }
+  _preparePreview() {}
 }

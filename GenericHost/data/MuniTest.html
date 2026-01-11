@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MuniDataResolver Test Dashboard</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 20px;
+        background: #f4f4f4;
+      }
+      .container {
+        display: flex;
+        gap: 20px;
+      }
+      .panel {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        flex: 1;
+      }
+      h2 {
+        margin-top: 0;
+        color: #333;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 5px;
+      }
+      .input-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      input {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 10px;
+        width: 100%;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      pre {
+        background: #272822;
+        color: #f8f8f2;
+        padding: 15px;
+        border-radius: 4px;
+        overflow-x: auto;
+        min-height: 100px;
+        max-height: 500px;
+        font-size: 12px;
+      }
+      .status {
+        margin-top: 10px;
+        font-size: 14px;
+        color: #666;
+      }
+      .loading {
+        color: #007bff;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>MuniDataResolver 部品テスト</h1>
+
+    <div class="container">
+      <div class="panel">
+        <h2>1. 入力設定</h2>
+        <div class="input-group">
+          <label>緯度 (lat):</label>
+          <input type="number" id="lat" value="43.0642" step="0.0001" />
+        </div>
+        <div class="input-group">
+          <label>経度 (lon):</label>
+          <input type="number" id="lon" value="141.3468" step="0.0001" />
+        </div>
+        <p><small>※初期値は札幌市役所付近</small></p>
+
+        <button onclick="runResolve()">1. resolve() 実行</button>
+        <button onclick="runBoundary()">2. fetchBoundary() 実行</button>
+        <button onclick="runCityTowns()">3. fetchCityTowns() 実行</button>
+        <button onclick="runAreaTowns()">4. fetchAreaTowns() 実行</button>
+
+        <div id="status" class="status">待機中...</div>
+      </div>
+
+      <div class="panel">
+        <h2>2. 実行結果 (JSON)</h2>
+        <pre id="output">// 結果がここに表示されます</pre>
+      </div>
+    </div>
+
+    <script type="module">
+      // --- Resolver クラスの実装 (api-utils.js 相当) ---
+      /**
+       * 自治体・地理情報解決サービス (調整版)
+       */
+      class MuniDataResolver {
+        constructor() {
+          this.muniCache = null;
+          this.geoJsonCache = new Map();
+          this.MUNI_JSON_PATH = "./municipalities.json";
+        }
+
+        /**
+         * 内部用：新しいPointオブジェクトの生成
+         * extensionsが空の場合はプロパティ自体を作成しない
+         */
+        _createPoint(lat, lon, name = "", desc = "", extData = null) {
+          const point = { lat, lon, name, desc };
+
+          // 有効な自治体データがある場合のみ extensions を作成
+          if (extData && extData.muniCd5) {
+            point.extensions = {
+              municipality: extData.municipality || "",
+              muniCd6: extData.muniCd6 || "",
+              prefecture: extData.prefecture || "",
+              prefecture_code: extData.prefecture_code || "",
+              muniCd5: extData.muniCd5 || "",
+            };
+          }
+          return point;
+        }
+
+        // --- 1. resolve: lat,lon から自治体マスターの全項目を解決 ---
+        async resolve(point) {
+          const { lat, lon } = point;
+          const url = `https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${lat}&lon=${lon}`;
+
+          try {
+            const res = await fetch(url);
+            const json = await res.json();
+            const muniCd5 = json.results.muniCd;
+
+            const master = await this._loadMuniMaster();
+            const info = master.municipalities.find(
+              (m) => m.muniCd5 === muniCd5
+            );
+
+            if (!info) return point;
+
+            // nameを市区町村名に、descを都道府県+市区町村名に設定
+            return this._createPoint(
+              lat,
+              lon,
+              info.municipality,
+              `${info.prefecture}${info.municipality}`,
+              info
+            );
+          } catch (e) {
+            console.error("Resolve failed", e);
+            return point;
+          }
+        }
+
+        // --- 2. fetchBoundary: 自治体境界の取得 ---
+        async fetchBoundary(point) {
+          let target = point;
+          if (!target.extensions?.muniCd5) {
+            target = await this.resolve(point);
+          }
+
+          const { muniCd5 } = target.extensions || {};
+          if (!muniCd5) return null;
+
+          if (this.geoJsonCache.has(muniCd5))
+            return this.geoJsonCache.get(muniCd5);
+
+          const url = `https://shikuchoson-boundaries.sankichi.app/${muniCd5}.geojson`;
+          try {
+            const res = await fetch(url);
+            const geoJson = await res.json();
+            this.geoJsonCache.set(muniCd5, geoJson);
+            return geoJson;
+          } catch {
+            return null;
+          }
+        }
+
+        // --- 3. fetchCityTowns: 市区町村内の全町字を取得 ---
+        async fetchCityTowns(point) {
+          let target = point;
+          if (
+            !target.extensions?.prefecture ||
+            !target.extensions?.municipality
+          ) {
+            target = await this.resolve(point);
+          }
+
+          const { prefecture, municipality } = target.extensions || {};
+          if (!prefecture || !municipality) return [];
+
+          const url = `https://geolonia.github.io/japanese-addresses/api/ja/${prefecture}/${municipality}.json`;
+          try {
+            const res = await fetch(url);
+            const towns = await res.json();
+
+            return towns.map((t) =>
+              this._createPoint(
+                t.lat,
+                t.lng,
+                t.town,
+                `${prefecture}${municipality}${t.town}`,
+                target.extensions // 自治体情報を継承して extensions を作成
+              )
+            );
+          } catch {
+            return [];
+          }
+        }
+
+        // --- 4. fetchAreaTowns: リトライ機能付き ---
+        async fetchAreaTowns(point, radius = 1000, retries = 3) {
+          const { lat, lon } = point;
+          const r = Math.floor(radius);
+          const query = `[out:json][timeout:60];node["place"~"^(neighbourhood|quarter|locality)$"](around:${r},${lat},${lon});out body;`;
+          const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(
+            query
+          )}`;
+
+          for (let i = 0; i <= retries; i++) {
+            try {
+              const res = await fetch(url);
+              if (res.status === 429 || res.status >= 500)
+                throw new Error(`Server Error: ${res.status}`);
+              if (!res.ok) break;
+
+              const json = await res.json();
+              return json.elements
+                .filter((el) => el.tags?.name)
+                .map((el) =>
+                  this._createPoint(
+                    el.lat,
+                    el.lon,
+                    el.tags.name,
+                    "Overpass Place",
+                    null
+                  )
+                );
+            } catch (e) {
+              if (i === retries) break;
+              const delay = Math.pow(2, i) * 1000;
+              console.warn(`Retry ${i + 1}/${retries} after ${delay}ms...`);
+              await new Promise((r) => setTimeout(r, delay));
+            }
+          }
+          return [];
+        }
+
+        async _loadMuniMaster() {
+          if (this.muniCache) return this.muniCache;
+          const res = await fetch(this.MUNI_JSON_PATH);
+          this.muniCache = await res.json();
+          return this.muniCache;
+        }
+      }
+
+      // グローバルにインスタンスを展開
+      const resolver = new MuniDataResolver();
+
+      // --- UI操作用関数 ---
+      async function runTest(action, callback) {
+        const output = document.getElementById("output");
+        const status = document.getElementById("status");
+        const lat = parseFloat(document.getElementById("lat").value);
+        const lon = parseFloat(document.getElementById("lon").value);
+
+        output.textContent = "// 読み込み中...";
+        status.innerHTML = `<span class="loading">実行中: ${action}...</span>`;
+
+        try {
+          const startTime = Date.now();
+          const result = await callback({ lat, lon });
+          const elapsed = Date.now() - startTime;
+
+          output.textContent = JSON.stringify(result, null, 2);
+          status.textContent = `完了: ${action} (${elapsed}ms)`;
+        } catch (e) {
+          output.textContent = "Error: " + e.message;
+          status.textContent = "失敗しました。";
+        }
+      }
+
+      // ボタンにイベント紐付け
+      window.runResolve = () => runTest("resolve", (p) => resolver.resolve(p));
+      window.runBoundary = () =>
+        runTest("fetchBoundary", (p) => resolver.fetchBoundary(p));
+      window.runCityTowns = () =>
+        runTest("fetchCityTowns", (p) => resolver.fetchCityTowns(p));
+      window.runAreaTowns = () =>
+        runTest("fetchAreaTowns", (p) => resolver.fetchAreaTowns(p));
+    </script>
+  </body>
+</html>

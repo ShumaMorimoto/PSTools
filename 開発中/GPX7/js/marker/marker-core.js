@@ -1,6 +1,6 @@
 ﻿// oore.js
 
-import { callApi } from "/runapp/lib/js/api.js";
+import { callApi } from "/lib/js/api.js";
 
 export default class MarkerCore {
   constructor(handler) {
@@ -122,13 +122,22 @@ export default class MarkerCore {
   }
 
   async reorderByTSP() {
+    // 1. 座標リストを作成
     const input = this.markers.map((e) => ({
       lat: e.point.lat,
       lon: e.point.lon,
     }));
-    const newindices = await callApi("TSPSolver", input);
-    console.log("TSPResolver:", newindices);
-    this.reorderMarkers(newindices);
+
+    try {
+      // 2. 標準化された callApi を使用
+      // ラッピング（{ Places: input }）は不要になり、input をそのまま渡します
+      const newindices = await callApi("TSPSolver", input);
+
+      console.log("TSPResolver:", newindices);
+      this.reorderMarkers(newindices);
+    } catch (error) {
+      console.error("TSP Execution failed:", error);
+    }
   }
 
   // ---------------------------------------------------
@@ -195,8 +204,8 @@ export default class MarkerCore {
     return this.gpxService.getTrkpts()[index];
   }
 
-  getEntry(marker){
-     return this.markers.find((x) => x.m === marker);
+  getEntry(marker) {
+    return this.markers.find((x) => x.m === marker);
   }
 
   /**

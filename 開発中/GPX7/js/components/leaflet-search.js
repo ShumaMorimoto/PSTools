@@ -72,7 +72,7 @@ L.Control.SearchWithHistory = L.Control.extend({
       }
     }
   },
-  
+
   // ★ 検索実行ロジックの切り分け
   _performSearch: async function (query) {
     const qLower = query.toLowerCase();
@@ -90,39 +90,44 @@ L.Control.SearchWithHistory = L.Control.extend({
       let webResults = [];
 
       // 2. プロバイダーごとのフェッチとパース
+      // --- _performSearch 内の gsi プロバイダ処理 (完全修正版) ---
       if (this.options.provider === "gsi") {
-        // --- 国土地理院 (GSI) ---
         const res = await fetch(
           `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(
             query
           )}`
         );
         const data = await res.json();
-
-        // 自治体マスタをロード
         const muniData = await loadMunicipalitiesInternal();
 
         webResults = data.map((item) => {
           const props = item.properties;
-          let muniInfo = null;
 
-          // addressCode（自治体コード）が存在する場合、マスタから検索
+          let addressStr = "";
+
+          // 1. addressCodeから自治体情報を検索
           if (props.addressCode) {
-            // muniCd5 (5桁) で照合
-            muniInfo =
-              muniData.municipalities.find(
-                (m) => m.muniCd5 === props.addressCode
-              ) || null;
+            // プロパティ名は muniCd5 を使用
+            const muniInfo = muniData.municipalities.find(
+              (m) => m.muniCd5 === props.addressCode
+            );
+
+            if (muniInfo) {
+              // 2. 正しいプロパティ名 (prefecture, municipality) で結合
+              const p = muniInfo.prefecture || "";
+              const m = muniInfo.municipality || "";
+              addressStr = p + m;
+            }
           }
 
           return {
             lat: item.geometry.coordinates[1],
             lon: item.geometry.coordinates[0],
-            name: props.title,
-            desc: "国土地理院 地名検索",
+            name: props.title, // 地理院のタイトル
+            desc: addressStr, // 正しく取得した「都道府県＋市区町村」
             extensions: {
               keyword: query,
-              ...(muniInfo || {}), // 見つかった場合のみ展開してマージ
+              addressCode: props.addressCode,
             },
             source: "web",
           };
