@@ -1,9 +1,6 @@
 ﻿#モジュールルートの設定
 $script:ModuleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# RunApp を絶対パスで読み込む
-#Import-Module "D:\tool\Repository\PSTools\RunApp" -Force
-
 # ─── DLL 読み込み ───
 Add-Type -Path "$PSScriptRoot\lib\TspSolverLib.dll" 
 

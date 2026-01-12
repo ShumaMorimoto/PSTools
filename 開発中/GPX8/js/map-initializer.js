@@ -1,7 +1,7 @@
 import { initCoordinateControl } from "./components/leaflet-coordinate.js";
 import { initPointListPanel } from "./components/leaflet-pointlist.js";
-import { initButtonGroup } from "./components/Leaflet-buttongroup.js";
-import { initSearchControl } from "./components/Leaflet-search.js";
+import { initButtonGroup } from "./components/leaflet-buttongroup.js";
+import { initSearchControl } from "./components/leaflet-search.js";
 
 import { markerEvents, MarkerEventTypes } from "./marker/marker-events.js";
 

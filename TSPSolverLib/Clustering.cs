@@ -65,31 +65,42 @@
             int n = places.Length;
             if (n == 0) return new List<List<int>>();
 
-            // NumClustersをMaxGroupSizeに基づいて最小限に調整
-            int minClusters = (int)Math.Ceiling((double)n / maxGroupSize);
-            if (numClusters < minClusters) numClusters = minClusters;
+            // --- 追加の改善: 拠点数がグループサイズ以下なら即座に1つにまとめて返す ---
+            if (n <= maxGroupSize)
+            {
+                return new List<List<int>> { Enumerable.Range(0, n).ToList() };
+            }
 
-            // 初期中心点をランダム選択
+            // --- 拠点数が指定クラスタ数より少ない場合の調整 ---
+            // 最小限必要なクラスタ数 (n/maxSize) と、最大でも n 個（1拠点1クラスタ）の間に収める
+            int minRequiredClusters = (int)Math.Ceiling((double)n / maxGroupSize);
+            numClusters = Math.Max(numClusters, minRequiredClusters);
+            if (numClusters > n) numClusters = n; // 拠点数以上のクラスタは作れない
+
             var random = new Random();
-            var indices = Enumerable.Range(0, n).OrderBy(x => random.Next()).Take(numClusters).ToArray();
-            var centers = indices.Select(idx => places[idx]).ToArray();
 
-            // イテレーション
-            bool changed;
+            // 初期中心点をランダムに選択（重複なしで n から numClusters 個選ぶ）
+            var centers = Enumerable.Range(0, n)
+                                    .OrderBy(x => random.Next())
+                                    .Take(numClusters)
+                                    .Select(idx => places[idx])
+                                    .ToArray();
+
             var clusters = new List<int>[numClusters];
+            bool changed;
+
             do
             {
-                // クラスタ初期化
                 for (int c = 0; c < numClusters; c++) clusters[c] = new List<int>();
 
                 // 各ポイントを最近傍中心に割り当て
                 for (int i = 0; i < n; i++)
                 {
-                    long minDist = long.MaxValue;
-                    int closest = -1;
+                    double minDist = double.MaxValue; // メートル計算ならdoubleが一般的
+                    int closest = 0;
                     for (int c = 0; c < numClusters; c++)
                     {
-                        long dist = DistanceBuilder.HaversineMeters(places[i], centers[c]);
+                        double dist = DistanceBuilder.HaversineMeters(places[i], centers[c]);
                         if (dist < minDist)
                         {
                             minDist = dist;
@@ -99,7 +110,6 @@
                     clusters[closest].Add(i);
                 }
 
-                // 中心点を更新
                 changed = false;
                 for (int c = 0; c < numClusters; c++)
                 {
@@ -113,24 +123,21 @@
                     }
                     var newCenter = (lat: sumLat / clusters[c].Count, lon: sumLon / clusters[c].Count);
 
-                    // 変化チェック（簡易閾値）
                     if (Math.Abs(newCenter.lat - centers[c].lat) > 1e-6 || Math.Abs(newCenter.lon - centers[c].lon) > 1e-6)
                     {
                         changed = true;
+                        centers[c] = newCenter;
                     }
-                    centers[c] = newCenter;
                 }
-
             } while (changed && --maxIterations > 0);
 
-            // 各クラスタをMaxGroupSize以内に分割
+            // 各クラスタをMaxGroupSize以内に分割して平準化
             var result = new List<List<int>>();
             foreach (var group in clusters.Where(g => g != null && g.Count > 0))
             {
                 for (int i = 0; i < group.Count; i += maxGroupSize)
                 {
-                    var subGroup = group.Skip(i).Take(maxGroupSize).ToList();
-                    result.Add(subGroup);
+                    result.Add(group.Skip(i).Take(maxGroupSize).ToList());
                 }
             }
 

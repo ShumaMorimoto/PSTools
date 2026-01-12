@@ -1,91 +1,77 @@
-﻿/* 検索ボックス */
+﻿/* --- 親コンテナ --- */
+.leaflet-search-parent-container {
+  margin-top: 10px; margin-right: 10px;
+  display: flex; flex-direction: column; align-items: flex-end; z-index: 1000;
+}
+
+/* --- 検索ボックス (相対配置にしてボタンを制御) --- */
 .leaflet-search-control {
-  background: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
-  padding: 10px;
-  width: 350px;
-  font-family: sans-serif;
+  position: relative;
+  background: white; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  padding: 8px; width: 350px; border: 1px solid #999;
+  box-sizing: border-box;
 }
 
 .leaflet-search-input {
-  width: 100%;
-  padding: 8px;
-  box-sizing: border-box;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
+  width: 100%; padding: 8px 35px 8px 8px; /* 右側にクリアボタン用の余白を確保 */
+  border: 1px solid #ccc; border-radius: 4px; 
+  font-size: 16px; box-sizing: border-box;
 }
 
-.leaflet-search-suggestions {
-  list-style: none;
-  margin: 5px 0 0 0;
-  padding: 0;
-  border: 1px solid #eee;
-  border-top: none;
-  max-height: 300px;
-  overflow-y: auto;
-  background: white;
-  display: none;
+/* --- クリアボタン (検索ボックス内: 視認性アップ) --- */
+.search-clear-btn {
+  position: absolute;
+  right: 12px; top: 50%; transform: translateY(-50%);
+  border: 1px solid #bbb; 
+  background: #eee;      /* はっきり見える薄いグレー */
+  color: #333;           /* 濃い文字色 */
+  font-size: 14px; font-weight: bold;
+  cursor: pointer; 
+  width: 22px; height: 22px; 
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;    /* 丸型 */
+  line-height: 1;
+  z-index: 10;           /* 入力欄より上に配置 */
+  transition: all 0.2s;
+}
+.search-clear-btn:hover {
+  background: #f44336; color: white; border-color: #d32f2f; /* ホバーで警告の赤 */
 }
 
-.leaflet-search-suggestions li {
-  padding: 8px;
-  cursor: pointer;
-  border-bottom: 1px solid #eee;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
+/* --- サイドパネル --- */
+.leaflet-search-side-panel {
+  width: 350px; max-height: calc(100vh - 120px); background: white;
+  margin-top: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  display: flex; flex-direction: column; border-radius: 4px; border: 1px solid #ddd; overflow: hidden;
 }
 
-.leaflet-search-suggestions li:hover {
-  background-color: #f8f9fa;
+/* --- パネルヘッダー (×ボタンを強調) --- */
+.panel-header {
+  background: #333; color: white; padding: 8px 12px;
+  display: flex; justify-content: space-between; align-items: center;
 }
-
-.ls-badge {
-  font-size: 10px;
-  padding: 2px 5px;
-  border-radius: 3px;
-  margin-right: 8px;
+.panel-close-btn {
+  background: rgba(255, 255, 255, 0.15); /* ボタンの背景を透過白に */
+  border: 1px solid rgba(255, 255, 255, 0.4);
   color: white;
-  min-width: 35px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.ls-badge-history {
-  background-color: #28a745;
-}
-
-.ls-badge-web {
-  background-color: #007bff;
-}
-
-.ls-meta {
-  font-size: 10px;
-  color: #888;
+  font-size: 16px; font-weight: bold;
+  cursor: pointer; padding: 2px 10px;
+  border-radius: 4px;
   margin-left: auto;
-  padding-left: 10px;
-  white-space: nowrap;
+  transition: all 0.2s;
+}
+.panel-close-btn:hover {
+  background: #f44336; border-color: #f44336; /* ホバーで赤 */
 }
 
-.item-content {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.item-name {
-  font-weight: bold;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.item-desc {
-  font-size: 11px;
-  color: #666;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+/* --- フィルタ・リスト・バッジは以前の仕様を維持 --- */
+.filter-bar { display: flex; gap: 4px; padding: 8px; background: #f1f1f1; border-bottom: 1px solid #ccc; }
+.filter-select { flex: 1; font-size: 13px; padding: 6px; border: 1px solid #bbb; border-radius: 3px; background: white; }
+.results-list-container { overflow-y: auto; flex: 1; background: white; }
+.search-item { padding: 12px 14px; cursor: pointer; border-bottom: 1px solid #eee; display: flex; align-items: center; }
+.search-item:hover { background-color: #eef6ff; }
+.item-name { font-weight: bold; font-size: 15px; color: #0056b3; }
+.item-addr { font-size: 13px; color: #555; margin-top: 4px; }
+.ls-badge { font-size: 11px; padding: 2px 4px; border-radius: 2px; margin-right: 10px; color: white; flex-shrink: 0; min-width: 40px; text-align: center; }
+.ls-badge-history { background-color: #4CAF50; }
+.ls-badge-web { background-color: #2196F3; }

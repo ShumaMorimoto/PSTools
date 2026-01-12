@@ -1,0 +1,86 @@
+﻿{
+  "2000032406": {
+    "url": "https://www.alamco.co.jp/fund/globalvalue/index.html",
+    "bpath": "(//*[@class='date'])[1]",
+    "npath": "((//table)[1]/tbody/tr/td)[1]",
+    "cpath": "((//table)[1]/tbody/tr/td)[2]"
+  },
+  "1998040104": {
+    "url": "https://www.fidelity.co.jp/funds/detail/217004/F",
+    "bpath": "(//*[@class='factsheet-asOfDate text-right'])[1]",
+    "npath": "(//*[@class='medium-shrink cell'])[1]",
+    "cpath": "(//*[@class='medium-auto cell'])[1]"
+  },
+  "2001112212": {
+    "url": "https://www.fidelity.co.jp/funds/detail/216201/F",
+    "bpath": "(//*[@class='factsheet-asOfDate text-right'])[1]",
+    "npath": "(//*[@class='medium-shrink cell'])[1]",
+    "cpath": "(//*[@class='medium-auto cell'])[1]"
+  },
+  "2011083106": {
+    "url": "https://www.smd-am.co.jp/fund/153406/",
+    "bpath": "(//*[@class='sw-Text-right'])[1]",
+    "npath": "(//td)[1]",
+    "cpath": "(//td)[2]"
+  },
+  "2023031301": {
+    "url": "https://www.daiwa-am.co.jp/funds/detail/3484/detail_top.html",
+    "bpath": "(//*[@class='date'])[1]",
+    "npath": "(//td)[1]",
+    "cpath": "(//td)[2]"
+  },
+  "2005022803": {
+    "url": "https://www.pictet.co.jp/fund/gloin.html",
+    "bpath": "(//*[@class='cmp-fund__fund-summary-value'])[1]",
+    "npath": "(//*[@class='cmp-fund__fund-summary-value'])[2]",
+    "cpath": "(//*[@class='cmp-fund__fund-summary-value'])[3]"
+  },
+  "2013121001": {
+    "url": "https://www.nam.co.jp/fundinfo/dcngkif/main.html",
+    "bpath": "(//*[@class='p-fundinfoFundValue__date'])[1]",
+    "npath": "(//*[@class='fundValue__item'])[1]",
+    "cpath": "(//*[@class='fundValue__item'])[2]"
+  },
+  "2011110102": {
+    "url": "https://www.nam.co.jp/fundinfo/ngkkp/main.html",
+    "bpath": "(//*[@class='p-fundinfoFundValue__date'])[1]",
+    "npath": "(//*[@class='fundValue__item'])[1]",
+    "cpath": "(//*[@class='fundValue__item'])[2]"
+  },
+  "2004073003": {
+    "url": "https://www.nomura-am.co.jp/fund/funddetail.php?fundcd=400029",
+    "bpath": "(//td)[1]",
+    "npath": "(//td)[2]",
+    "cpath": "(//td)[3]"
+  },
+  "201707310D": {
+    "url": "https://www.amova-am.com/fund/detail/643718",
+    "bpath": "((//div[@class='p-products-price__row'])[1]/div)",
+    "npath": "((//div[@class='p-products-price__row'])[2]//span)[1]",
+    "cpath": "((//div[@class='p-products-price__row'])[3]//span)[1]"
+  },
+  "2012052801": {
+    "url": "https://hifumi.rheos.jp/fund/plus/",
+    "bpath": "(//*[@class='hf-js-date'])[1]",
+    "npath": "(//td)[1]",
+    "cpath": "(//td)[2]"
+  },
+  "2025120101": {
+    "url": "https://fund.monex.co.jp/detail/AL31125C",
+    "bpath": "(//div[@class='basis-date-top'])[1]",
+    "npath": "(//span[@class='price'])[1]",
+    "cpath": "(//span[@class='price'])[2]"
+  },
+  "nikkei": {
+    "url": "https://www.nikkei.com/nkd/fund/?fcode=",
+    "bpath": "(//div[@class='m-stockPriceElm']/dl[1]/dt)",
+    "npath": "(//div[@class='m-stockPriceElm']/dl[1]/dd)",
+    "cpath": "(//div[@class='m-stockPriceElm']/dl[2]/dd)"
+  },
+  "default": {
+    "url": "https://www.wealthadvisor.co.jp/snapshot/",
+    "bpath": "((//div[@class='head-table-clm-data'])[2]/p)[3]",
+    "npath": "((//div[@class='head-table-clm-data'])[2]/p)[1]",
+    "cpath": "((//div[@class='head-table-clm-data'])[4]/p)[1]"
+  }
+}

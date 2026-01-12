@@ -397,3 +397,63 @@
         return $gpx
     }
 }
+
+Write-Host "=== 7. Full Round-Trip Test (XML -> JSON -> Model -> XML) ===" -ForegroundColor Cyan
+
+# 1. 初期データ作成（複雑な構造）
+$originalSvc = [GPXService]::new()
+$originalSvc.AddTrkpt(@{
+    lat = 35.86297
+    lon = 136.253159
+    muitiRoute = "1"
+    name = "文室町"
+    extensions = @{
+        road = "文堂池泉線"
+        city = "越前市"
+    }
+})
+
+# 2. 最初のXMLを生成
+$firstXml = $originalSvc.ToXml()
+Write-Host "[Step 1] First XML generated."
+
+# 3. JSON化して出力 (Hashtable -> JSON String)
+$json = $originalSvc.Model | ConvertTo-Json -Depth 10
+Write-Host "[Step 2] Model serialized to JSON string."
+
+# 4. 新しいサービスインスタンスでJSONから復元
+$recoveredSvc = [GPXService]::new()
+# JSON文字列をハッシュテーブルに戻してセット
+$recoveredSvc.Model = $json | ConvertFrom-Json -AsHashtable
+Write-Host "[Step 3] JSON deserialized back to New Model."
+
+# 5. 二度目のXMLを生成
+$secondXml = $recoveredSvc.ToXml()
+Write-Host "[Step 4] Second XML generated from recovered model."
+
+Write-Host "`n=== Verification Results ===" -ForegroundColor Yellow
+
+# 検証 A: 文字列一致
+if ($firstXml -eq $secondXml) {
+    Write-Host "[SUCCESS] XML strings are identical!" -ForegroundColor Green
+} else {
+    Write-Host "[WARNING] XML strings differ. Checking details..." -ForegroundColor Yellow
+    
+    # 検証 B: 重要な属性が維持されているか
+    if ($secondXml -match 'lat="35.86297"' -and $secondXml -match 'muitiRoute="1"') {
+        Write-Host "[OK] Critical attributes (lat, muitiRoute) are preserved." -ForegroundColor Green
+    } else {
+        Write-Host "[FAIL] Critical attributes lost!" -ForegroundColor Red
+    }
+    
+    # 検証 C: 構造の維持
+    $recoveredPt = $recoveredSvc.GetTrkpts()[0]
+    if ($recoveredPt.extensions.road -eq "文堂池泉線") {
+        Write-Host "[OK] Deep structure (extensions) preserved." -ForegroundColor Green
+    }
+}
+
+# ファイルに保存して比較しやすくする
+$firstXml | Out-File "roundtrip_1.xml" -Encoding utf8
+$secondXml | Out-File "roundtrip_2.xml" -Encoding utf8
+Write-Host "`nSaved: roundtrip_1.xml and roundtrip_2.xml for manual diff."

@@ -1,9 +1,6 @@
 #モジュールルートの設定
 $script:ModuleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# RunApp を絶対パスで読み込む
-#Import-Module "D:\tool\Repository\PSTools\RunApp" -Force
-
 # ─── DLL 読み込み ───
 Add-Type -Path "$PSScriptRoot\lib\TspSolverLib.dll" 
 
@@ -278,8 +275,7 @@ out body;
 class GPXService {
     hidden static $creator = "GPXDocument クラス"
     hidden static [string] $GpxNamespace = "http://www.topografix.com/GPX/1/1"
-    #    hidden static [string] $xsdPath = (Join-Path $script:ModuleRoot "config/gpx.xsd")
-    hidden static [string] $xsdPath = "D:\tool\Repository\PSTools\RouteOptimizer\config\gpx.xsd"
+    hidden static [string] $xsdPath = (Join-Path $script:ModuleRoot "config/gpx.xsd")
     static [hashtable] $TypeMap = @{}
 
     [xml] $Doc
