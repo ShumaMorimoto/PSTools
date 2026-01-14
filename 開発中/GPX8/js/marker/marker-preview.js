@@ -9,16 +9,30 @@ export default class MarkerPreview {
     this.onSelected = this.onSelected.bind(this);
   }
 
-  onSelected(item, map, control) {
+  async onSelected(item, map, control) {
     this.clear();
-    const trkpt = {
-      lat: item.lat,
-      lon: item.lon || item.lng,
-      name: item.name || item.display_name,
-      desc: item.desc || "",
-      extensions: item.extensions || {}
-    };
-    this.add(trkpt, control);
+
+    // 1. 検索コンポーネントから渡されたデータをそのまま保持（ID等を含む）
+    const trkpt = { ...item };
+    const pm = this.add(trkpt, control);
+
+    // 2. Web検索結果（新規）の場合は住所を補完する
+    if (item.source === "web") {
+      try {
+        const res = await geoService.resolve({ lat: item.lat, lon: item.lon });
+        pm.trkpt.desc = res.desc || pm.trkpt.desc;
+
+        // 住所が詳細になったので履歴を更新（複製されず上書きされる）
+        if (control && control._saveToHistory) {
+          control._saveToHistory(pm.trkpt);
+        }
+
+        // ポップアップが開いていれば中身を更新
+        this.refreshPopup(pm, control);
+      } catch (err) {
+        console.error("住所補完失敗:", err);
+      }
+    }
   }
 
   add(trkpt, control) {
@@ -55,13 +69,13 @@ export default class MarkerPreview {
       onUpdateAddress: async () => {
         const pos = pm.getLatLng();
         const res = await geoService.resolve({ lat: pos.lat, lon: pos.lng });
-        
+
         // 1. 内部保持データを更新（これで編集遷移時もOK）
         pm.trkpt.desc = res.desc || "";
-        
+
         // 2. 本マーカーの思想に合わせ、ポップアップを再描画して表示を同期
         this.refreshPopup(pm, control);
-        
+
         notify("🔄 住所情報を照会しました");
       },
 
@@ -70,13 +84,14 @@ export default class MarkerPreview {
         const pos = pm.getLatLng();
         if (control && control._saveToHistory) {
           control._saveToHistory({
+            _id: pm.trkpt._id, // ここが重要：元のIDを渡す
             lat: pos.lat,
             lon: pos.lng,
             name: newData.name,
             desc: newData.desc,
-            extensions: { keyword: newData.keyword }
+            extensions: { keyword: newData.keyword },
           });
-          
+
           // データを更新して再描画
           pm.trkpt.name = newData.name;
           pm.trkpt.desc = newData.desc;
@@ -86,7 +101,7 @@ export default class MarkerPreview {
         }
       },
 
-      onDelete: () => this.remove(pm)
+      onDelete: () => this.remove(pm),
     });
   }
 
@@ -114,10 +129,22 @@ export default class MarkerPreview {
       const pos = e.target.getLatLng();
       pm.trkpt.lat = pos.lat;
       pm.trkpt.lon = pos.lng;
-      
+
       // ドラッグ後も住所を自動更新して再描画
       const res = await geoService.resolve({ lat: pos.lat, lon: pos.lng });
       pm.trkpt.desc = res.desc || "";
+
+      if (control && control._saveToHistory) {
+        control._saveToHistory({
+          _id: pm.trkpt._id, // ここが重要：元のIDを渡す
+          lat: pos.lat,
+          lon: pos.lng,
+          name: pm.trkpt.name,
+          desc: pm.trkpt.desc,
+          extensions: pm.trkpt.extensions,
+        });
+      }
+
       this.refreshPopup(pm, control);
     });
 

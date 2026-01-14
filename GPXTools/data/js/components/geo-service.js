@@ -60,7 +60,7 @@ class GeoService {
         lat,
         lon,
         townName || info.municipality,
-        `${info.prefecture}${info.municipality}`,
+        `${info.prefecture}${info.municipality}${townName}`,
         info
       );
     } catch (e) {

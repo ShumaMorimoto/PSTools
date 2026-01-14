@@ -1,5 +1,6 @@
 ﻿{
     "/api/KMeansCluster": "Invoke-KMeansCLuster",
-    "/api/TSPSolver": "Invoke-TSPSolver"
+    "/api/TSPSolver": "Invoke-TSPSolver",
+    "/api/FromCityTowns": "Invoke-FromCityTowns"
 }
 

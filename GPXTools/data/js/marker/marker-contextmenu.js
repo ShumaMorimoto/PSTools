@@ -48,18 +48,15 @@ export default class MarkerContextMenu {
   _deleteMarker(e) {
     const m = e.relatedTarget; // ← 右クリックされた Marker
     this.handler.removeMarker(m);
-    this.handler.redraw();
   }
   _splitRoute(e) {
     const m = e.relatedTarget; // ← 右クリックされた Marker
     this.handler.removeMarker(m, true);
-    this.handler.redraw();
   }
   async _setAsStart(e) {
     const m = e.relatedTarget; // ← 右クリックされた Marker
     this.handler.jumpMarker(m);
     await this.handler.reorderMarkers();
-    this.handler.redraw();
   }
 
   _showBoundary(e) {}

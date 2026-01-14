@@ -66,10 +66,10 @@
     "cpath": "(//td)[2]"
   },
   "2025120101": {
-    "url": "https://fund.monex.co.jp/detail/AL31125C",
-    "bpath": "(//div[@class='basis-date-top'])[1]",
-    "npath": "(//span[@class='price'])[1]",
-    "cpath": "(//span[@class='price'])[2]"
+    "url": "https://www.wealthadvisor.co.jp/snapshot/2025120101",
+    "bpath": "((//div[@class='head-table-clm-data'])[2]/p)[3]",
+    "npath": "((//div[@class='head-table-clm-data'])[2]/p)[1]",
+    "cpath": "((//div[@class='head-table-clm-data'])[4]/p)[1]"
   },
   "nikkei": {
     "url": "https://www.nikkei.com/nkd/fund/?fcode=",

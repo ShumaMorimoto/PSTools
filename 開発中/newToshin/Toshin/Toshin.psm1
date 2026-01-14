@@ -18,7 +18,20 @@ class ToshinDAO : IDisposable {
     hidden static [hashtable]$pricesrc = @{}
 
     # コンストラクタ
+# --- コンストラクタ ---
+
+    # デフォルトコンストラクタ（デフォルトはHeadless = true）
     ToshinDAO() {
+        $this.Init($true)
+    }
+
+    # モードを指定できるコンストラクタ
+    ToshinDAO([bool]$isHeadless) {
+        $this.Init($isHeadless)
+    }
+
+    # 共通の初期化ロジック
+    hidden [void] Init([bool]$isHeadless) {
         # 1. configから価格定義をロード
         if ([ToshinDAO]::pricesrc.Count -eq 0) {
             $configFile = Join-Path $PSScriptRoot "config\PriceSources.json"
@@ -40,11 +53,11 @@ class ToshinDAO : IDisposable {
             throw "型 [$typeName] が見つかりません。DLLを確認してください。"
         }
 
-        # 3. インスタンス生成とブラウザ初期化
+        # 3. インスタンス生成とブラウザ初期化 (引数の $isHeadless を使用)
         $this.scraper = [Activator]::CreateInstance($type)
-        $this.scraper.InitializeAsync($true).GetAwaiter().GetResult()
+        $this.scraper.InitializeAsync($isHeadless).GetAwaiter().GetResult()
     }
-
+    
     # --- 価格取得メソッド群 ---
 
     # 通常取得（個別サイト失敗時にWLTへ切り替え）

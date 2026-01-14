@@ -10,12 +10,14 @@ export default class TownHandler {
   static State = {
     IDLE: "idle",
     SELECTING: "selecting",
+    PROCESSING: "processing", // 💡 追加
     PREVIEW: "preview",
   };
 
   static StateInfo = {
     idle: { label: "町字追加", canCancel: false },
     selecting: { label: "町字確定", canCancel: true },
+    processing: { label: "処理中...", canCancel: false, isBusy: true }, // 💡 追加（canCancel: false）
     preview: { label: "登録", canCancel: true },
   };
 
@@ -23,10 +25,10 @@ export default class TownHandler {
     this.selector = selector;
     this.state = TownHandler.State.IDLE;
 
-    this.tempPoint = null;      // 統一IF形式のPointオブジェクトを保持
-    this.previewLayer = null; 
-    this.boundaryLayer = null; 
-    this.previewTowns = [];    // geoServiceから返るPoint配列
+    this.tempPoint = null; // 統一IF形式のPointオブジェクトを保持
+    this.previewLayer = null;
+    this.boundaryLayer = null;
+    this.previewTowns = []; // geoServiceから返るPoint配列
   }
 
   // ... (init, onActionButtonClick, handleCancel は変更なし) ...
@@ -34,9 +36,15 @@ export default class TownHandler {
 
   onActionButtonClick() {
     switch (this.state) {
-      case TownHandler.State.IDLE:      this._start(); break;
-      case TownHandler.State.SELECTING: this._preview(); break;
-      case TownHandler.State.PREVIEW:   this._confirm(); break;
+      case TownHandler.State.IDLE:
+        this._start();
+        break;
+      case TownHandler.State.SELECTING:
+        this._preview();
+        break;
+      case TownHandler.State.PREVIEW:
+        this._confirm();
+        break;
     }
   }
 
@@ -54,13 +62,23 @@ export default class TownHandler {
   // Map click
   // ---------------------------------------------------
   async handleMapClick(e) {
-    if (this.selector.currentMode !== this.selector.constructor.Mode.TOWN_MODE) return;
+    if (this.selector.currentMode !== this.selector.constructor.Mode.TOWN_MODE)
+      return;
 
+    // 💡 SELECTING 状態の時のみクリックを受け付ける
     if (this.state === TownHandler.State.SELECTING) {
-      // クリック地点を初期Pointとして保持
       this.tempPoint = { lat: e.latlng.lat, lon: e.latlng.lng };
-      await this._loadPreviewData();
-      this.changeState(TownHandler.State.PREVIEW);
+
+      // 💡 状態を PROCESSING に変えてからロード開始
+      this.changeState(TownHandler.State.PROCESSING);
+
+      try {
+        await this._loadPreviewData();
+        this.changeState(TownHandler.State.PREVIEW);
+      } catch (err) {
+        console.error("ロード失敗", err);
+        this.changeState(TownHandler.State.SELECTING); // 失敗時は戻す
+      }
     } else if (this.state === TownHandler.State.PREVIEW) {
       this.handleCancel();
     }
@@ -77,7 +95,7 @@ export default class TownHandler {
     // geoServiceから返ってきたPoint配列(this.previewTowns)を
     // そのままセレクターの addPoints に渡せる（IFが統一されているため）
     // もし既存の extensions 構造を厳格に維持したい場合は map で調整
-    const pts = this.previewTowns.map(pt => ({
+    const pts = this.previewTowns.map((pt) => ({
       lat: pt.lat,
       lon: pt.lon,
       name: pt.name,
@@ -89,7 +107,7 @@ export default class TownHandler {
         muniCd: pt.extensions.muniCd6,
         country: "日本",
         country_code: "jp",
-      }
+      },
     }));
 
     this.selector.addPoints(pts);
@@ -123,13 +141,16 @@ export default class TownHandler {
     this.previewLayer = L.layerGroup().addTo(this.selector.map);
 
     towns.forEach((t) => {
-      L.circleMarker([t.lat, t.lon], { // .lng ではなく .lon に統一
+      L.circleMarker([t.lat, t.lon], {
+        // .lng ではなく .lon に統一
         radius: 4,
         color: "#ff6600",
       }).addTo(this.previewLayer);
     });
 
-    console.log(`👁️ 町字プレビュー: ${towns.length} 件 (${this.tempPoint.desc})`);
+    console.log(
+      `👁️ 町字プレビュー: ${towns.length} 件 (${this.tempPoint.desc})`
+    );
   }
 
   // ... (changeState, _start, _preview, _clear 等はロジックに変更なし) ...
@@ -137,11 +158,22 @@ export default class TownHandler {
   changeState(newState) {
     this.state = newState;
     switch (newState) {
-      case TownHandler.State.IDLE:      this._clear(); break;
-      case TownHandler.State.SELECTING: this._prepareSelecting(); break;
-      case TownHandler.State.PREVIEW:   this._preparePreview(); break;
+      case TownHandler.State.IDLE:
+        this._clear();
+        break;
+      case TownHandler.State.SELECTING:
+        this._prepareSelecting();
+        break;
+      case TownHandler.State.PROCESSING:
+        /* ロック中 */ break; // 💡 追加
+      case TownHandler.State.PREVIEW:
+        this._preparePreview();
+        break;
     }
-    this.selector.onHandlerStateChanged({ state: newState, ...TownHandler.StateInfo[newState] });
+    this.selector.onHandlerStateChanged({
+      state: newState,
+      ...TownHandler.StateInfo[newState],
+    });
   }
 
   _start() {
@@ -151,21 +183,37 @@ export default class TownHandler {
 
   async _preview() {
     if (!this.tempPoint) return;
-    await this._loadPreviewData();
-    this.changeState(TownHandler.State.PREVIEW);
+    this.changeState(TownHandler.State.PROCESSING);
+    try {
+      await this._loadPreviewData();
+      this.changeState(TownHandler.State.PREVIEW);
+    } catch (e) {
+      this.changeState(TownHandler.State.SELECTING);
+    }
   }
 
   _clear() {
     this.tempPoint = null;
-    if (this.previewLayer) { this.selector.map.removeLayer(this.previewLayer); this.previewLayer = null; }
-    if (this.boundaryLayer) { this.selector.map.removeLayer(this.boundaryLayer); this.boundaryLayer = null; }
+    if (this.previewLayer) {
+      this.selector.map.removeLayer(this.previewLayer);
+      this.previewLayer = null;
+    }
+    if (this.boundaryLayer) {
+      this.selector.map.removeLayer(this.boundaryLayer);
+      this.boundaryLayer = null;
+    }
     this.previewTowns = [];
   }
 
   _clearPreviewOnly() {
-    if (this.previewLayer) { this.selector.map.removeLayer(this.previewLayer); this.previewLayer = null; }
+    if (this.previewLayer) {
+      this.selector.map.removeLayer(this.previewLayer);
+      this.previewLayer = null;
+    }
   }
 
-  _prepareSelecting() { this.tempPoint = null; }
+  _prepareSelecting() {
+    this.tempPoint = null;
+  }
   _preparePreview() {}
 }

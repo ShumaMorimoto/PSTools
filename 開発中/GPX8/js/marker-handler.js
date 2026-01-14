@@ -12,10 +12,18 @@ import MarkerPolyline from "./marker/marker-polyline.js";
 import MarkerCluster from "./marker/marker-cluster.js";
 import MarkerBoundary from "./marker/marker-boundary.js";
 import MarkerPreview from "./marker/marker-preview.js";
+import MarkerIndicator from "./marker/marker-indicator.js";
 
 export default class MarkerHandler {
-  static State = { IDLE: "idle" };
-  static StateInfo = { idle: { label: "開始", canCancel: false } };
+  static State = {
+    IDLE: "idle",
+    MARKING: "marking",
+  };
+
+  static StateInfo = {
+    idle: { label: "開始", canCancel: false },
+    marking: { label: "作成終了", canCancel: true },
+  };
 
   constructor(selector) {
     this.selector = selector;
@@ -32,6 +40,7 @@ export default class MarkerHandler {
     this.cluster = new MarkerCluster(this);
     this.boundary = new MarkerBoundary(this);
     this.preview = new MarkerPreview(this);
+    this.indicator = new MarkerIndicator(this);
   }
 
   // ---------------------------------------------------
@@ -42,6 +51,8 @@ export default class MarkerHandler {
     this.boundary.init();
     this.polyline.init();
     if (this.cluster.init) this.cluster.init();
+
+    this.indicator.map = this.map;
 
     // 共通イベント監視
     markerEvents.addEventListener(MarkerEventTypes.LIST_CHANGED, () =>
@@ -76,8 +87,6 @@ export default class MarkerHandler {
   // モデル操作
   // ---------------------------------------------------
   setModel(initData) {
-    // core.setModel 内部で addPoints を呼び、LIST_CHANGED が発火するため
-    // 自動的に _drawLayers() と UI側の更新が走ります
     this.core.setModel(initData);
     this.changeState(MarkerHandler.State.IDLE);
   }
@@ -95,7 +104,7 @@ export default class MarkerHandler {
   }
 
   /**
-   * 合計距離の計算（MapInitializer側の接着剤から呼ばれる）
+   * 合計距離の計算
    */
   calcTotalDistance() {
     const points = this.core.markers.map((x) => x.m.getLatLng());
@@ -111,15 +120,17 @@ export default class MarkerHandler {
   // 地図イベントハンドラ
   // ---------------------------------------------------
   handleMapClick(e) {
-    // muitiRoute: "1" を付与（オリジナルの仕様）
-    this.addPoint({ lat: e.latlng.lat, lon: e.latlng.lng, muitiRoute: "1" });
-    this.changeState(MarkerHandler.State.IDLE);
+    if (this.state === MarkerHandler.State.MARKING) {
+      this.addPoint({ lat: e.latlng.lat, lon: e.latlng.lng, muitiRoute: "1" });
+    } else {
+      // 分離したクラスに任せる
+      this.indicator.drop(e.latlng);
+    }
   }
 
   handleMarkerClick(e, marker) {
     const entry = this.getEntry(marker);
     if (!entry) return;
-
     const isMulti = e.originalEvent.shiftKey || e.originalEvent.ctrlKey;
     if (isMulti) {
       entry.selected = !entry.selected;
@@ -127,32 +138,49 @@ export default class MarkerHandler {
       this.core.markers.forEach((x) => (x.selected = false));
       entry.selected = true;
     }
-
-    // 選択状態の変更を通知（UI側がこれを受けてリストの強調表示などを更新する）
     dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, { entry });
     this.changeState(MarkerHandler.State.IDLE);
   }
 
-  handleCancel() {}
+  handleCancel() {
+    // 仮マーカーを掃除して待機状態へ
+    this.preview.clear();
+    this.changeState(MarkerHandler.State.IDLE);
+  }
+  
+  // ---------------------------------------------------
+  // UI連携アクション (MapSelector側ボタン)
+  // ---------------------------------------------------
+  onActionButtonClick() {
+    if (this.state === MarkerHandler.State.IDLE) {
+      this._startMarking();
+    } else {
+      this._stopMarking();
+    }
+  }
+
+  _startMarking() {
+    this.changeState(MarkerHandler.State.MARKING);
+  }
+
+  _stopMarking() {
+    this.preview.clear();
+    this.changeState(MarkerHandler.State.IDLE);
+  }
 
   // ---------------------------------------------------
   // 地点追加ロジック
   // ---------------------------------------------------
   _addPoint(p) {
-    // Core側でマーカー生成とGPXデータ追加。
-    // 引数 false は Core 内での即時イベント発火を抑止（一括追加のため）
     const entry = this.core.addPoint(p, false);
 
-    // 住所がない場合は非同期で取得
     if (!p.extensions) {
       this.address.updateAddress(entry.point);
     }
 
     const marker = entry.m;
-    // 地図上のマーカークリックイベントを Selector（モード管理）に飛ばす
     marker.on("click", (e) => this.selector.handleMarkerClick(e, marker));
 
-    // 右クリックメニューとドラッグのバインド
     this.menu.bindMarker(marker);
     this.drag.bindMarker(marker);
     this.popup.bindMarker(marker);
@@ -161,9 +189,11 @@ export default class MarkerHandler {
   }
 
   addPoint(p) {
-    this._addPoint(p);
-    // 1件追加時は即座に通知
+    // 仮マーカー確定時：仮マーカーを消去
+    this.preview.clear();
+    const entry = this._addPoint(p);
     dispatchMarkerEvent(MarkerEventTypes.LIST_CHANGED);
+    return entry;
   }
 
   addPoints(points) {
@@ -171,31 +201,40 @@ export default class MarkerHandler {
     points.forEach((p) => {
       this._addPoint(p);
     });
-    // 全件追加後に一括で通知（描画負荷を軽減）
     dispatchMarkerEvent(MarkerEventTypes.LIST_CHANGED);
   }
 
   // ---------------------------------------------------
-  // 各種操作 (Coreへの委譲と状態管理)
+  // 各種操作 (Coreへの委譲)
   // ---------------------------------------------------
   getMarkers() {
     return this.core.markers;
   }
+
   getMarker(index) {
-    return this.core.markers[index].m;
+    const entry = this.core.markers[index];
+    if (entry) {
+      return entry.m;
+    }
+    return null;
   }
+
   getNearestMarker(latlng, ex = null) {
     return this.core.getNearestMarker(latlng, ex);
   }
+
   getPoints() {
     return this.gpxService.getTrkpts();
   }
+
   getPoint(index) {
     return this.gpxService.getTrkpts()[index];
   }
+
   getEntry(marker) {
     return this.core.getEntry(marker);
   }
+
   getMarkerByPoint(point) {
     return this.core.getMarkerByPoint(point);
   }
@@ -205,34 +244,41 @@ export default class MarkerHandler {
   }
 
   clearMarkers() {
-    this.core.clearMarkers(); // Core内で LIST_CHANGED が飛ぶ
+    this.core.clearMarkers();
+    this.preview.clear();
     this.changeState(MarkerHandler.State.IDLE);
   }
 
   removeMarker(m, split = false) {
-    this.core.removeMarker(m, split); // Core内で LIST_CHANGED が飛ぶ
+    this.core.removeMarker(m, split);
     this.changeState(MarkerHandler.State.IDLE);
   }
 
   jumpMarker(m) {
-    this.core.jumpMarker(m); // Core内で LIST_CHANGED が飛ぶ
+    // 既存マーカーへのジャンプ
+    this.core.jumpMarker(m);
     this.changeState(MarkerHandler.State.IDLE);
   }
 
   async reorderMarkers() {
-    await this.core.reorderByTSP(); // Core内で LIST_CHANGED が飛ぶ
+    await this.core.reorderByTSP();
   }
 
   // ---------------------------------------------------
-  // UI補助 API
+  // UI補助 API (MarkerPreview等から利用)
   // ---------------------------------------------------
   addPreviewMarker(p) {
+    // 既存の仮マーカーを掃除
+    this.preview.clear();
+    // MarkerPreviewのaddを呼び、戻り値を返す
     return this.preview.add(p);
   }
 
   zoomToMarkerByIndex(idx) {
     const entry = this.core.markers[idx];
-    if (entry) this.zoomToMarker(entry.m);
+    if (entry) {
+      this.zoomToMarker(entry.m);
+    }
   }
 
   zoomToMarker(marker) {

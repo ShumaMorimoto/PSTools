@@ -2,9 +2,9 @@ import { initCoordinateControl } from "./components/leaflet-coordinate.js";
 import { initPointListPanel } from "./components/leaflet-pointlist.js";
 import { initButtonGroup } from "./components/leaflet-buttongroup.js";
 import { initSearchControl } from "./components/leaflet-search.js";
-
 import { markerEvents, MarkerEventTypes } from "./marker/marker-events.js";
 
+// ボタンの定義データを確実にスコープ内に配置
 const buttonGroups = {
   mainOptions: [
     {
@@ -35,6 +35,12 @@ const buttonGroups = {
     },
   ],
   modeOptions: [
+    {
+      id: "addMarker",
+      status: "idle",
+      icon: '<i class="fas fa-plus-circle"></i>',
+      title: "マーカー追加",
+    },
     {
       id: "addImage",
       status: "idle",
@@ -77,7 +83,6 @@ const buttonGroups = {
       title: "GPX保存",
     },
   ],
-  // --- 履歴操作グループを新設 ---
   historyOptions: [
     {
       id: "histLoad",
@@ -119,19 +124,18 @@ const buttonGroups = {
 export default class MapInitializer {
   constructor(selector) {
     this.selector = selector;
-    this.groups = {}; // 各ボタングループのインスタンス保持用
+    this.groups = {}; 
   }
 
+  /**
+   * 1. 地図とコントロールの「器」を生成する
+   */
   initMap() {
-    // ----------------------------------------
-    // 0. コンポーネントの初期化 (Leafletの拡張)
-    // ----------------------------------------
     initButtonGroup();
     initSearchControl();
     initPointListPanel();
     initCoordinateControl();
 
-    // 1. 地図生成
     this.selector.map = L.map(this.selector.mapId, {
       contextmenu: true,
       contextmenuWidth: 160,
@@ -141,16 +145,14 @@ export default class MapInitializer {
       this.selector.initialView[2]
     );
 
-    // 2. タイル
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap contributors",
       maxZoom: 19,
     }).addTo(this.selector.map);
 
-    // 3. 地図クリック中継
     this.selector.map.on("click", (e) => this.selector.handleMapClick(e));
 
-    // 4. ボタングループ追加
+    // ボタンの生成（ここではイベント登録はしない）
     Object.entries(buttonGroups).forEach(([groupName, buttons]) => {
       const group = L.control
         .buttonGroup({ position: "topleft", buttons })
@@ -161,17 +163,14 @@ export default class MapInitializer {
       });
     });
 
-    // 5. 検索コントロール
     this.selector.searchControl = L.control
       .searchWithHistory({ position: "topright" })
       .addTo(this.selector.map);
 
-    // 6. 座標・距離表示
     this.selector.coordinatesControl = L.control
       .coordinateDistance({ position: "bottomleft" })
       .addTo(this.selector.map);
 
-    // 7. ポイントリストパネル
     this.selector.pointListControl = L.control
       .pointListPanel({
         getPoints: () => this.selector.gpxService.getTrkpts(),
@@ -183,7 +182,7 @@ export default class MapInitializer {
       })
       .addTo(this.selector.map);
 
-    // 8. イベント接着 (同期)
+    // リストと距離表示の自動更新設定
     const updateUI = () => {
       const handler = this.selector.handlers.default;
       this.selector.coordinatesControl.updateDistance(
@@ -197,28 +196,33 @@ export default class MapInitializer {
     markerEvents.addEventListener(MarkerEventTypes.LIST_CHANGED, updateUI);
     markerEvents.addEventListener(MarkerEventTypes.POINT_UPDATED, updateUI);
 
-    // ----------------------------------------
-    // 9. ボタンハンドラ設定
-    // ----------------------------------------
+    try {
+      if (typeof L.distortableCollection === "function") {
+        this.selector.imgGroup = L.distortableCollection().addTo(this.selector.map);
+      }
+    } catch (e) {
+      console.warn("Image collection init failed", e);
+    }
+  }
+
+  /**
+   * 2. 各ハンドラ準備完了後にボタンの「クリックイベント」を紐付ける
+   */
+  setupEventHandlers() {
+    const modes = this.selector.constructor.Mode;
 
     // --- Main Options ---
     this.groups.mainOptions.setButtonHandler("list", {
       onClick: () => {
         const isOpen = this.selector.pointListControl.toggle();
-        this.groups.mainOptions.setStatus(
-          "list",
-          isOpen ? "active" : "default"
-        );
+        this.groups.mainOptions.setStatus("list", isOpen ? "active" : "default");
       },
     });
 
     // --- Redraw Options ---
     this.groups.redrawOptions.setButtonHandler("polyline", {
       onClick: () => {
-        const next =
-          this.groups.redrawOptions.getStatus("polyline") === "on"
-            ? "off"
-            : "on";
+        const next = this.groups.redrawOptions.getStatus("polyline") === "on" ? "off" : "on";
         this.groups.redrawOptions.setStatus("polyline", next);
         this.selector.handleTogglePolyline(next);
       },
@@ -226,10 +230,7 @@ export default class MapInitializer {
 
     this.groups.redrawOptions.setButtonHandler("cluster", {
       onClick: () => {
-        const next =
-          this.groups.redrawOptions.getStatus("cluster") === "on"
-            ? "off"
-            : "on";
+        const next = this.groups.redrawOptions.getStatus("cluster") === "on" ? "off" : "on";
         this.groups.redrawOptions.setStatus("cluster", next);
         this.selector.handleToggleCluster(next);
       },
@@ -237,26 +238,61 @@ export default class MapInitializer {
 
     this.groups.redrawOptions.setButtonHandler("boundary", {
       onClick: () => {
-        const next =
-          this.groups.redrawOptions.getStatus("boundary") === "on"
-            ? "off"
-            : "on";
+        const next = this.groups.redrawOptions.getStatus("boundary") === "on" ? "off" : "on";
         this.groups.redrawOptions.setStatus("boundary", next);
         this.selector.handleToggleBoundary(next);
       },
     });
 
+    // --- Mode Options ---
+    this.groups.modeOptions.setButtonHandler("addMarker", {
+      onClick: () => {
+        this.selector.setMode(modes.DEFAULT);
+        this.selector.handlers.default.onActionButtonClick();
+      },
+    });
+
+    this.groups.modeOptions.setButtonHandler("addImage", {
+      cndFileInput: (map, btnId) => this.groups.modeOptions.getStatus(btnId) === "idle",
+      onClick: () => {
+        this.selector.setMode(modes.IMAGE_MODE);
+        this.selector.handlers.imageMode.onActionButtonClick?.();
+      },
+      onFile: (map, file) => {
+        this.selector.setMode(modes.IMAGE_MODE);
+        this.selector.handlers.imageMode.onFileInputClick?.(file);
+      },
+    });
+
+    this.groups.modeOptions.setButtonHandler("addTown", {
+      onClick: () => {
+        this.selector.setMode(modes.TOWN_MODE);
+        this.selector.handlers.townMode.onActionButtonClick?.();
+      },
+    });
+
+    this.groups.modeOptions.setButtonHandler("addArea", {
+      onClick: () => {
+        this.selector.setMode(modes.AREA_MODE);
+        this.selector.handlers.areaMode.onActionButtonClick?.();
+      },
+    });
+
+    this.groups.modeOptions.setButtonHandler("cancel", {
+      onClick: () => this.selector.handleCancel(),
+    });
+
     // --- GPX Options ---
     this.groups.gpxOptions.setButtonHandler("gpxLoad", {
       cndFileInput: true,
-      onFile: (map, file) => this.selector.uiManager.handleGpxLoad(file),
+      onFile: (map, file) => this.selector.handleGpxLoad(file),
     });
 
     this.groups.gpxOptions.setButtonHandler("gpxSave", {
-      onClick: () => this.selector.uiManager.handleGpxSave(),
+      onClick: () => this.selector.handleGpxSave(),
     });
 
-    // --- History Options (新規追加) ---
+    // --- History Options ---
     this.groups.historyOptions.setButtonHandler("histLoad", {
       cndFileInput: true,
       onFile: (map, file) => this.selector.uiManager.handleHistoryLoad(file),
@@ -278,16 +314,5 @@ export default class MapInitializer {
     this.groups.updateOptions.setButtonHandler("clear", {
       onClick: () => this.selector.clearMarkers(),
     });
-
-    // 10. 画像レイヤー初期化
-    try {
-      if (typeof L.distortableCollection === "function") {
-        this.selector.imgGroup = L.distortableCollection().addTo(
-          this.selector.map
-        );
-      }
-    } catch (e) {
-      console.warn("Image collection init failed", e);
-    }
   }
 }

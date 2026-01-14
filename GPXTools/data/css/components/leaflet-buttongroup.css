@@ -9,17 +9,19 @@
 
 /* ボタン自体のサイズを大きくする（例: 34px） */
 .leaflet-control.leaflet-bar a.btn {
-    width: 34px;
-    height: 34px;
-    line-height: 34px; /* アイコンを垂直中央に */
-    font-size: 20px;    /* アイコンのサイズ（FontAwesomeなどの場合） */
+  width: 34px;
+  height: 34px;
+  line-height: 34px;
+  /* アイコンを垂直中央に */
+  font-size: 20px;
+  /* アイコンのサイズ（FontAwesomeなどの場合） */
 }
 
 /* 画像（imgタグ）をアイコンに使っている場合 */
 .leaflet-control.leaflet-bar a.btn img {
-    width: 24px;
-    height: 24px;
-    vertical-align: middle;
+  width: 24px;
+  height: 24px;
+  vertical-align: middle;
 }
 
 /* IDLE 状態（初期・待機） */
@@ -31,9 +33,10 @@
 }
 
 /* SELECTING 状態（選択中・アクティブ） */
-.status-selecting {
+/* SELECTING 状態（緑）と同じ色を MARKING にも適用 */
+.status-selecting,
+.status-marking {
   background: #4caf50 !important;
-  /* 緑 */
   color: white !important;
   border-color: #3e8e41;
 }
@@ -44,6 +47,17 @@
   /* 青 */
   color: white !important;
   border-color: #1976d2;
+}
+
+.status-processing {
+  background: #dc3545 !important;
+  /* 鮮やかすぎない深い赤 */
+  color: white !important;
+  border-color: #a71d2a !important;
+  cursor: wait !important;
+  /* 待機カーソル */
+  /* 処理中であることを示すアニメーション（任意） */
+  animation: pulse-red 1.5s infinite;
 }
 
 .status-on {

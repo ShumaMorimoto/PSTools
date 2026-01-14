@@ -75,7 +75,7 @@ export default class UIManager {
     let locationName = "";
     try {
       const point = await geoService.resolve({ lat: center.lat, lon: center.lng });
-      if (point && point.name) locationName = `【周辺】${point.name}`;
+      if (point) locationName = `【周辺】${point.extensions.prefecture}${point.extensions.municipality}`;
     } catch (e) {
       console.warn("自治体名取得失敗:", e);
     }

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TspSolverLib")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2b377d37511dc76594473f2a8db0bae0cacf4316")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3609ea0a312b3f36a4927a97e2e6886339d7d08a")]
 [assembly: System.Reflection.AssemblyProductAttribute("TspSolverLib")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TspSolverLib")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
