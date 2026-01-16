@@ -54,21 +54,33 @@ export default class MarkerHandler {
 
     this.indicator.map = this.map;
 
-    // 共通イベント監視
+    // 1. リストやレイヤー構成が変わった時の再描画
     markerEvents.addEventListener(MarkerEventTypes.LIST_CHANGED, () =>
       this._drawLayers()
     );
+
+    // 2. ポイント内のデータ（住所・名称・選択状態など）が更新された時
     markerEvents.addEventListener(MarkerEventTypes.POINT_UPDATED, (e) => {
+      // 距離や描画レイヤーの更新
       this._drawLayers();
 
-      const { entry } = e.detail || {};
-      if (entry && entry.m) {
-        // メモリ上の設定を更新
-        this.popup.refresh(entry.m);
-        // 開いている場合は中身を動的に差し替え
-        if (entry.m.isPopupOpen()) {
-          const content = this.popup.getContent(entry.m);
-          if (content) entry.m.setPopupContent(content);
+      const { point } = e.detail || {};
+      if (!point) return;
+
+      // --- POINTから対応するUI（マーカー）を特定する ---
+      // 現時点では本マーカーが対象。今後 preview や indicator も同様に引けるように拡張可能
+      const marker = this.getMarkerByPoint(point);
+
+      if (marker) {
+        // 内部保持しているポップアップ用データを更新
+        this.popup.refresh(marker);
+
+        // 現在ポップアップが表示中なら、DOMの中身を即座に書き換える
+        if (marker.isPopupOpen()) {
+          const content = this.popup.getContent(marker);
+          if (content) {
+            marker.setPopupContent(content);
+          }
         }
       }
     });
@@ -138,7 +150,6 @@ export default class MarkerHandler {
       this.core.markers.forEach((x) => (x.selected = false));
       entry.selected = true;
     }
-    dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, { entry });
     this.changeState(MarkerHandler.State.IDLE);
   }
 
@@ -147,7 +158,7 @@ export default class MarkerHandler {
     this.preview.clear();
     this.changeState(MarkerHandler.State.IDLE);
   }
-  
+
   // ---------------------------------------------------
   // UI連携アクション (MapSelector側ボタン)
   // ---------------------------------------------------

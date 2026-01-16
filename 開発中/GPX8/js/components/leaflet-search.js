@@ -1,4 +1,7 @@
-﻿let muniCache = null;
+﻿// ファイルの冒頭で GeoService をインポートしているか確認
+import { geoService } from "./geo-service.js";
+
+let muniCache = null;
 async function loadMunicipalitiesInternal() {
   if (muniCache) return muniCache;
   const res = await fetch("./../../municipalities.json");
@@ -109,7 +112,7 @@ export function initSearchControl() {
           { signal: this._abortController.signal }
         );
         const data = await res.json();
-        const muniData = await loadMunicipalitiesInternal();
+
         const historyJson = localStorage.getItem(this.options.historyKey);
         const history = (historyJson ? JSON.parse(historyJson) : [])
           .filter((h) =>
@@ -119,28 +122,34 @@ export function initSearchControl() {
           )
           .map((h) => ({ ...h, source: "history" }));
 
-        const webResults = data.map((item) => {
-          const props = item.properties;
-          const muniInfo = muniData.municipalities.find(
-            (m) => m.muniCd5 === String(props.addressCode).padStart(5, "0")
-          );
-          return {
-            lat: item.geometry.coordinates[1],
-            lon: item.geometry.coordinates[0],
-            name: props.title,
-            desc: `${
-              muniInfo ? muniInfo.prefecture + muniInfo.municipality : ""
-            }${props.title}`,
-            extensions: {
-              keyword: query,
-              muniCd5: props.addressCode,
-              prefecture: muniInfo ? muniInfo.prefecture : "",
-              municipality: muniInfo ? muniInfo.municipality : "",
-              prefecture_code: muniInfo ? muniInfo.prefecture_code : "99",
-            },
-            source: "web",
-          };
-        });
+        // 1. まず Web検索結果のベースを作成
+        const webResults = await Promise.all(
+          data.map(async (item) => {
+            const props = item.properties;
+
+            // 暫定的なオブジェクトを作成
+            let resultItem = {
+              lat: item.geometry.coordinates[1],
+              lon: item.geometry.coordinates[0],
+              name: props.title,
+              desc: props.title, // resolveAddress で補完される前のベース
+              extensions: {
+                keyword: query,
+                muniCd5: props.addressCode
+                  ? String(props.addressCode).padStart(5, "0")
+                  : null,
+                town: "", // 検索APIの段階では空
+              },
+              source: "web",
+            };
+
+            // 2. 作成した resolveAddress を呼び出して、不足分を「非破壊的」に補完
+            // ここで muniCd5 による特定、desc からの逆引き、必要に応じた座標解決が行われます
+            resultItem = await geoService.resolveAddress(resultItem);
+
+            return resultItem;
+          })
+        );
         this._rawResults = [...history, ...webResults];
         this._renderPanelLayout();
         this._applyFilter();
@@ -238,14 +247,55 @@ export function initSearchControl() {
       filtered.forEach((item) => {
         const li = L.DomUtil.create("div", "search-item", this._listContainer);
         const isHist = item.source === "history";
-        li.innerHTML = `<span class="ls-badge ${
-          isHist ? "ls-badge-history" : "ls-badge-web"
-        }">${isHist ? "履歴" : "地理院"}</span>
-          <div class="item-content"><span class="item-name">${
-            item.name
-          }</span><span class="item-addr">${item.desc}</span></div>`;
+
+        // 構造を整理：badge、content、delete-btn を明確に分ける
+        li.innerHTML = `
+          <div class="ls-badge-container">
+            <span class="ls-badge ${
+              isHist ? "ls-badge-history" : "ls-badge-web"
+            }">
+              ${isHist ? "履歴" : "地理院"}
+            </span>
+          </div>
+          <div class="item-content">
+            <div class="item-name">${item.name}</div>
+            <div class="item-addr">${item.desc}</div>
+          </div>
+        `;
+
+        // 履歴削除ボタン
+        if (isHist) {
+          const deleteBtn = L.DomUtil.create("button", "item-delete-btn", li);
+          deleteBtn.innerHTML = "🗑";
+          L.DomEvent.on(deleteBtn, "click", (e) => {
+            L.DomEvent.stopPropagation(e);
+            this._deleteFromHistory(item);
+          });
+        }
+
         L.DomEvent.on(li, "click", () => this._selectItem(item));
       });
+    },
+
+    _deleteFromHistory: function (item) {
+      if (!confirm(`「${item.name}」を履歴から削除しますか？`)) return;
+
+      const historyJson = localStorage.getItem(this.options.historyKey);
+      if (!historyJson) return;
+
+      let history = JSON.parse(historyJson);
+      // ID または座標で一致するものを削除
+      history = history.filter((h) => {
+        if (item._id && h._id === item._id) return false;
+        return !(
+          Math.abs(h.lat - item.lat) < 0.0001 &&
+          Math.abs(h.lon - item.lon) < 0.0001
+        );
+      });
+      localStorage.setItem(this.options.historyKey, JSON.stringify(history));
+      // 現在のメモリ上の結果リストからも削除して再描画
+      this._rawResults = this._rawResults.filter((r) => r !== item);
+      this._applyFilter();
     },
 
     _selectItem: function (item) {

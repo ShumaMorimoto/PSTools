@@ -6,10 +6,9 @@ class GeoService {
     static [hashtable] $MunicipalitiesCache = $null
     static [hashtable] $NominatimCache = @{}
     
-    # Nominatim用レート制限 (前回リクエスト時刻)
+    # Nominatim用レート制限
     static [DateTime] $LastNominatimRequest = [DateTime]::MinValue
 
-    # スタティックコンストラクタ（モジュールロード時に実行）
     static GeoService() {
         if (Test-Path [GeoService]::MunicipalitiesPath) {
             try {
@@ -23,56 +22,34 @@ class GeoService {
     }
 
     # =========================================================
-    # 内部用: Pointハッシュテーブルの生成
-    # =========================================================
-    static [hashtable] _CreatePoint($lat, $lon, $name, $desc, $extData) {
-        $exts = if ($extData) { $extData } else { @{} }
-        return @{
-            lat        = [double]$lat
-            lon        = [double]$lon
-            name       = "$name"
-            desc       = "$desc"
-            extensions = @{
-                muniCd5      = "$($exts.muniCd5)"
-                municipality = "$($exts.municipality)"
-                prefecture   = "$($exts.prefecture)"
-                town         = if ($exts.town) { "$($exts.town)" } elseif ($exts.block) { "$($exts.block)" } else { "" }
-            }
-        }
-    }
-
-    # =========================================================
-    # 1. Resolve: 座標 -> 施設名/詳細住所 (Nominatim優先 + GSI)
+    # 1. Resolve: 位置情報に近くの拠点（name, desc）を割り当てる
     # =========================================================
     static [hashtable] Resolve([hashtable]$Point) {
-        # 1. まず住所ベース(GSI)を取得しておく (これがベースとなる)
-        $basePoint = [GeoService]::ResolveAddress($Point)
+        # 1. まず住所情報を補完 (自治体情報を付与)
+        $null = [GeoService]::ResolveAddress($Point)
 
         # 2. Nominatimで詳細な場所名を取りに行く
         try {
             $nominatimData = [GeoService]::_FetchNominatim($Point)
 
-            # Nominatimから名前が取れた場合
             if ($nominatimData -and $nominatimData.name) {
-                return [GeoService]::_CreatePoint(
-                    $Point.lat,
-                    $Point.lon,
-                    $nominatimData.name,      # Nameは施設名
-                    $basePoint.desc,          # Descは正確な住所(GSI由来)
-                    $basePoint.extensions     # ExtensionsはGSI由来
-                )
+                # 拠点名が見つかれば name を更新
+                $Point.name = "$($nominatimData.name)"
+            }
+            elseif (-not $Point.name -and $Point.extensions.municipality) {
+                # 名前がなく自治体情報があるなら、町名または市区町村名で補完
+                $Point.name = if ($Point.extensions.town) { $Point.extensions.town } else { $Point.extensions.municipality }
             }
         }
         catch {
             Write-Warning "Nominatim fetch failed: $_"
         }
 
-        # Nominatim失敗または名前なしなら、住所解決の結果をそのまま返す
-        return $basePoint
+        return $Point
     }
 
     # =========================================================
-    # 2. ResolveAddress: 座標 -> 住所のみ (GSI Reverse Geocoder)
+    # 2. ResolveAddress: 位置情報に自治体情報を付与する
     # =========================================================
     static [hashtable] ResolveAddress([hashtable]$Point) {
         $lat = $Point.lat
@@ -85,32 +62,33 @@ class GeoService {
             if (-not $json.results -or -not $json.results.muniCd) { return $Point }
 
             $muniCd5 = $json.results.muniCd
-            $townName = if ($json.results.lv01Nm) { $json.results.lv01Nm } else { "" }
+            $townName = if ($json.results.lv01Nm) { "$($json.results.lv01Nm)" } else { "" }
 
             if (-not [GeoService]::MunicipalitiesCache) { return $Point }
             
             $info = [GeoService]::MunicipalitiesCache['municipalities'] | Where-Object { $_.muniCd5 -eq $muniCd5 }
             if (-not $info) { return $Point }
 
-            $extData = $info.Clone()
-            $extData['town'] = $townName
+            # extensions の確保と補完
+            if (-not $Point.ContainsKey('extensions')) { $Point['extensions'] = @{} }
+            
+            $Point.extensions['muniCd5']     = "$muniCd5"
+            $Point.extensions['prefecture']  = "$($info.prefecture)"
+            $Point.extensions['municipality']= "$($info.municipality)"
+            $Point.extensions['town']        = "$townName"
 
-            # Name: 町名(なければ市区町村名), Desc: フル住所
-            $finalName = if ($townName) { $townName } else { $info.municipality }
-            $finalDesc = "$($info.prefecture)$($info.municipality)$townName"
-    
-            # Name: 町名(なければ市区町村名), Desc: フル住所
-            return [GeoService]::_CreatePoint(
-                $lat, 
-                $lon, 
-                $finalName,
-                $finalDesc,
-                $extData
-            )
+            # desc (フル住所) の補完
+            $Point.desc = "$($info.prefecture)$($info.municipality)$townName"
+            
+            # name が空なら暫定的に地名をセット
+            if (-not $Point.name) {
+                $Point.name = if ($townName) { $townName } else { "$($info.municipality)" }
+            }
         }
         catch {
-            return $Point
+            Write-Warning "GSI Resolve failed: $_"
         }
+        return $Point
     }
 
     # =========================================================
@@ -118,14 +96,14 @@ class GeoService {
     # =========================================================
     static [hashtable[]] FetchCityTowns([hashtable]$Point) {
         $target = $Point
-        # 情報不足なら住所解決を試みる
         if (-not $target.extensions.prefecture -or -not $target.extensions.municipality) {
-            $target = [GeoService]::ResolveAddress($Point)
+            # 元のオブジェクトを壊さないよう、一時的なクローンで解決を試みる
+            $temp = $Point.Clone()
+            $target = [GeoService]::ResolveAddress($temp)
         }
 
         $pref = $target.extensions.prefecture
         $muni = $target.extensions.municipality
-
         if (-not $pref -or -not $muni) { return @() }
 
         $url = "https://geolonia.github.io/japanese-addresses/api/ja/$pref/$muni.json"
@@ -134,16 +112,19 @@ class GeoService {
             $json = Invoke-RestMethod -Uri $url -Method Get -ErrorAction Stop
             $results = @()
             foreach ($t in $json) {
-                $extData = $target.extensions.Clone()
-                $extData['town'] = $t.town
-
-                $results += [GeoService]::_CreatePoint(
-                    $t.lat,
-                    $t.lng,
-                    $t.town,
-                    "$pref$muni$($t.town)",
-                    $extData
-                )
+                # 新しいハッシュテーブルとして町字リストを作成
+                $results += @{
+                    lat  = [double]$t.lat
+                    lon  = [double]$t.lng
+                    name = "$($t.town)"
+                    desc = "$pref$muni$($t.town)"
+                    extensions = @{
+                        muniCd5      = "$($target.extensions.muniCd5)"
+                        prefecture   = "$pref"
+                        municipality = "$muni"
+                        town         = "$($t.town)"
+                    }
+                }
             }
             return $results
         }
@@ -159,12 +140,7 @@ class GeoService {
         $lat = $Point.lat
         $lon = $Point.lon
         
-        # Overpass QL: neighbourhood, quarter, locality を検索
-        $query = @"
-[out:json][timeout:30];
-node["place"~"^(neighbourhood|quarter|locality)$"](around:$Radius,$lat,$lon);
-out body;
-"@
+        $query = "[out:json][timeout:30];node['place'~'^(neighbourhood|quarter|locality)$'](around:$Radius,$lat,$lon);out body;"
         $url = "https://overpass-api.de/api/interpreter"
         $maxRetries = 3
 
@@ -175,40 +151,34 @@ out body;
                 $results = @()
                 if ($json.elements) {
                     foreach ($el in $json.elements) {
-                        # タグに名前があるものだけ抽出
                         if ($el.tags -and $el.tags.name) {
-                            $results += [GeoService]::_CreatePoint(
-                                $el.lat, 
-                                $el.lon, 
-                                $el.tags.name, 
-                                "Overpass Place", 
-                                $null
-                            )
+                            $results += @{
+                                lat  = [double]$el.lat
+                                lon  = [double]$el.lon
+                                name = "$($el.tags.name)"
+                                desc = "Overpass Place"
+                                extensions = @{}
+                            }
                         }
                     }
                 }
                 return $results
             }
             catch {
-                # 429 Too Many Requests などの場合は待機時間を増やす
                 $delay = ($i + 1) * 2
-                Write-Warning "Overpass API Retry $($i+1)/$maxRetries (Wait ${delay}s)..."
                 Start-Sleep -Seconds $delay
             }
         }
         return @()
     }
 
-    # =========================================================
-    # 内部用: Nominatim Request with Rate Limit
-    # =========================================================
+    # --- 内部用: Nominatim (Rate Limit付き) ---
     static [hashtable] _FetchNominatim([hashtable]$Point) {
         $cacheKey = "$($Point.lat)_$($Point.lon)"
         if ([GeoService]::NominatimCache.ContainsKey($cacheKey)) {
             return [GeoService]::NominatimCache[$cacheKey]
         }
 
-        # Rate Limiting (1.1 sec wait policy)
         $now = [DateTime]::Now
         $diff = $now - [GeoService]::LastNominatimRequest
         if ($diff.TotalMilliseconds -lt 1100) {
@@ -217,13 +187,10 @@ out body;
 
         $url = "https://nominatim.openstreetmap.org/reverse?format=json&lat=$($Point.lat)&lon=$($Point.lon)&zoom=18&addressdetails=1"
         
-        # 簡易リトライ
         for ($i = 0; $i -lt 3; $i++) {
             try {
                 [GeoService]::LastNominatimRequest = [DateTime]::Now
                 $res = Invoke-RestMethod -Uri $url -Method Get -Headers @{ "User-Agent" = "MyMapApp/1.0" } -ErrorAction Stop
-                
-                # キャッシュ保存
                 [GeoService]::NominatimCache[$cacheKey] = $res
                 return $res
             }

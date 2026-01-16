@@ -1,77 +1,214 @@
-﻿/* --- 親コンテナ --- */
+﻿/* =========================================================
+   Leaflet Search Control with History - Stylesheet
+   ========================================================= */
+
+/* --- 親コンテナ --- */
 .leaflet-search-parent-container {
-  margin-top: 10px; margin-right: 10px;
-  display: flex; flex-direction: column; align-items: flex-end; z-index: 1000;
+  margin-top: 10px;
+  margin-right: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  z-index: 1000;
 }
 
-/* --- 検索ボックス (相対配置にしてボタンを制御) --- */
+/* --- 検索ボックス --- */
 .leaflet-search-control {
   position: relative;
-  background: white; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  padding: 8px; width: 350px; border: 1px solid #999;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  padding: 8px;
+  width: 350px;
+  border: 1px solid #999;
   box-sizing: border-box;
 }
 
 .leaflet-search-input {
-  width: 100%; padding: 8px 35px 8px 8px; /* 右側にクリアボタン用の余白を確保 */
-  border: 1px solid #ccc; border-radius: 4px; 
-  font-size: 16px; box-sizing: border-box;
+  width: 100%;
+  padding: 8px 35px 8px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px; 
+  font-size: 16px;
+  box-sizing: border-box;
 }
 
-/* --- クリアボタン (検索ボックス内: 視認性アップ) --- */
+/* --- クリアボタン --- */
 .search-clear-btn {
   position: absolute;
-  right: 12px; top: 50%; transform: translateY(-50%);
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   border: 1px solid #bbb; 
-  background: #eee;      /* はっきり見える薄いグレー */
-  color: #333;           /* 濃い文字色 */
-  font-size: 14px; font-weight: bold;
+  background: #eee;
+  color: #333;
+  font-size: 14px;
+  font-weight: bold;
   cursor: pointer; 
-  width: 22px; height: 22px; 
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 50%;    /* 丸型 */
+  width: 22px;
+  height: 22px; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
   line-height: 1;
-  z-index: 10;           /* 入力欄より上に配置 */
-  transition: all 0.2s;
+  z-index: 10;
 }
 .search-clear-btn:hover {
-  background: #f44336; color: white; border-color: #d32f2f; /* ホバーで警告の赤 */
+  background: #f44336;
+  color: white;
+  border-color: #d32f2f;
 }
 
-/* --- サイドパネル --- */
+/* --- サイドパネル（スクロール設定） --- */
 .leaflet-search-side-panel {
-  width: 350px; max-height: calc(100vh - 120px); background: white;
-  margin-top: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-  display: flex; flex-direction: column; border-radius: 4px; border: 1px solid #ddd; overflow: hidden;
+  width: 350px; 
+  max-height: calc(100vh - 120px); 
+  background: white;
+  margin-top: 5px; 
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  display: flex; 
+  flex-direction: column; 
+  border-radius: 4px; 
+  border: 1px solid #ddd; 
+  overflow: hidden; 
 }
 
-/* --- パネルヘッダー (×ボタンを強調) --- */
+/* --- パネルヘッダー --- */
 .panel-header {
-  background: #333; color: white; padding: 8px 12px;
-  display: flex; justify-content: space-between; align-items: center;
+  background: #333;
+  color: white;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
 }
 .panel-close-btn {
-  background: rgba(255, 255, 255, 0.15); /* ボタンの背景を透過白に */
+  background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.4);
   color: white;
-  font-size: 16px; font-weight: bold;
-  cursor: pointer; padding: 2px 10px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 2px 10px;
   border-radius: 4px;
-  margin-left: auto;
   transition: all 0.2s;
 }
-.panel-close-btn:hover {
-  background: #f44336; border-color: #f44336; /* ホバーで赤 */
+
+/* --- フィルタバー --- */
+.filter-bar { 
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  background: #f1f1f1;
+  border-bottom: 1px solid #ccc; 
+  flex-shrink: 0; 
+}
+.filter-select {
+  flex: 1;
+  font-size: 13px;
+  padding: 6px;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  background: white;
 }
 
-/* --- フィルタ・リスト・バッジは以前の仕様を維持 --- */
-.filter-bar { display: flex; gap: 4px; padding: 8px; background: #f1f1f1; border-bottom: 1px solid #ccc; }
-.filter-select { flex: 1; font-size: 13px; padding: 6px; border: 1px solid #bbb; border-radius: 3px; background: white; }
-.results-list-container { overflow-y: auto; flex: 1; background: white; }
-.search-item { padding: 12px 14px; cursor: pointer; border-bottom: 1px solid #eee; display: flex; align-items: center; }
-.search-item:hover { background-color: #eef6ff; }
-.item-name { font-weight: bold; font-size: 15px; color: #0056b3; }
-.item-addr { font-size: 13px; color: #555; margin-top: 4px; }
-.ls-badge { font-size: 11px; padding: 2px 4px; border-radius: 2px; margin-right: 10px; color: white; flex-shrink: 0; min-width: 40px; text-align: center; }
+/* --- リストコンテナ（スクロール実行エリア） --- */
+.results-list-container { 
+  overflow-y: auto; 
+  flex: 1;
+  background: white; 
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* スクロールバーのデザイン */
+.results-list-container::-webkit-scrollbar {
+  width: 8px;
+}
+.results-list-container::-webkit-scrollbar-thumb {
+  background-color: #bbb;
+  border-radius: 4px;
+}
+
+/* --- 検索アイテム --- */
+.search-item { 
+  padding: 10px 14px; 
+  border-bottom: 1px solid #eee; 
+  display: flex; 
+  align-items: flex-start; /* 上揃えにして複数行対応 */
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+.search-item:hover {
+  background-color: #eef6ff;
+}
+
+/* --- バッジ部分（ここがズレ防止の鍵） --- */
+.ls-badge-container {
+  flex-shrink: 0;
+  width: 55px; /* バッジの開始位置を完全に固定 */
+  margin-top: 2px;
+}
+
+.ls-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  color: white;
+  display: inline-block;
+  min-width: 44px;
+  text-align: center;
+  line-height: 1.2;
+}
 .ls-badge-history { background-color: #4CAF50; }
 .ls-badge-web { background-color: #2196F3; }
+
+/* --- テキストコンテンツ --- */
+.item-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-left: 4px; /* バッジコンテナとの間隔 */
+}
+
+.item-name {
+  font-weight: bold;
+  font-size: 15px;
+  color: #0056b3;
+  /* タイトルが長い場合は省略するが、住所は隠さない */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.item-addr {
+  font-size: 12px;
+  color: #555;
+  line-height: 1.4;
+  /* 住所は長い場合も2行程度まで表示させる場合は、以下を調整 */
+  word-wrap: break-word;
+}
+
+/* --- 履歴削除ボタン --- */
+.item-delete-btn {
+  margin-left: 8px;
+  background: #fdfdfd;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: #999;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  align-self: center; /* ボタンは中央に配置 */
+}
+.item-delete-btn:hover {
+  background: #fee;
+  color: #f44336;
+  border-color: #f44336;
+}

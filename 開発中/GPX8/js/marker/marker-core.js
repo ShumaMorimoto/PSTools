@@ -101,7 +101,6 @@ export default class MarkerCore {
     // 通知を発火（MarkerHandlerやPopupがこれを受けて表示を更新する）
     dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, {
       point: point,
-      marker: entry.m,
       info: info,
     });
   }

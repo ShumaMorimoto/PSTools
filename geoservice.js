@@ -20,56 +20,33 @@ export class GeoService {
     this.isProcessingQueue = false;
   }
 
-  /**
-   * 内部用：Pointオブジェクトの生成
-   */
-  _createPoint(lat, lon, name = "", desc = "", extData = null) {
-    const exts = extData || {};
-    return {
-      lat: Number(lat),
-      lon: Number(lon),
-      name: name || "",
-      desc: desc || "",
-      extensions: {
-        muniCd5: exts.muniCd5 || "",
-        municipality: exts.municipality || "",
-        prefecture: exts.prefecture || "",
-        town: exts.town || exts.block || "",
-      },
-    };
-  }
-
   // =========================================================
-  // 1. Resolve: 座標 -> 施設名/詳細住所 (Nominatim優先 + GSI)
+  // 1. Resolve: 位置情報に近くの拠点（name, desc）を割り当てる
   // =========================================================
   async resolve(point) {
-    // ベースとなる住所情報を取得
-    let basePoint = await this.resolveAddress(point);
+    // 1. まず自治体情報を土台として付与
+    await this.resolveAddress(point);
 
-    // Nominatimで詳細な場所名(建物名など)を取りに行く
+    // 2. Nominatimで詳細な拠点名(建物名など)を取りに行く
     try {
       const nominatimData = await this._fetchNominatimWithQueue(point);
 
-      // Nominatimの結果から名前が取れれば採用
       if (nominatimData && nominatimData.name) {
-        return this._createPoint(
-          point.lat,
-          point.lon,
-          nominatimData.name, // Name: 施設名
-          basePoint.desc, // Desc: 正確な住所(GSI)
-          basePoint.extensions // Extensions: 住所情報
-        );
+        // 拠点名が見つかれば name を更新
+        point.name = nominatimData.name;
+      } else if (!point.name && point.extensions?.municipality) {
+        // 名前がなく、自治体情報がある場合は町名や市区町村名で補完
+        point.name = point.extensions.town || point.extensions.municipality;
       }
     } catch (e) {
-      console.warn("Nominatim failed, falling back to address", e);
+      console.warn("Nominatim failed, kept address info", e);
     }
 
-    // 失敗時は住所情報のみを返す
-    return basePoint;
+    return point;
   }
 
   // =========================================================
-  // 2. ResolveAddress: 座標 -> 住所のみ (GSI Reverse Geocoder)
+  // 2. ResolveAddress: 位置情報に自治体情報を付与する
   // =========================================================
   async resolveAddress(point) {
     const { lat, lon } = point;
@@ -88,22 +65,30 @@ export class GeoService {
       const master = await this._loadMuniMaster();
       const info = master.municipalities.find((m) => m.muniCd5 === muniCd5);
 
-      if (!info) return point;
+      if (info) {
+        // extensions オブジェクトの担保と補完
+        if (!point.extensions) point.extensions = {};
+        
+        Object.assign(point.extensions, {
+          muniCd5: muniCd5,
+          prefecture: info.prefecture,
+          municipality: info.municipality,
+          town: townName || point.extensions.town || ""
+        });
 
-      const extData = { ...info, town: townName };
-
-      // Name: 町名(なければ市区町村名), Desc: フル住所
-      return this._createPoint(
-        lat,
-        lon,
-        townName || info.municipality,
-        `${info.prefecture}${info.municipality}${townName}`,
-        extData
-      );
+        // desc (フル住所) の補完
+        point.desc = `${info.prefecture}${info.municipality}${townName}`;
+        
+        // name が空なら暫定的に地名をセット
+        if (!point.name) {
+          point.name = townName || info.municipality;
+        }
+      }
     } catch (e) {
       console.warn("GSI Resolve failed", e);
-      return point;
     }
+
+    return point;
   }
 
   // =========================================================
@@ -111,9 +96,8 @@ export class GeoService {
   // =========================================================
   async fetchCityTowns(point) {
     let target = point;
-    // 必要な情報がなければまずResolveAddressする
     if (!target.extensions?.prefecture || !target.extensions?.municipality) {
-      target = await this.resolveAddress(point);
+      target = await this.resolveAddress({ ...point }); // 元を壊さないようコピーで解決
     }
 
     const { prefecture, municipality } = target.extensions || {};
@@ -125,15 +109,16 @@ export class GeoService {
       if (!res.ok) return [];
       const towns = await res.json();
 
-      return towns.map((t) =>
-        this._createPoint(
-          t.lat,
-          t.lng,
-          t.town,
-          `${prefecture}${municipality}${t.town}`,
-          { ...target.extensions, town: t.town }
-        )
-      );
+      return towns.map((t) => ({
+        lat: Number(t.lat),
+        lon: Number(t.lng),
+        name: t.town,
+        desc: `${prefecture}${municipality}${t.town}`,
+        extensions: {
+          ...target.extensions,
+          town: t.town
+        }
+      }));
     } catch {
       return [];
     }
@@ -145,7 +130,6 @@ export class GeoService {
   async fetchAreaTowns(point, radius = 1000) {
     const { lat, lon } = point;
     const r = Math.floor(radius);
-    // place=neighbourhood, quarter, locality などを検索
     const query = `[out:json][timeout:30];node["place"~"^(neighbourhood|quarter|locality)$"](around:${r},${lat},${lon});out body;`;
     const url = "https://overpass-api.de/api/interpreter";
 
@@ -165,15 +149,13 @@ export class GeoService {
         const json = await res.json();
         return json.elements
           .filter((el) => el.tags?.name)
-          .map((el) =>
-            this._createPoint(
-              el.lat,
-              el.lon,
-              el.tags.name,
-              "Overpass Place",
-              null
-            )
-          );
+          .map((el) => ({
+            lat: Number(el.lat),
+            lon: Number(el.lon),
+            name: el.tags.name,
+            desc: "Overpass Place",
+            extensions: {}
+          }));
       } catch (e) {
         console.warn(`Overpass retry ${i + 1}`, e);
         await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
@@ -210,7 +192,6 @@ export class GeoService {
           continue;
         }
 
-        // Wait 1.1s (Nominatim Policy)
         await new Promise((r) => setTimeout(r, 1100));
         this.requestQueue.shift();
 
@@ -246,7 +227,6 @@ export class GeoService {
     }
   }
 
-  // --- Internal: Load Master Data ---
   async _loadMuniMaster() {
     if (this.muniCache) return this.muniCache;
     try {

@@ -47,6 +47,12 @@
     "npath": "(//*[@class='fundValue__item'])[1]",
     "cpath": "(//*[@class='fundValue__item'])[2]"
   },
+  "2024043003": {
+    "url": "https://www.nam.co.jp/fundinfo/ngf_b/main.html",
+    "bpath": "(//*[@class='p-fundinfoFundValue__date'])[1]",
+    "npath": "(//*[@class='fundValue__item'])[1]",
+    "cpath": "(//*[@class='fundValue__item'])[2]"
+  },
   "2004073003": {
     "url": "https://www.nomura-am.co.jp/fund/funddetail.php?fundcd=400029",
     "bpath": "(//td)[1]",
@@ -55,6 +61,12 @@
   },
   "201707310D": {
     "url": "https://www.amova-am.com/fund/detail/643718",
+    "bpath": "((//div[@class='p-products-price__row'])[1]/div)",
+    "npath": "((//div[@class='p-products-price__row'])[2]//span)[1]",
+    "cpath": "((//div[@class='p-products-price__row'])[3]//span)[1]"
+  },
+  "2022083103": {
+    "url": "https://www.amova-am.com/fund/detail/645066",
     "bpath": "((//div[@class='p-products-price__row'])[1]/div)",
     "npath": "((//div[@class='p-products-price__row'])[2]//span)[1]",
     "cpath": "((//div[@class='p-products-price__row'])[3]//span)[1]"

@@ -17,22 +17,30 @@ class ToshinDAO : IDisposable {
     hidden [object]$scraper
     hidden static [hashtable]$pricesrc = @{}
 
-    # コンストラクタ
-# --- コンストラクタ ---
+    # --- 変換テーブル定義 ---
+    hidden static [hashtable]$namCodeMap = @{
+        "2013121001" = "121332"  # ニッセイ外国株式インデックス（購入・換金手数料なし）
+        "2024043003" = "122407"  # ニッセイゴールドファンド（為替ヘッジなし）
+        "2011110102" = "121117"  # ニッセイグローバル好配当株式プラス
+    }
+    hidden static [hashtable]$mufgCodeMap = @{
+        "2004022702" = "148106"
+        "2017022703" = "252653"
+        "201707310A" = "252845"
+        "2016012906" = "261385"
+    }
 
-    # デフォルトコンストラクタ（デフォルトはHeadless = true）
+    # --- コンストラクタ ---
+
     ToshinDAO() {
         $this.Init($true)
     }
 
-    # モードを指定できるコンストラクタ
     ToshinDAO([bool]$isHeadless) {
         $this.Init($isHeadless)
     }
 
-    # 共通の初期化ロジック
     hidden [void] Init([bool]$isHeadless) {
-        # 1. configから価格定義をロード
         if ([ToshinDAO]::pricesrc.Count -eq 0) {
             $configFile = Join-Path $PSScriptRoot "config\PriceSources.json"
             if (Test-Path $configFile) {
@@ -43,7 +51,6 @@ class ToshinDAO : IDisposable {
             }
         }
 
-        # 2. DLL内のコアクラスを探索
         $typeName = "GenericScraper.WebScraperCore"
         $type = [AppDomain]::CurrentDomain.GetAssemblies() | 
         ForEach-Object { $_.GetType($typeName) } | 
@@ -53,41 +60,34 @@ class ToshinDAO : IDisposable {
             throw "型 [$typeName] が見つかりません。DLLを確認してください。"
         }
 
-        # 3. インスタンス生成とブラウザ初期化 (引数の $isHeadless を使用)
         $this.scraper = [Activator]::CreateInstance($type)
         $this.scraper.InitializeAsync($isHeadless).GetAwaiter().GetResult()
     }
     
     # --- 価格取得メソッド群 ---
 
-    # 通常取得（個別サイト失敗時にWLTへ切り替え）
     [PSCustomObject] GetPrice([string]$code) {
-        # 1. MUFJ API 特例
-        if ($code -in ('2004022702', '2017022703', '201707310A', '2016012906')) {
-            return [ToshinDAO]::getPriceMUFJ($code)
-        }
-
-        # 2. 個別サイトでの取得試行
-        $config = [ToshinDAO]::pricesrc[$code]
-        if ($null -ne $config) {
-            $price = $this.InternalScrape($code, $config.url, $config, 0)
-            
-            # 【重要】$null だけでなく空文字 "" も「取得失敗」とみなす
-            if (-not [string]::IsNullOrWhiteSpace($price.date) -and 
-                -not [string]::IsNullOrWhiteSpace($price.nav)) { 
-                return $price 
-            }
-        }
-
-        # 3. 個別サイトで失敗(null/空文字)または設定なしなら、WealthAdvisor(WLT)へ
-        return $this.GetPriceFromWLT($code)
+        return $this.GetPrice($code, 0)
     }
 
     [PSCustomObject] GetPrice([string]$code, [int]$waitMs) {
-        if ($code -in ('2004022702', '2017022703', '201707310A', '2016012906')) {
+        # 1. MUFG系判定
+        if ([ToshinDAO]::mufgCodeMap.ContainsKey($code)) {
             return [ToshinDAO]::getPriceMUFJ($code)
         }
 
+        # 2. NAM系判定
+        if ([ToshinDAO]::namCodeMap.ContainsKey($code)) {
+            $namInternalCode = [ToshinDAO]::namCodeMap[$code]
+            return [ToshinDAO]::getPriceNAM($namInternalCode)
+        }
+
+        # 3. 直接 6桁コード(NAM等)が指定された場合
+        if ($code -match '^\d{6}$') {
+            return [ToshinDAO]::getPriceNAM($code)
+        }
+
+        # 4. 個別サイトでのスクレイピング試行
         $config = [ToshinDAO]::pricesrc[$code]
         if ($null -ne $config) {
             $price = $this.InternalScrape($code, $config.url, $config, $waitMs)
@@ -96,20 +96,19 @@ class ToshinDAO : IDisposable {
                 return $price 
             }
         }
+
+        # 5. 失敗時はWealthAdvisor(WLT)へ
         return $this.GetPriceFromWLT($code)
     }
 
-    # WealthAdvisor (default) からの取得
     [PSCustomObject] GetPriceFromWLT([string]$code) {
         $config = [ToshinDAO]::pricesrc['default']
         $targetUrl = $config.url + $code
-        
         $price = $this.InternalScrape($code, $targetUrl, $config, 0)
         $price.code = $code
         return $price
     }
     
-    # 内部スクレイピング処理
     hidden [PSCustomObject] InternalScrape([string]$code, [string]$url, [object]$conf, [int]$waitMs) {
         $selectors = [Collections.Generic.Dictionary[string, string]]::new()
         $selectors.Add("Date", $conf.bpath)
@@ -132,11 +131,53 @@ class ToshinDAO : IDisposable {
         }
     }
 
-    # --- ユーティリティ (null判定を厳密に) ---
+    # --- 専用取得ロジック (API/CSV) ---
+
+    static [pscustomobject] getPriceNAM([string]$code) {
+        try {
+            $url = "https://www.nam.co.jp/fundinfo/data/csv.php?fund_code=$code"
+            $res = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 10
+            
+            $encoding = [System.Text.Encoding]::GetEncoding("Shift-JIS")
+            $csvText = $encoding.GetString($res.Content)
+            
+            # 日付で始まる行のうち最新の1行を取得
+            $latest = $csvText.Split("`n") | Where-Object { $_ -match '^\d{4}年\d{2}月\d{2}日' } | Select-Object -First 1
+            
+            if ($latest -match '^([^,]+),[^,]+,(\d+),[^,]+,[^,]+,([+-]?\d+)') {
+                return [ordered]@{
+                    code = $code
+                    date = [ToshinDAO]::CleanDate($matches[1])
+                    nav  = $matches[2]
+                    cmp  = $matches[3]
+                }
+            }
+        } catch {}
+        return [ordered]@{ code = $code; date = $null; nav = $null; cmp = $null }
+    }
+
+    static [pscustomobject] getPriceMUFJ([string]$code) {
+        $mufgCode = [ToshinDAO]::mufgCodeMap[$code]
+        $url = "https://developer.am.mufg.jp/fund_information_latest/fund_cd/$mufgCode"
+        try {
+            $res = Invoke-RestMethod -Uri $url -ErrorAction Stop
+            $data = $res.datasets[0]
+            return [ordered]@{
+                code = $code
+                date = $data.base_date -replace '-', ''
+                nav  = $data.nav
+                cmp  = $data.cmp_prev_day
+            }
+        }
+        catch {
+            return [ordered]@{ code = $code; date = $null; nav = $null; cmp = $null }
+        }
+    }
+
+    # --- ユーティリティ ---
 
     static [string] CleanDate([string]$text) {
         if ([string]::IsNullOrWhiteSpace($text)) { return $null }
-        # 日付に関係ない文字を除去して正規化
         $clean = $text -replace "年|月", "/" -replace "日", ""
         if ($clean -match "[\d/]{7,}") {
             try { return (Get-Date $Matches[0]).ToString("yyyyMMdd") } catch { return $null }
@@ -146,32 +187,12 @@ class ToshinDAO : IDisposable {
 
     static [string] CleanNumber([string]$text) {
         if ([string]::IsNullOrWhiteSpace($text)) { return $null }
-        # 数値や符号を抽出
         if ($text -match "[-\d,.]+") { 
             $num = $Matches[0] -replace "," , ""
-            # 「-」だけの文字や空文字はnullとして扱う
             if ($num -eq "-" -or $num -eq "") { return $null }
             return $num
         }
         return $null
-    }
-
-    static [pscustomobject]getPriceMUFJ([string]$code) {
-        $url = "https://developer.am.mufg.jp/fund_information_latest/fund_cd/"
-        $codetbl = @{'2004022702' = '148106'; '2017022703' = '252653'; '201707310A' = '252845'; '2016012906' = '261385' }
-        $url += $codetbl[$code]
-        try {
-            $res = Invoke-RestMethod -Uri $url -ErrorAction Stop
-            return [ordered]@{
-                code = $code
-                date = $res.datasets[0].base_date
-                nav  = $res.datasets[0].nav
-                cmp  = $res.datasets[0].cmp_prev_day
-            }
-        }
-        catch {
-            return [ordered]@{ code = $code; date = $null; nav = $null; cmp = $null }
-        }
     }
 
     [void]Dispose() {
@@ -182,7 +203,7 @@ class ToshinDAO : IDisposable {
     }
 }
 
-# ─── 以下、関数読み込み・エクスポート部分は変更なし ───
+# ─── 以下、モジュールエクスポート ───
 foreach ($folder in @('Common', 'Extensions', 'Private', 'Public')) {
     $targetPath = Join-Path $PSScriptRoot $folder
     if (Test-Path $targetPath) {

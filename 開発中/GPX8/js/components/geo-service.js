@@ -1,163 +1,129 @@
-﻿/**
- * 自治体・地理情報解決サービス
+/**
+ * GeoService (JS Unified)
+ * - resolve: 座標 -> 施設名・拠点名 (Nominatim + GSI Fallback)
+ * - resolveAddress: 座標 -> 住所のみ (GSI Reverse Geocoder)
+ * - fetchCityTowns: 市区町村内の全町字 (Geolonia)
+ * - fetchAreaTowns: 周辺の町字ノード (Overpass API)
  */
-class GeoService {
+export class GeoService {
   constructor() {
     this.muniCache = null;
     this.geoJsonCache = new Map();
-    this.addressCache = new Map();
+    this.nominatimCache = new Map();
     this.MUNI_JSON_PATH = new URL(
       "./../../municipalities.json",
       import.meta.url
     ).href;
 
+    // Queue for Nominatim (limit 1 req/sec)
     this.requestQueue = [];
     this.isProcessingQueue = false;
   }
 
-  /**
-   * 内部用：新しいPointオブジェクトの生成
-   */
-  _createPoint(lat, lon, name = "", desc = "", extData = null) {
-    const point = { lat, lon, name, desc };
+  // =========================================================
+  // 1. Resolve: 位置情報に近くの拠点（name, desc）を割り当てる
+  // =========================================================
+  async resolve(point) {
+    // 1. まず自治体情報を土台として付与
+    await this.resolveAddress(point);
 
-    // extDataが extensions プロパティそのものか、マスタの1行かどちらでも対応
-    const data = extData?.muniCd5 ? extData : null;
+    // 2. Nominatimで詳細な拠点名(建物名など)を取りに行く
+    try {
+      const nominatimData = await this._fetchNominatimWithQueue(point);
 
-    if (data) {
-      point.extensions = {
-        muniCd5: data.muniCd5 || "",
-        municipality: data.municipality || "",
-        prefecture: data.prefecture || "",
-      };
+      if (nominatimData && nominatimData.name) {
+        // 拠点名が見つかれば name を更新
+        point.name = nominatimData.name;
+      } else if (!point.name && point.extensions?.municipality) {
+        // 名前がなく、自治体情報がある場合は町名や市区町村名で補完
+        point.name = point.extensions.town || point.extensions.municipality;
+      }
+    } catch (e) {
+      console.warn("Nominatim failed, kept address info", e);
     }
+
     return point;
   }
 
-  // --- 1. resolve: lat,lon から自治体情報を解決 ---
-  async resolve(point) {
-    const { lat, lon } = point;
-    const url = `https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${lat}&lon=${lon}`;
+  // =========================================================
+  // 2. ResolveAddress: 位置情報に自治体情報を付与する
+  // =========================================================
+  async resolveAddress(point) {
+    const master = await this._loadMuniMaster();
 
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("GSI Request failed");
-      const json = await res.json();
+    // 1. 既存の値を最優先で確保（ここにあるものは絶対に破壊しない）
+    let muniCd5 = point.extensions?.muniCd5 || point.muniCd5 || null;
+    let townName = point.extensions?.town || "";
+    const originalDesc = point.desc || "";
+    const originalName = point.name || "";
 
-      if (!json.results?.muniCd) return point;
+    let info = null;
 
-      const muniCd5 = json.results.muniCd;
-      const townName = json.results.lv01Nm || ""; // ★ GSIから返ってくる町名を取得
-
-      const master = await this._loadMuniMaster();
-      const info = master.municipalities.find((m) => m.muniCd5 === muniCd5);
-
-      if (!info) return point;
-
-      // nameを lv01Nm に、descを 都道府県+市区町村 に設定
-      // もし lv01Nm が空なら市区町村名を name にする
-      return this._createPoint(
-        lat,
-        lon,
-        townName || info.municipality,
-        `${info.prefecture}${info.municipality}${townName}`,
-        info
-      );
-    } catch (e) {
-      console.error("Resolve failed", e);
-      return point;
+    // --- 2. muniCd5 からマスタを特定 ---
+    if (muniCd5) {
+      const cdStr = String(muniCd5).padStart(5, "0");
+      info = master.municipalities.find((m) => m.muniCd5 === cdStr);
     }
-  }
 
-  async resolveAddress(point, retryCount = 0) {
-    const cacheKey = `${point.lat}_${point.lon}`;
-    if (this.addressCache.has(cacheKey)) return this.addressCache.get(cacheKey);
+    // --- 3. B優先: コードで特定できない場合、既存の desc からマスタを逆引き ---
+    if (!info && originalDesc) {
+      info = master.municipalities.find((m) =>
+        originalDesc.startsWith(m.prefecture + m.municipality)
+      );
+      if (info) muniCd5 = info.muniCd5;
+    }
 
-    return new Promise((resolve, reject) => {
-      this.requestQueue.push({ point, retryCount, resolve, reject });
-      this._processQueue();
-    });
-  }
-  async _processQueue() {
-    if (this.isProcessingQueue || this.requestQueue.length === 0) return;
-    this.isProcessingQueue = true;
-
-    try {
-      while (this.requestQueue.length > 0) {
-        const { point, retryCount, resolve, reject } =
-          this.requestQueue.shift();
-
-        // OSMレート制限対策 (1秒待機)
-        await new Promise((r) => setTimeout(r, 1000));
-
-        const cacheKey = `${point.lat}_${point.lon}`;
-        if (this.addressCache.has(cacheKey)) {
-          resolve(this.addressCache.get(cacheKey));
-          continue;
-        }
-
-        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${point.lat}&lon=${point.lon}&zoom=18&addressdetails=1`;
-
-        try {
-          const res = await fetch(url, {
-            headers: { "User-Agent": "MyMapApp/1.0 (contact@example.com)" },
-          });
-          if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-
-          const data = await res.json();
-          this.addressCache.set(cacheKey, data);
-          resolve(data);
-        } catch (e) {
-          if (retryCount < 3) {
-            const delay = 1000 * Math.pow(2, retryCount);
-            setTimeout(() => {
-              this.requestQueue.unshift({
-                point,
-                retryCount: retryCount + 1,
-                resolve,
-                reject,
-              });
-              this._processQueue();
-            }, delay);
-          } else {
-            reject(e);
+    // --- 4. 最終手段: 座標から地理院APIを叩く ---
+    if (!info && point.lat !== undefined && point.lon !== undefined) {
+      const url = `https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${point.lat}&lon=${point.lon}`;
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.results?.muniCd) {
+            muniCd5 = json.results.muniCd;
+            // townName も既存がなければ API の値を使う
+            townName = townName || json.results.lv01Nm || "";
+            info = master.municipalities.find((m) => m.muniCd5 === muniCd5);
           }
         }
+      } catch (e) {
+        console.warn("GSI Resolve failed", e);
       }
-    } finally {
-      this.isProcessingQueue = false;
     }
+
+    // --- 5. 反映ロジック: 全て「既存が空なら埋める」という非破壊スタイル ---
+    if (info) {
+      if (!point.extensions) point.extensions = {};
+
+      Object.assign(point.extensions, {
+        muniCd5: point.extensions.muniCd5 || muniCd5,
+        prefecture: point.extensions.prefecture || info.prefecture,
+        municipality: point.extensions.municipality || info.municipality,
+        town: point.extensions.town || townName,
+      });
+
+      // desc (フル住所): 空の時だけ構築。既存があるなら 1文字たりともいじらない。
+      if (!point.desc) {
+        point.desc = `${info.prefecture}${info.municipality}${point.extensions.town}`;
+      }
+
+      // name (名前): 空の時だけ補完。
+      if (!point.name) {
+        point.name = point.extensions.town || info.municipality;
+      }
+    }
+
+    return point;
   }
 
-  // --- 2. fetchBoundary: 自治体境界の取得 ---
-  async fetchBoundary(point) {
-    let target = point;
-    if (!target.extensions?.muniCd5) {
-      target = await this.resolve(point);
-    }
-
-    const { muniCd5 } = target.extensions || {};
-    if (!muniCd5) return null;
-
-    if (this.geoJsonCache.has(muniCd5)) return this.geoJsonCache.get(muniCd5);
-
-    const url = `https://shikuchoson-boundaries.sankichi.app/${muniCd5}.geojson`;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      const geoJson = await res.json();
-      this.geoJsonCache.set(muniCd5, geoJson);
-      return geoJson;
-    } catch {
-      return null;
-    }
-  }
-
-  // --- 3. fetchCityTowns: 市区町村内の全町字を取得 ---
+  // =========================================================
+  // 3. FetchCityTowns: 市区町村内の全町字 (Geolonia)
+  // =========================================================
   async fetchCityTowns(point) {
     let target = point;
     if (!target.extensions?.prefecture || !target.extensions?.municipality) {
-      target = await this.resolve(point);
+      target = await this.resolveAddress({ ...point }); // 元を壊さないようコピーで解決
     }
 
     const { prefecture, municipality } = target.extensions || {};
@@ -169,68 +135,132 @@ class GeoService {
       if (!res.ok) return [];
       const towns = await res.json();
 
-      return towns.map((t) =>
-        this._createPoint(
-          t.lat,
-          t.lng,
-          t.town,
-          `${prefecture}${municipality}${t.town}`,
-          target.extensions
-        )
-      );
+      return towns.map((t) => ({
+        lat: Number(t.lat),
+        lon: Number(t.lng),
+        name: t.town,
+        desc: `${prefecture}${municipality}${t.town}`,
+        extensions: {
+          ...target.extensions,
+          town: t.town,
+        },
+      }));
     } catch {
       return [];
     }
   }
 
-  // --- 4. fetchAreaTowns: リトライ機能付き (node限定) ---
-  async fetchAreaTowns(point, radius = 1000, retries = 3) {
+  // =========================================================
+  // 4. FetchAreaTowns: 周辺の町字ノード (Overpass API)
+  // =========================================================
+  async fetchAreaTowns(point, radius = 1000) {
     const { lat, lon } = point;
     const r = Math.floor(radius);
-    // 町字のポイント(node)のみに絞ったクエリ
-    const query = `[out:json][timeout:60];node["place"~"^(neighbourhood|quarter|locality)$"](around:${r},${lat},${lon});out body;`;
-    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(
-      query
-    )}`;
+    const query = `[out:json][timeout:30];node["place"~"^(neighbourhood|quarter|locality)$"](around:${r},${lat},${lon});out body;`;
+    const url = "https://overpass-api.de/api/interpreter";
 
-    for (let i = 0; i <= retries; i++) {
+    for (let i = 0; i < 3; i++) {
       try {
-        const res = await fetch(url);
-        if (res.status === 429 || res.status >= 500)
-          throw new Error(`Server Error: ${res.status}`);
-        if (!res.ok) break;
+        const body = "data=" + encodeURIComponent(query);
+        const res = await fetch(url, { method: "POST", body });
+
+        if (!res.ok) {
+          if (res.status === 429) {
+            await new Promise((r) => setTimeout(r, 5000));
+            continue;
+          }
+          throw new Error(res.statusText);
+        }
 
         const json = await res.json();
         return json.elements
           .filter((el) => el.tags?.name)
-          .map((el) =>
-            this._createPoint(
-              el.lat,
-              el.lon,
-              el.tags.name,
-              "Overpass Place",
-              null
-            )
-          );
+          .map((el) => ({
+            lat: Number(el.lat),
+            lon: Number(el.lon),
+            name: el.tags.name,
+            desc: "Overpass Place",
+            extensions: {},
+          }));
       } catch (e) {
-        if (i === retries) break;
-        const delay = Math.pow(2, i) * 1000;
-        console.warn(`Retry ${i + 1}/${retries} after ${delay}ms...`);
-        await new Promise((r) => setTimeout(r, delay));
+        console.warn(`Overpass retry ${i + 1}`, e);
+        await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
       }
     }
     return [];
+  }
+
+  // --- Internal: Nominatim Queue Processing ---
+  async _fetchNominatimWithQueue(point) {
+    const cacheKey = `${point.lat}_${point.lon}`;
+    if (this.nominatimCache.has(cacheKey))
+      return this.nominatimCache.get(cacheKey);
+
+    return new Promise((resolve, reject) => {
+      this.requestQueue.push({ point, retryCount: 0, resolve, reject });
+      this._processQueue();
+    });
+  }
+
+  async _processQueue() {
+    if (this.isProcessingQueue || this.requestQueue.length === 0) return;
+    this.isProcessingQueue = true;
+
+    try {
+      while (this.requestQueue.length > 0) {
+        const item = this.requestQueue[0];
+        const { point, retryCount, resolve, reject } = item;
+        const cacheKey = `${point.lat}_${point.lon}`;
+
+        if (this.nominatimCache.has(cacheKey)) {
+          this.requestQueue.shift();
+          resolve(this.nominatimCache.get(cacheKey));
+          continue;
+        }
+
+        await new Promise((r) => setTimeout(r, 1100));
+        this.requestQueue.shift();
+
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${point.lat}&lon=${point.lon}&zoom=18&addressdetails=1`;
+        try {
+          const res = await fetch(url, {
+            headers: { "User-Agent": "MyMapApp/1.0" },
+          });
+          if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+          const data = await res.json();
+          this.nominatimCache.set(cacheKey, data);
+          resolve(data);
+        } catch (e) {
+          if (retryCount < 3) {
+            setTimeout(() => {
+              this.requestQueue.unshift({
+                point,
+                retryCount: retryCount + 1,
+                resolve,
+                reject,
+              });
+              this._processQueue();
+            }, 2000 * (retryCount + 1));
+            return;
+          } else {
+            reject(e);
+          }
+        }
+      }
+    } finally {
+      this.isProcessingQueue = false;
+      if (this.requestQueue.length > 0) this._processQueue();
+    }
   }
 
   async _loadMuniMaster() {
     if (this.muniCache) return this.muniCache;
     try {
       const res = await fetch(this.MUNI_JSON_PATH);
-      if (!res.ok) throw new Error("MuniMaster load failed");
+      if (!res.ok) throw new Error("Failed");
       this.muniCache = await res.json();
       return this.muniCache;
-    } catch (e) {
-      console.error(e);
+    } catch {
       return { municipalities: [] };
     }
   }

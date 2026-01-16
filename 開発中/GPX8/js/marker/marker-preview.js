@@ -1,36 +1,61 @@
 ﻿import { createPopupContent } from "./../components/leaflet-popup.js";
 import { geoService } from "./../components/geo-service.js";
 import { notify } from "./../api-utils.js";
+import { markerEvents, MarkerEventTypes, dispatchMarkerEvent } from "../marker/marker-events.js";
 
+/**
+ * 検索結果などの一時的なプレビューマーカーを管理するクラス。
+ * 本マーカーと同様のイベント駆動（POINT_UPDATED）により UI 同期を行う。
+ */
 export default class MarkerPreview {
   constructor(handler) {
     this.handler = handler;
-    this.previewMarkers = [];
+    this.previewMarkers = []; // Leafletマーカーの配列
     this.onSelected = this.onSelected.bind(this);
+
+    // 🔄 イベント購読：データ更新を検知してポップアップをリフレッシュ
+    markerEvents.addEventListener(MarkerEventTypes.POINT_UPDATED, (e) => {
+      const { point } = e.detail;
+      const pm = this.getPreviewByPoint(point);
+
+      // 管理しているプレビューマーカーであれば、ポップアップを最新化する
+      if (pm) {
+        this.refreshPopup(pm);
+      }
+    });
   }
 
+  /**
+   * ポイント参照（trkpt）からプレビューマーカーを特定する
+   */
+  getPreviewByPoint(point) {
+    return this.previewMarkers.find((pm) => pm.trkpt === point);
+  }
+
+  /**
+   * 検索結果が選択された際の処理
+   */
   async onSelected(item, map, control) {
     this.clear();
-
-    // 1. 検索コンポーネントから渡されたデータをそのまま保持（ID等を含む）
-    const trkpt = { ...item };
+    
+    // 1. 元のデータを汚さないようコピーを作成（プレビュー用の独立した参照）
+    const trkpt = { ...item }; 
     const pm = this.add(trkpt, control);
 
-    // 2. Web検索結果（新規）の場合は住所を補完する
+    // 2. Web検索結果等の場合は住所情報を補完
     if (item.source === "web") {
       try {
-        const res = await geoService.resolve({ lat: item.lat, lon: item.lon });
-        pm.trkpt.desc = res.desc || pm.trkpt.desc;
+        // geoService が pm.trkpt を直接書き換える
+        await geoService.resolveAddress(pm.trkpt);
+//        await geoService.resolve(pm.trkpt);
 
-        // 住所が詳細になったので履歴を更新（複製されず上書きされる）
-        if (control && control._saveToHistory) {
-          control._saveToHistory(pm.trkpt);
-        }
+        // 住所が詳細になったので履歴を更新（上書き）
+        if (control?._saveToHistory) control._saveToHistory(pm.trkpt);
 
-        // ポップアップが開いていれば中身を更新
-        this.refreshPopup(pm, control);
+        // 📣 更新イベントを発行（constructor 内のリスナー経由で refreshPopup が呼ばれる）
+        dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, { point: pm.trkpt });
       } catch (err) {
-        console.error("住所補完失敗:", err);
+        console.error("プレビュー住所補完失敗:", err);
       }
     }
   }
@@ -42,12 +67,10 @@ export default class MarkerPreview {
   }
 
   /**
-   * 本マーカーの refresh(marker) と同じ思想の処理
-   * データを最新の状態にして、ポップアップの中身を完全に差し替える
+   * ポップアップの中身を完全に差し替える（表示の同期）
    */
   refreshPopup(pm, control) {
     const content = this._getPopupContent(pm, control);
-    // すでにポップアップが開いている場合は内容を更新、そうでなければバインド
     if (pm.getPopup()) {
       pm.setPopupContent(content);
     } else {
@@ -56,7 +79,7 @@ export default class MarkerPreview {
   }
 
   /**
-   * ポップアップのHTML要素生成（本マーカーの getContent に相当）
+   * ポップアップのHTML要素生成
    */
   _getPopupContent(pm, control) {
     return createPopupContent(pm.trkpt, pm, {
@@ -65,40 +88,39 @@ export default class MarkerPreview {
         notify("📋 座標コピー");
       },
 
-      // 🔄 住所更新：本マーカーと同様に、データを更新してから refresh をかける
+      // 🔄 住所更新：本マーカーと同様のフロー
       onUpdateAddress: async () => {
         const pos = pm.getLatLng();
-        const res = await geoService.resolve({ lat: pos.lat, lon: pos.lng });
+        pm.trkpt.lat = pos.lat;
+        pm.trkpt.lon = pos.lng;
 
-        // 1. 内部保持データを更新（これで編集遷移時もOK）
-        pm.trkpt.desc = res.desc || "";
+        // 直接データをリッチにする
+        await geoService.resolveAddress(pm.trkpt);
 
-        // 2. 本マーカーの思想に合わせ、ポップアップを再描画して表示を同期
-        this.refreshPopup(pm, control);
-
+        // 更新を通知
+        dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, { point: pm.trkpt });
         notify("🔄 住所情報を照会しました");
       },
 
-      // 💾 保存
+      // 💾 履歴への保存
       onSave: (newData) => {
         const pos = pm.getLatLng();
-        if (control && control._saveToHistory) {
-          control._saveToHistory({
-            _id: pm.trkpt._id, // ここが重要：元のIDを渡す
-            lat: pos.lat,
-            lon: pos.lng,
-            name: newData.name,
-            desc: newData.desc,
-            extensions: { keyword: newData.keyword },
-          });
-
-          // データを更新して再描画
-          pm.trkpt.name = newData.name;
-          pm.trkpt.desc = newData.desc;
-          this.refreshPopup(pm, control);
-
-          notify("💾 検索履歴を更新しました");
+        // データを手動更新
+        pm.trkpt.name = newData.name;
+        pm.trkpt.desc = newData.desc;
+        pm.trkpt.lat = pos.lat;
+        pm.trkpt.lon = pos.lng;
+        if (pm.trkpt.extensions) {
+          pm.trkpt.extensions.keyword = newData.keyword;
         }
+
+        if (control?._saveToHistory) {
+          control._saveToHistory(pm.trkpt);
+        }
+
+        // 通知して UI をリフレッシュ
+        dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, { point: pm.trkpt });
+        notify("💾 検索履歴を更新しました");
       },
 
       onDelete: () => this.remove(pm),
@@ -116,36 +138,28 @@ export default class MarkerPreview {
       }),
     }).addTo(this.handler.map);
 
-    // データをマーカーに紐付け
     pm.trkpt = trkpt;
-
     this.handler.map.setView(pm.getLatLng(), 16);
 
-    // 初期ポップアップ表示
+    // 初期表示
     this.refreshPopup(pm, control);
 
-    // ドラッグ時
+    // ドラッグ時：本マーカーと同様の座標反映と住所解決
     pm.on("dragend", async (e) => {
       const pos = e.target.getLatLng();
       pm.trkpt.lat = pos.lat;
       pm.trkpt.lon = pos.lng;
 
-      // ドラッグ後も住所を自動更新して再描画
-      const res = await geoService.resolve({ lat: pos.lat, lon: pos.lng });
-      pm.trkpt.desc = res.desc || "";
+      // geoService で住所を再解決
+      await geoService.resolveAddress(pm.trkpt);
 
-      if (control && control._saveToHistory) {
-        control._saveToHistory({
-          _id: pm.trkpt._id, // ここが重要：元のIDを渡す
-          lat: pos.lat,
-          lon: pos.lng,
-          name: pm.trkpt.name,
-          desc: pm.trkpt.desc,
-          extensions: pm.trkpt.extensions,
-        });
+      // 履歴に反映
+      if (control?._saveToHistory) {
+        control._saveToHistory(pm.trkpt);
       }
 
-      this.refreshPopup(pm, control);
+      // 📣 通知してポップアップを更新
+      dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, { point: pm.trkpt });
     });
 
     pm._timer = setTimeout(() => this.remove(pm), 180000);
