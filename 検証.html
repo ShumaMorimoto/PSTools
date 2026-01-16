@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>検証ツール(高速版)</title>
+<style>
+body{font-family:sans-serif;padding:20px;background:#f5f5f5;color:#333}
+.container{max-width:1200px;margin:0 auto;background:#fff;padding:20px;border-radius:8px}
+.config{background:#fff3cd;padding:15px;margin-bottom:20px;border:1px solid #ffeeba}
+.box{display:flex;gap:10px;margin-bottom:20px}
+input[type=text]{flex:1;padding:10px}
+button{padding:10px 20px;background:#007bff;color:#fff;border:none;cursor:pointer}
+button:disabled{background:#ccc}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px;background:#e9ecef;padding:15px}
+.item{background:#fff;padding:10px;text-align:center}
+.val{font-weight:bold;font-size:1.1em}.lbl{font-size:.8em;color:#666}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px;border:1px solid #ddd;text-align:left;vertical-align:top}
+th{background:#f8f9fa}.p1{background:#d4edda}.p2{background:#cce5ff}.p3{background:#fff3cd}.err{background:#f8d7da}
+#loading{display:none;text-align:center;font-weight:bold;color:#007bff;margin:10px}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>検証ツール (高速並列版)</h2>
+<div class="config">
+ <div>Step 1: municipalities.json を選択</div>
+ <input type="file" id="f" accept=".json">
+ <div id="fs" style="color:red;margin-top:5px">未選択</div>
+</div>
+<div class="box">
+ <input type="text" id="k" placeholder="検索ワード" disabled>
+ <button id="b" onclick="run()" disabled>検索</button>
+</div>
+<div class="stats">
+ <div class="item"><div class="val" id="c-all">-</div><div class="lbl">総件数</div></div>
+ <div class="item"><div class="val" id="c-p1" style="color:green">-</div><div class="lbl">Pt1:Code</div></div>
+ <div class="item"><div class="val" id="c-p2" style="color:blue">-</div><div class="lbl">Pt2:文字</div></div>
+ <div class="item"><div class="val" id="c-p3" style="color:#d39e00">-</div><div class="lbl">Pt3:座標</div></div>
+ <div class="item"><div class="val" id="t-all">-</div><div class="lbl">全体時間</div></div>
+</div>
+<div id="loading">通信中...</div>
+<table id="tbl">
+ <thead><tr><th>No</th><th>タイトル</th><th>Code</th><th>判定</th><th>都道府県</th><th>市区町村</th><th>備考</th></tr></thead>
+ <tbody></tbody>
+</table>
+</div>
+<script>
+let master=[];
+document.getElementById('f').addEventListener('change',function(e){
+ const file=e.target.files[0];if(!file)return;
+ const r=new FileReader();
+ r.onload=function(ev){
+  try{
+   const j=JSON.parse(ev.target.result);
+   const d=j.municipalities?j.municipalities:j;
+   if(!Array.isArray(d))throw new Error("配列不正");
+   master=d.sort((a,b)=>(b.prefecture+b.municipality).length-(a.prefecture+a.municipality).length);
+   document.getElementById('fs').textContent=`OK: ${master.length}件`;
+   document.getElementById('fs').style.color="green";
+   document.getElementById('k').disabled=false;
+   document.getElementById('b').disabled=false;
+  }catch(err){alert("JSONエラー:"+err)}
+ };
+ r.readAsText(file);
+});
+async function run(){
+ const k=document.getElementById('k').value;if(!k)return;
+ document.getElementById('b').disabled=true;
+ document.getElementById('loading').style.display='block';
+ document.querySelector('#tbl tbody').innerHTML='';
+ ['c-all','c-p1','c-p2','c-p3','t-all'].forEach(i=>document.getElementById(i).textContent='-');
+ const start=performance.now();
+ try{
+  const res=await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(k)}`);
+  const feats=await res.json();
+  // 並列処理開始
+  const tasks=feats.map(async(f)=>{
+   const p=f.properties;
+   const g=f.geometry;
+   let r={t:p.title,c:p.AddressCode||"",pt:0,d:null,n:""};
+   // Pt1
+   if(r.c.length>=5){
+    const m=master.find(x=>x.muniCd5===r.c.substring(0,5));
+    if(m){r.pt=1;r.d=m;}
+   }
+   // Pt2
+   if(r.pt===0&&p.title){
+    const cl=p.title.replace(/\s+/g,"");
+    for(const m of master){
+     if(cl.startsWith((m.prefecture+m.municipality).replace(/\s+/g,""))){
+      r.pt=2;r.d=m;break;
+     }
+    }
+   }
+   // Pt3 (並列通信)
+   if(r.pt===0&&g&&g.coordinates){
+    try{
+     const u=`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${g.coordinates[1]}&lon=${g.coordinates[0]}`;
+     const v=await fetch(u).then(x=>x.json());
+     if(v&&v.results&&v.results.muniCd){
+      const m=master.find(x=>x.muniCd5===v.results.muniCd);
+      if(m){r.d=m;r.n=`逆引:${v.results.muniCd}`;}
+      else{r.n=`不一致:${v.results.muniCd}`;}
+     }else{r.n="逆引なし";}
+    }catch(e){r.n="通信エラー";}
+    r.pt=3;
+   }
+   return r;
+  });
+  const results=await Promise.all(tasks);
+  update(results,performance.now()-start);
+ }catch(e){alert("エラー:"+e);}
+ finally{
+  document.getElementById('b').disabled=false;
+  document.getElementById('loading').style.display='none';
+ }
+}
+function update(res,time){
+ const tb=document.querySelector('#tbl tbody');
+ const cnt={1:0,2:0,3:0,0:0};
+ res.forEach((r,i)=>{
+  cnt[r.pt]=(cnt[r.pt]||0)+1;
+  const tr=document.createElement('tr');
+  let c="",tx="不明";
+  if(r.pt===1){c="p1";tx="1.Code";}
+  else if(r.pt===2){c="p2";tx="2.Str";}
+  else if(r.pt===3){c="p3";tx="3.Geo";}
+  else{c="err";}
+  tr.innerHTML=`<td>${i+1}</td><td>${r.t}</td><td>${r.c}</td><td class="${c}">${tx}</td>
+  <td>${r.d?r.d.prefecture:"-"}</td><td>${r.d?r.d.municipality+"("+r.d.muniCd5+")":"-"}</td><td style="color:#666;font-size:0.8em">${r.n}</td>`;
+  tb.appendChild(tr);
+ });
+ document.getElementById('c-all').textContent=res.length;
+ document.getElementById('c-p1').textContent=cnt[1];
+ document.getElementById('c-p2').textContent=cnt[2];
+ document.getElementById('c-p3').textContent=cnt[3];
+ document.getElementById('t-all').textContent=Math.round(time)+"ms";
+}
+</script>
+</body>
+</html>
