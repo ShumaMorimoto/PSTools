@@ -22,7 +22,7 @@ export default class MarkerCluster {
     this.show = !this.show;
     if (!this.show) {
       this.clear();
-      this.handler.core.renumberMarkers(); 
+      this.handler.core.renumberMarkers();
     } else {
       this.redraw();
     }
@@ -61,7 +61,10 @@ export default class MarkerCluster {
       const radius = this._computeRadius(center, targetMarkers);
 
       const circle = L.circle(center, {
-        radius, color, fillColor: color, fillOpacity: 0.15,
+        radius,
+        color,
+        fillColor: color,
+        fillOpacity: 0.15,
       }).addTo(this.handler.map);
       this.layers.push(circle);
 
@@ -71,19 +74,33 @@ export default class MarkerCluster {
     });
   }
 
+  // async _callExternalClusterAPI(markers) {
+  //   const input = markers.map((m) => {
+  //     const ll = m.m.getLatLng();
+  //     return { lat: ll.lat, lon: ll.lng };
+  //   });
+  //   return await callApi("KMeansCluster", input);
+  // }
+
   async _callExternalClusterAPI(markers) {
     const input = markers.map((m) => {
       const ll = m.m.getLatLng();
       return { lat: ll.lat, lon: ll.lng };
     });
-    return await callApi("KMeansCluster", input);
+
+    // API呼び出し
+    const result = await callApi("KMeansCluster", input);
+
+    return result;
   }
 
   _computeCenter(markers) {
-    let sumLat = 0, sumLng = 0;
+    let sumLat = 0,
+      sumLng = 0;
     markers.forEach((e) => {
       const ll = e.m.getLatLng();
-      sumLat += ll.lat; sumLng += ll.lng;
+      sumLat += ll.lat;
+      sumLng += ll.lng;
     });
     return L.latLng(sumLat / markers.length, sumLng / markers.length);
   }
@@ -97,7 +114,15 @@ export default class MarkerCluster {
   }
 
   _getColor(i) {
-    const colors = ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#ffff33", "#a65628"];
+    const colors = [
+      "#e41a1c",
+      "#377eb8",
+      "#4daf4a",
+      "#984ea3",
+      "#ff7f00",
+      "#ffff33",
+      "#a65628",
+    ];
     return colors[i % colors.length];
   }
 

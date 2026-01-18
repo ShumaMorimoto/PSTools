@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoService.search 精度検証ツール</title>
+    <style>
+        body{font-family:sans-serif;padding:20px;background:#f5f5f5;color:#333}
+        .container{max-width:1200px;margin:0 auto;background:#fff;padding:20px;border-radius:8px}
+        .config{background:#fff3cd;padding:15px;margin-bottom:20px;border:1px solid #ffeeba}
+        .box{display:flex;gap:10px;margin-bottom:20px}
+        input[type=text]{flex:1;padding:10px}
+        button{padding:10px 20px;background:#007bff;color:#fff;border:none;cursor:pointer}
+        button:disabled{background:#ccc}
+        .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px;background:#e9ecef;padding:15px}
+        .item{background:#fff;padding:10px;text-align:center}
+        .val{font-weight:bold;font-size:1.1em}.lbl{font-size:.8em;color:#666}
+        table{width:100%;border-collapse:collapse;font-size:14px}
+        th,td{padding:8px;border:1px solid #ddd;text-align:left;vertical-align:top}
+        th{background:#f8f9fa}.p1{background:#d4edda}.p2{background:#cce5ff}.p3{background:#fff3cd}.err{background:#f8d7da}
+        #loading{display:none;text-align:center;font-weight:bold;color:#007bff;margin:10px}
+        .sub-info{font-size: 0.8em; color: #777; margin-top: 4px;}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>GeoService.search 精度検証ツール</h2>
+    <div class="config">
+        <div>Step 1: <strong>municipalities.json</strong> を選択</div>
+        <input type="file" id="f" accept=".json">
+        <div id="fs" style="color:red;margin-top:5px">未初期化</div>
+    </div>
+    <div class="box">
+        <input type="text" id="k" placeholder="検索ワードを入力" disabled>
+        <button id="b" onclick="run()" disabled>検索実行</button>
+    </div>
+    <div class="stats">
+        <div class="item"><div class="val" id="c-all">-</div><div class="lbl">総件数</div></div>
+        <div class="item"><div class="val" id="c-p1" style="color:green">-</div><div class="lbl">Pt1:Code</div></div>
+        <div class="item"><div class="val" id="c-p2" style="color:blue">-</div><div class="lbl">Pt2:文字</div></div>
+        <div class="item"><div class="val" id="c-p3" style="color:#d39e00">-</div><div class="lbl">Pt3:座標</div></div>
+        <div class="item"><div class="val" id="t-all">-</div><div class="lbl">解析時間</div></div>
+    </div>
+    <div id="loading">解析中...</div>
+    <table id="tbl">
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>GSI Title</th>
+                <th>判定</th>
+                <th>特定自治体 (Master)</th>
+                <th>反映後の desc</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script type="module">
+class GeoService {
+    constructor() {
+        this.muniArray = null;
+        this.muniMap = null;
+        this.reverseGeoCache = new Map();
+    }
+
+    async setMasterData(data) {
+        const rawList = data.municipalities || data;
+        this.muniArray = [...rawList].sort((a, b) => 
+            (b.prefecture + b.municipality).length - (a.prefecture + a.municipality).length
+        );
+        this.muniMap = new Map(this.muniArray.map(m => [m.muniCd5, m]));
+    }
+
+    async _fetchGsiReverseGeo(lat, lon) {
+        const cacheKey = `${lat.toFixed(6)},${lon.toFixed(6)}`;
+        if (this.reverseGeoCache.has(cacheKey)) return this.reverseGeoCache.get(cacheKey);
+        const url = `https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${lat}&lon=${lon}`;
+        try {
+            const res = await fetch(url);
+            const json = res.ok ? await res.json() : null;
+            if (json) this.reverseGeoCache.set(cacheKey, json);
+            return json;
+        } catch { return null; }
+    }
+
+    async resolveAddress(point) {
+        let muniCd5 = point.muniCd5 || null;
+        const originalTitle = point.desc || ""; 
+        let info = null;
+        let matchPattern = 0;
+        let townNameFromGeo = ""; 
+
+        // --- 【Pt1】 muniCd5 から検索 ---
+        if (muniCd5) {
+            const cdStr = String(muniCd5).substring(0, 5).padStart(5, "0");
+            info = this.muniMap.get(cdStr);
+            if (info) matchPattern = 1;
+        }
+
+        // --- 【Pt2】 文字列前方一致検索 ---
+        if (!info && originalTitle) {
+            const cleanTitle = originalTitle.replace(/\s+/g, "");
+            info = this.muniArray.find((m) =>
+                cleanTitle.startsWith((m.prefecture + m.municipality).replace(/\s+/g, ""))
+            );
+            if (info) matchPattern = 2;
+        }
+
+        // --- 【Pt3】 座標からの逆ジオコーディング ---
+        if (!info && point.lat !== undefined && point.lon !== undefined) {
+            const json = await this._fetchGsiReverseGeo(point.lat, point.lon);
+            if (json?.results?.muniCd) {
+                matchPattern = 3;
+                info = this.muniMap.get(json.results.muniCd);
+                townNameFromGeo = json.results.lv01Nm || ""; 
+            }
+        }
+
+        // --- 反映ロジック (更新版) ---
+        if (info) {
+            const resPref = info.prefecture;
+            const resMuni = info.municipality;
+
+            if (matchPattern === 1) {
+                // Pt1: 都道府県＋市区町村 (GSI titleは含めない)
+                point.desc = `${resPref}${resMuni}`;
+            } else if (matchPattern === 2) {
+                // Pt2: GSI結果(title) をそのまま
+                point.desc = originalTitle;
+            } else if (matchPattern === 3) {
+                // Pt3: 都道府県＋市区町村＋逆ジオ町字
+                point.desc = `${resPref}${resMuni}${townNameFromGeo}`;
+            }
+
+            point.extensions = { 
+                muniCd5: info.muniCd5, prefecture: resPref, 
+                municipality: resMuni, town: townNameFromGeo, matchPattern 
+            };
+        } else {
+            point.desc = originalTitle;
+        }
+        return point;
+    }
+
+    async search(query) {
+        if (!query) return [];
+        const url = `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(query)}`;
+        const res = await fetch(url);
+        const features = await res.json();
+
+        return await Promise.all(features.map(async (f) => {
+            const { title, addressCode } = f.properties;
+            const [lon, lat] = f.geometry.coordinates;
+            let point = { lat, lon, desc: title, muniCd5: addressCode };
+            await this.resolveAddress(point);
+            return {
+                lat: point.lat, lon: point.lon, 
+                gsiTitle: title,
+                gsiCode: addressCode,
+                desc: point.desc,
+                matchPattern: point.extensions?.matchPattern || 0,
+                info: point.extensions
+            };
+        }));
+    }
+}
+
+// UI Bridge
+const geoService = new GeoService();
+
+window.run = async function() {
+    const k = document.getElementById('k').value;
+    if (!k) return;
+    document.getElementById('b').disabled = true;
+    document.getElementById('loading').style.display = 'block';
+    const tb = document.querySelector('#tbl tbody');
+    tb.innerHTML = '';
+    const start = performance.now();
+    try {
+        const results = await geoService.search(k);
+        const cnt = { 1: 0, 2: 0, 3: 0, 0: 0 };
+        results.forEach((r, i) => {
+            cnt[r.matchPattern]++;
+            const tr = document.createElement('tr');
+            const classes = { 1: 'p1', 2: 'p2', 3: 'p3', 0: 'err' };
+            const labels = { 1: '1.Code', 2: '2.Str', 3: '3.Geo', 0: '不明' };
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td><strong>${r.gsiTitle}</strong><div class="sub-info">Code: ${r.gsiCode || '-'}</div></td>
+                <td class="${classes[r.matchPattern]}">${labels[r.matchPattern]}</td>
+                <td>${r.info ? `${r.info.prefecture}${r.info.municipality}<div class="sub-info">ID: ${r.info.muniCd5}</div>` : '-'}</td>
+                <td>${r.desc}</td>
+            `;
+            tb.appendChild(tr);
+        });
+        document.getElementById('c-all').textContent = results.length;
+        document.getElementById('c-p1').textContent = cnt[1];
+        document.getElementById('c-p2').textContent = cnt[2];
+        document.getElementById('c-p3').textContent = cnt[3];
+        document.getElementById('t-all').textContent = Math.round(performance.now() - start) + "ms";
+    } catch (e) { alert(e); } finally {
+        document.getElementById('b').disabled = false;
+        document.getElementById('loading').style.display = 'none';
+    }
+};
+
+document.getElementById('f').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = async (ev) => {
+        try {
+            await geoService.setMasterData(JSON.parse(ev.target.result));
+            document.getElementById('fs').textContent = `OK: ${geoService.muniArray.length}件`;
+            document.getElementById('fs').style.color = "green";
+            document.getElementById('k').disabled = false;
+            document.getElementById('b').disabled = false;
+        } catch (err) { alert(err); }
+    };
+    r.readAsText(file);
+});
+</script>
+</body>
+</html>

@@ -34,7 +34,7 @@ export default class MarkerAddress {
     try {
       // 1. 各サービスに point 参照を渡して直接更新してもらう
       // geoService 内部で point.name や point.extensions が書き換わる
-      await geoService.resolve(point);
+      await geoService.resolveAddress(point);
 
       // 2. 完了時、自分がまだ「最新のリクエスト」であるかを確認（追い越しガード）
       // ドラッグ中などで次のリクエストが既に走っている場合は、この通知をスキップする

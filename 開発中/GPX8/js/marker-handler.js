@@ -56,13 +56,13 @@ export default class MarkerHandler {
 
     // 1. リストやレイヤー構成が変わった時の再描画
     markerEvents.addEventListener(MarkerEventTypes.LIST_CHANGED, () =>
-      this._drawLayers()
+      this._drawLayers(),
     );
 
     // 2. ポイント内のデータ（住所・名称・選択状態など）が更新された時
     markerEvents.addEventListener(MarkerEventTypes.POINT_UPDATED, (e) => {
       // 距離や描画レイヤーの更新
-      this._drawLayers();
+      //      this._drawLayers();
 
       const { point } = e.detail || {};
       if (!point) return;
@@ -108,6 +108,16 @@ export default class MarkerHandler {
   // ---------------------------------------------------
   changeState(newState) {
     this.state = newState;
+
+    // --- 下位コンポーネントのクリック可否を一括制御 ---
+    // IDLE時のみ、足跡(Boundary)やしるし(Indicator)を「反応あり」にする
+    const isInteractive = newState === MarkerHandler.State.IDLE;
+
+    // Boundary内の全足跡マーカーのクリックを有効/無効化
+    this.boundary.setInteractive(isInteractive);
+    // Indicator（しるし）自体のクリックを有効/無効化
+    this.indicator.setInteractive(isInteractive);
+
     this.selector.onHandlerStateChanged({
       mode: this.selector.currentMode,
       state: newState,

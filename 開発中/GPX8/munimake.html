@@ -1,0 +1,146 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>MuniInfo JSON Builder (Webデータから)</title>
+    <style>
+        body{font-family:sans-serif;padding:20px;line-height:1.6;background:#f0f2f5}
+        .container{max-width:900px;margin:0 auto;background:#fff;padding:30px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1)}
+        .step{margin-bottom:30px;padding:20px;border:1px solid #eee;border-radius:8px}
+        h2{margin-top:0;color:#007bff}
+        textarea{width:100%;height:250px;font-family:monospace;margin-top:10px;padding:10px;box-sizing:border-box;resize:vertical}
+        .controls{margin-top:20px;display:flex;gap:10px;flex-wrap:wrap}
+        button{padding:12px 24px;border:none;border-radius:6px;cursor:pointer;font-weight:bold}
+        .btn-primary{background:#007bff;color:#fff}
+        .btn-success{background:#28a745;color:#fff}
+        .info{background:#e7f3ff;padding:15px;border-radius:6px;font-size:14px;margin-bottom:20px;word-break:break-all;}
+        .error-msg{color:red;font-weight:bold;margin-top:10px;}
+        table{width:100%;border-collapse:collapse;margin-top:20px;font-size:12px}
+        th,td{border:1px solid #ddd;padding:8px;text-align:left}
+        th{background:#f8f9fa}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>MuniInfo JSON Builder (Webデータから)</h2>
+    
+    <div class="info">
+        <strong>使い方:</strong><br>
+        1. <a href="https://www.soumu.go.jp/denshijiti/code.html" target="_blank">総務省の「全国地方公共団体コード」ページ</a>を開きます。<br>
+        2. 目的のデータが含まれる**テーブルのHTMLソース**をコピーします。<br>
+           （例: デベロッパーツール(F12)でテーブル要素を右クリック → Copy → Copy element outerHTML）<br>
+        3. 下のテキストエリアに貼り付け、「HTMLからJSONへ変換」を押してください。<br>
+        <div class="error-msg" id="errorMessage"></div>
+    </div>
+
+    <div class="step">
+        <strong>1. 取得したHTMLソースを貼り付け</strong>
+        <textarea id="htmlInput" placeholder="&#10;<table class='some-class'>&#10;  <thead>...</thead>&#10;  <tbody>&#10;    <tr><td>01100</td><td>北海道</td><td>札幌市</td><td>サツポロシ</td>...</tr>&#10;    <tr><td>01202</td><td>北海道</td><td>函館市</td><td>ハコダテシ</td>...</tr>&#10;  </tbody>&#10;</table>"></textarea>
+    </div>
+
+    <div class="controls">
+        <button class="btn-primary" onclick="convertHtmlToJson()">HTMLからJSONへ変換 (プレビュー)</button>
+        <button id="dlBtn" class="btn-success" onclick="download()" disabled>JSONファイルをダウンロード (municipalities.json)</button>
+    </div>
+
+    <div id="previewArea" style="display:none">
+        <h3>変換プレビュー (先頭5件)</h3>
+        <table id="previewTable">
+            <thead><tr><th>muniCd5</th><th>prefecture</th><th>municipality</th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <p>合計: <span id="totalCount">0</span> 件</p>
+    </div>
+</div>
+
+<script>
+    let generatedData = null;
+
+    function convertHtmlToJson() {
+        const htmlInput = document.getElementById('htmlInput').value.trim();
+        const errorMessageDiv = document.getElementById('errorMessage');
+        errorMessageDiv.textContent = ''; // Clear previous errors
+
+        if (!htmlInput) {
+            errorMessageDiv.textContent = "HTMLソースをテキストエリアに貼り付けてください。";
+            return;
+        }
+
+        try {
+            // DOMParserを使ってHTML文字列を解析
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlInput, 'text/html');
+
+            // --- ここが重要: 抽出する要素のセレクタをWebサイトに合わせて調整 ---
+            // 例: 総務省の「全国地方公共団体コード」ページ（2023年時点の構造を仮定）
+            // テーブルは一つではない可能性があるので、適切なセレクタを選んでください。
+            // 例えば、都道府県・市区町村のテーブルが <table class="tbl-class"> だと仮定
+            const rows = doc.querySelectorAll('table tr'); // 適切なセレクタに変更
+            
+            const result = [];
+            let headerSkipped = false;
+
+            rows.forEach(row => {
+                if (!headerSkipped) {
+                    // ヘッダ行をスキップするロジック (<th>がある行や、最初の1行をスキップなど)
+                    if (row.querySelector('th')) { // <th>があればヘッダとみなす
+                        headerSkipped = true;
+                        return;
+                    }
+                    // あるいは、単純に最初の1行をスキップする場合
+                    // headerSkipped = true;
+                    // return;
+                }
+
+                const cells = row.querySelectorAll('td');
+                // 総務省のコード一覧は、通常「団体コード」「都道府県名」「市区町村名」の順に並んでいます。
+                // したがって、cells[0], cells[1], cells[2] を使うことが多いです。
+                if (cells.length >= 3) { // 少なくとも3列あることを確認
+                    const muniCd5 = cells[0].textContent.trim().padStart(5, '0');
+                    const prefecture = cells[1].textContent.trim();
+                    const municipality = cells[2].textContent.trim();
+
+                    if (muniCd5 && prefecture && municipality) { // 空でないことを確認
+                        result.push({ muniCd5, prefecture, municipality });
+                    }
+                }
+            });
+
+            if (result.length === 0) {
+                errorMessageDiv.textContent = "HTMLから有効な自治体データを抽出できませんでした。セレクタが正しいか、貼り付けたHTMLにデータが含まれているか確認してください。";
+                document.getElementById('dlBtn').disabled = true;
+                document.getElementById('previewArea').style.display = 'none';
+                return;
+            }
+
+            generatedData = { municipalities: result };
+            showPreview(result);
+            document.getElementById('dlBtn').disabled = false;
+
+        } catch (e) {
+            errorMessageDiv.textContent = "HTML解析中にエラーが発生しました: " + e.message;
+            console.error(e);
+            document.getElementById('dlBtn').disabled = true;
+            document.getElementById('previewArea').style.display = 'none';
+        }
+    }
+
+    function showPreview(data) {
+        const tbody = document.querySelector('#previewTable tbody');
+        tbody.innerHTML = '';
+        
+        data.slice(0, 5).forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${item.muniCd5}</td><td>${item.prefecture}</td><td>${item.municipality}</td>`;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('totalCount').textContent = data.length;
+        document.getElementById('previewArea').style.display = 'block';
+    }
+
+    function download() {
+        if (!generatedData) return;
+
+        const blob = new Blob([JSON.stringify(generatedData, null,

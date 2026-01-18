@@ -1,0 +1,239 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>GeoSearch 精度検証ツール</title>
+    <style>
+        body{font-family:sans-serif;padding:20px;background:#f5f5f5;color:#333}
+        .container{max-width:1300px;margin:0 auto;background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}
+        .config-area{background:#fff3cd;padding:15px;margin-bottom:20px;border:1px solid #ffeeba}
+        .box{display:flex;gap:10px;margin-bottom:20px}
+        input[type=text]{flex:1;padding:12px;border:1px solid #ccc;border-radius:4px}
+        button{padding:10px 20px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer}
+        button:disabled{background:#ccc}
+        .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px}
+        .stat-item{background:#e9ecef;padding:15px;text-align:center;border-radius:4px}
+        .stat-val{font-weight:bold;font-size:1.2em;display:block}
+        .stat-lbl{font-size:.8em;color:#666}
+        .filter-area{display:flex;gap:15px;background:#f8f9fa;padding:15px;border:1px solid #ddd;margin-bottom:10px;align-items:center}
+        select{padding:8px;border:1px solid #ccc;border-radius:4px}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th,td{padding:10px;border:1px solid #ddd;text-align:left}
+        th{background:#f8f9fa}
+        .p1{background:#d4edda} .p2{background:#cce5ff} .p3{background:#fff3cd} .err{background:#f8d7da}
+        .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;color:#fff}
+        .bg-web{background:#007bff} .bg-hist{background:#28a745}
+        .sub-info{font-size: 0.8em; color: #777}
+        tbody tr{cursor:pointer}
+        tbody tr:hover{opacity:0.8; outline: 1px solid #999}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>GeoSearch 精度検証ツール</h2>
+
+    <div class="config-area">
+        <strong>1. municipalities.json 読み込み</strong>
+        <input type="file" id="fileInput" accept=".json">
+        <span id="loadMsg" style="margin-left:10px"></span>
+    </div>
+
+    <div class="box">
+        <select id="searchMode">
+            <option value="all">履歴＋地理院</option>
+            <option value="web">地理院のみ</option>
+        </select>
+        <input type="text" id="queryInput" placeholder="検索ワードを入力してEnter..." disabled>
+        <button id="execBtn" onclick="runSearch()" disabled>検索実行</button>
+    </div>
+
+    <div class="filter-area">
+        <strong>表示フィルタ (JISコード順):</strong>
+        <select id="filterPref"><option value="">すべての都道府県</option></select>
+        <select id="filterMuni"><option value="">すべての市区町村</option></select>
+        <label><input type="checkbox" id="onlyError"> 判定不明(Err)のみ</label>
+        <span style="margin-left:auto; font-size:11px; color:#999">※行クリックで詳細をConsoleに表示</span>
+    </div>
+
+    <div class="stats">
+        <div class="stat-item"><span class="stat-val" id="s-all">-</span><span class="stat-lbl">総件数</span></div>
+        <div class="stat-item"><span class="stat-val" id="s-p1" style="color:green">-</span><span class="stat-lbl">Pt1:Code</span></div>
+        <div class="stat-item"><span class="stat-val" id="s-p2" style="color:blue">-</span><span class="stat-lbl">Pt2:Str</span></div>
+        <div class="stat-item"><span class="stat-val" id="s-p3" style="color:#856404">-</span><span class="stat-lbl">Pt3:Geo</span></div>
+        <div class="stat-item"><span class="stat-val" id="s-time">-</span><span class="stat-lbl">処理時間</span></div>
+    </div>
+
+    <table id="resultTable">
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Source / 名称</th>
+                <th>判定(matchPattern)</th>
+                <th>特定自治体 (extensions)</th>
+                <th>最終解決 (desc)</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script type="module">
+    import { geoService } from "./js/components/geo-service.js";
+    import { markerHistory } from "./js/marker/marker-history.js";
+
+    let lastResults = [];
+
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const data = JSON.parse(await file.text());
+            const rawList = data.municipalities || [];
+            
+            // searchロジックと同様に文字列長でソートしてマスタ保持
+            geoService.muniArray = [...rawList].sort((a, b) => 
+                (b.prefecture + b.municipality).length - (a.prefecture + a.municipality).length
+            );
+            geoService.muniMap = new Map(geoService.muniArray.map(m => [m.muniCd5, m]));
+            
+            document.getElementById('loadMsg').textContent = `読込完了 (${rawList.length}件)`;
+            document.getElementById('queryInput').disabled = false;
+            document.getElementById('execBtn').disabled = false;
+        } catch(err) {
+            alert("JSON解析エラー: " + err.message);
+        }
+    });
+
+    document.getElementById('queryInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const btn = document.getElementById('execBtn');
+            if (!btn.disabled) runSearch();
+        }
+    });
+
+    window.runSearch = async function() {
+        const query = document.getElementById('queryInput').value.trim();
+        const mode = document.getElementById('searchMode').value;
+        if (!query) return;
+
+        const startTime = performance.now();
+        document.getElementById('execBtn').disabled = true;
+
+        try {
+            const webRes = await geoService.search(query);
+            const histRes = (mode === 'all') ? markerHistory.search(query) : [];
+
+            lastResults = [
+                ...histRes.map(h => ({ ...h, source: 'history' })),
+                ...webRes.map(w => ({ ...w, source: 'web' }))
+            ];
+
+            updateFilterOptions();
+            render();
+            
+            document.getElementById('s-time').textContent = Math.round(performance.now() - startTime) + "ms";
+        } catch (err) {
+            console.error(err);
+            alert("エラー: " + err.message);
+        } finally {
+            document.getElementById('execBtn').disabled = false;
+        }
+    };
+
+    // フィルタの選択肢をJISコード順に更新
+    function updateFilterOptions() {
+        // 都道府県をコード順（JISコードの上2桁相当）で抽出
+        const prefMap = new Map();
+        lastResults.forEach(r => {
+            if (r.extensions?.prefecture && r.extensions?.muniCd5) {
+                const prefCode = r.extensions.muniCd5.substring(0, 2);
+                prefMap.set(r.extensions.prefecture, prefCode);
+            }
+        });
+        
+        const sortedPrefs = [...prefMap.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(e => e[0]);
+
+        const pSelect = document.getElementById('filterPref');
+        pSelect.innerHTML = '<option value="">すべての都道府県</option>' + 
+                            sortedPrefs.map(p => `<option value="${p}">${p}</option>`).join('');
+        document.getElementById('filterMuni').innerHTML = '<option value="">すべての市区町村</option>';
+    }
+
+    document.getElementById('filterPref').addEventListener('change', (e) => {
+        const pref = e.target.value;
+        const filtered = pref ? lastResults.filter(r => r.extensions?.prefecture === pref) : lastResults;
+        
+        // 市区町村をコード順（5桁フル）で抽出
+        const muniMap = new Map();
+        filtered.forEach(r => {
+            if (r.extensions?.municipality && r.extensions?.muniCd5) {
+                muniMap.set(r.extensions.municipality, r.extensions.muniCd5);
+            }
+        });
+
+        const sortedMunis = [...muniMap.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(e => e[0]);
+
+        const mSelect = document.getElementById('filterMuni');
+        mSelect.innerHTML = '<option value="">すべての市区町村</option>' + 
+                            sortedMunis.map(m => `<option value="${m}">${m}</option>`).join('');
+        render();
+    });
+
+    document.getElementById('filterMuni').addEventListener('change', render);
+    document.getElementById('onlyError').addEventListener('change', render);
+
+    function render() {
+        const pref = document.getElementById('filterPref').value;
+        const muni = document.getElementById('filterMuni').value;
+        const onlyErr = document.getElementById('onlyError').checked;
+
+        const filtered = lastResults.filter(r => {
+            const m1 = !pref || r.extensions?.prefecture === pref;
+            const m2 = !muni || r.extensions?.municipality === muni;
+            const pat = r.extensions?.matchPattern || 0;
+            const m3 = !onlyErr || pat === 0;
+            return m1 && m2 && m3;
+        });
+
+        const tbody = document.querySelector('#resultTable tbody');
+        tbody.innerHTML = '';
+        const stats = { all: filtered.length, p1: 0, p2: 0, p3: 0 };
+        const labels = { 1: 'Pt1:Code', 2: 'Pt2:Str', 3: 'Pt3:Geo', 0: '不明' };
+        const classes = { 1: 'p1', 2: 'p2', 3: 'p3', 0: 'err' };
+
+        filtered.forEach((r, i) => {
+            const pat = r.extensions?.matchPattern || 0;
+            if (stats.hasOwnProperty(`p${pat}`)) stats[`p${pat}`]++;
+
+            const tr = document.createElement('tr');
+            tr.className = classes[pat] || 'err';
+            tr.onclick = () => {
+                console.log(`--- Result No.${i+1} Raw Data ---`);
+                console.dir(r);
+            };
+
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td>
+                    <span class="badge ${r.source === 'history' ? 'bg-hist' : 'bg-web'}">${r.source}</span><br>
+                    <strong>${r.name || 'No Name'}</strong>
+                </td>
+                <td><strong>${labels[pat]}</strong></td>
+                <td>
+                    ${r.extensions?.prefecture || ''}${r.extensions?.municipality || '未特定'}<br>
+                    <span class="sub-info">JIS: ${r.extensions?.muniCd5 || '-'}</span>
+                </td>
+                <td>${r.desc || '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('s-all').textContent = stats.all;
+        document.getElementById('s-p1').textContent = stats.p1;
+        document.getElementById('s-p2').textContent = stats.p2;
+        document.getElementById('s-p3').textContent = stats.p3;
+    }
+</script>
+</body>
+</html>

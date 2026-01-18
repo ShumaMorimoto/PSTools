@@ -7,17 +7,66 @@
  */
 export class GeoService {
   constructor() {
-    this.muniCache = null;
+    this.muniArray = null; // Pt2検索用のソート済み配列
+    this.muniMap = null; // Pt1/Pt3検索用のMap
+    this.reverseGeoCache = new Map();
+
     this.geoJsonCache = new Map();
     this.nominatimCache = new Map();
     this.MUNI_JSON_PATH = new URL(
       "./../../municipalities.json",
-      import.meta.url
+      import.meta.url,
     ).href;
 
-    // Queue for Nominatim (limit 1 req/sec)
     this.requestQueue = [];
     this.isProcessingQueue = false;
+  }
+
+  /**
+   * 内部メソッド: マスタデータを一度だけロード・加工する
+   */
+  async _loadMuniMaster() {
+    if (this.muniArray) return;
+
+    try {
+      const res = await fetch(this.MUNI_JSON_PATH);
+      if (!res.ok) throw new Error("Master file load failed");
+      const data = await res.json();
+      const rawList = data.municipalities || [];
+
+      // Pt2用：長い自治体名から判定するため、降順ソートして保持
+      this.muniArray = [...rawList].sort(
+        (a, b) =>
+          (b.prefecture + b.municipality).length -
+          (a.prefecture + a.municipality).length,
+      );
+
+      // Pt1/Pt3用：コード検索を O(1) にするためMapを作成
+      this.muniMap = new Map(this.muniArray.map((m) => [m.muniCd5, m]));
+    } catch (e) {
+      console.error("GeoService: Failed to load master data.", e);
+      this.muniArray = [];
+      this.muniMap = new Map();
+    }
+  }
+
+  /**
+   * 内部メソッド: 地理院逆ジオコーダのキャッシュ付き呼び出し
+   */
+  async _fetchGsiReverseGeo(lat, lon) {
+    const cacheKey = `${lat.toFixed(6)},${lon.toFixed(6)}`;
+    if (this.reverseGeoCache.has(cacheKey))
+      return this.reverseGeoCache.get(cacheKey);
+
+    const url = `https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${lat}&lon=${lon}`;
+    try {
+      const res = await fetch(url);
+      const json = res.ok ? await res.json() : null;
+      if (json) this.reverseGeoCache.set(cacheKey, json);
+      return json;
+    } catch {
+      return null;
+    }
   }
 
   // =========================================================
@@ -49,72 +98,152 @@ export class GeoService {
   // 2. ResolveAddress: 位置情報に自治体情報を付与する
   // =========================================================
   async resolveAddress(point) {
-    const master = await this._loadMuniMaster();
-
-    // 1. 既存の値を最優先で確保（ここにあるものは絶対に破壊しない）
-    let muniCd5 = point.extensions?.muniCd5 || point.muniCd5 || null;
-    let townName = point.extensions?.town || "";
-    const originalDesc = point.desc || "";
-    const originalName = point.name || "";
-
+    await this._loadMuniMaster();
+    let muniCd5 = point.extensions?.muniCd5 || null;
+    const originalTitle = point.desc || ""; // GSIの検索結果 title
     let info = null;
+    let matchPattern = 0;
+    let town = "";
 
-    // --- 2. muniCd5 からマスタを特定 ---
+    // --- 【Pt1】 muniCd5 から検索 ---
     if (muniCd5) {
-      const cdStr = String(muniCd5).padStart(5, "0");
-      info = master.municipalities.find((m) => m.muniCd5 === cdStr);
+      const cdStr = String(muniCd5).substring(0, 5).padStart(5, "0");
+      info = this.muniMap.get(cdStr);
+      if (info) matchPattern = 1;
     }
 
-    // --- 3. B優先: コードで特定できない場合、既存の desc からマスタを逆引き ---
-    if (!info && originalDesc) {
-      info = master.municipalities.find((m) =>
-        originalDesc.startsWith(m.prefecture + m.municipality)
+    // --- 【Pt2】 文字列前方一致検索 ---
+    if (!info && originalTitle) {
+      const cleanTitle = originalTitle.replace(/\s+/g, "");
+      info = this.muniArray.find((m) =>
+        cleanTitle.startsWith(
+          (m.prefecture + m.municipality).replace(/\s+/g, ""),
+        ),
       );
-      if (info) muniCd5 = info.muniCd5;
+      if (info) matchPattern = 2;
     }
 
-    // --- 4. 最終手段: 座標から地理院APIを叩く ---
+    // --- 【Pt3】 座標からの逆ジオコーディング ---
     if (!info && point.lat !== undefined && point.lon !== undefined) {
-      const url = `https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=${point.lat}&lon=${point.lon}`;
-      try {
-        const res = await fetch(url);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.results?.muniCd) {
-            muniCd5 = json.results.muniCd;
-            // townName も既存がなければ API の値を使う
-            townName = townName || json.results.lv01Nm || "";
-            info = master.municipalities.find((m) => m.muniCd5 === muniCd5);
-          }
-        }
-      } catch (e) {
-        console.warn("GSI Resolve failed", e);
+      const json = await this._fetchGsiReverseGeo(point.lat, point.lon);
+      if (json?.results?.muniCd) {
+        matchPattern = 3;
+        info = this.muniMap.get(json.results.muniCd);
+        town = json.results.lv01Nm || "";
       }
     }
 
-    // --- 5. 反映ロジック: 全て「既存が空なら埋める」という非破壊スタイル ---
+    // --- 反映ロジック ---
     if (info) {
       if (!point.extensions) point.extensions = {};
 
+      const resPref = info.prefecture;
+      const resMuni = info.municipality;
+
+      // 仕様に基づいた desc の決定
+      if (matchPattern === 1) {
+        // Pt1: マスタ(都道府県+市区町村) + GSI結果(title)
+        point.desc = `${resPref}${resMuni}`;
+      } else if (matchPattern === 2) {
+        // Pt2: GSI結果(title) をそのまま使用
+        point.desc = originalTitle;
+      } else if (matchPattern === 3) {
+        // Pt3: マスタ(都道府県+市区町村) + 逆ジオ結果(町字)
+        point.desc = `${resPref}${resMuni}${town}`;
+      }
+
+      // 共通の拡張情報保存
       Object.assign(point.extensions, {
-        muniCd5: point.extensions.muniCd5 || muniCd5,
-        prefecture: point.extensions.prefecture || info.prefecture,
-        municipality: point.extensions.municipality || info.municipality,
-        town: point.extensions.town || townName,
+        muniCd5: info.muniCd5,
+        prefecture: resPref,
+        municipality: resMuni,
+        town: town,
+        matchPattern: matchPattern,
       });
 
-      // desc (フル住所): 空の時だけ構築。既存があるなら 1文字たりともいじらない。
-      if (!point.desc) {
-        point.desc = `${info.prefecture}${info.municipality}${point.extensions.town}`;
-      }
-
-      // name (名前): 空の時だけ補完。
+      // name が未設定なら補完
       if (!point.name) {
-        point.name = point.extensions.town || info.municipality;
+        point.name = town ? town : resMuni;
       }
     }
-
     return point;
+  }
+
+  /**
+   * 地名・キーワード検索を実行し、自治体情報を付与して返す
+   * @param {string} query 検索キーワード
+   * @returns {Promise<Array>} 検索結果リスト
+   */
+  /**
+   * 地名・キーワード検索を実行し、自治体情報を付与して返す
+   */
+  async search(query) {
+    if (!query || query.trim().length < 2) return [];
+
+    await this._loadMuniMaster();
+
+    try {
+      const url = `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(
+        query,
+      )}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("GSI Search API error");
+
+      const features = await res.json();
+
+      return await Promise.all(
+        features.map(async (f) => {
+          const props = f.properties;
+          const [lon, lat] = f.geometry.coordinates;
+
+          // pointオブジェクトを作成（extensions内にGSIの全情報を封入）
+          let point = {
+            lat: lat,
+            lon: lon,
+            name: props.title,
+            desc: props.title,
+            extensions: {
+              muniCd5: props.addressCode
+                ? String(props.addressCode).substring(0, 5).padStart(5, "0")
+                : null,
+              keyword: query,
+            },
+          };
+
+          // 3段階の住所解決を実行
+          await this.resolveAddress(point);
+
+          return point;
+        }),
+      );
+    } catch (e) {
+      console.error("GeoService.search failed:", e);
+      return [];
+    }
+  }
+
+  // --- 2. fetchBoundary: 自治体境界の取得 ---
+  async fetchBoundary(point) {
+    let target = point;
+    if (!target.extensions?.muniCd5) {
+      target = await this.resolve(point);
+    }
+
+    const { muniCd5 } = target.extensions || {};
+    if (!muniCd5) return null;
+
+    if (this.geoJsonCache.has(muniCd5)) return this.geoJsonCache.get(muniCd5);
+
+    const url = `https://shikuchoson-boundaries.sankichi.app/${muniCd5}.geojson`;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const geoJson = await res.json();
+      this.geoJsonCache.set(muniCd5, geoJson);
+      return geoJson;
+    } catch {
+      return null;
+    }
   }
 
   // =========================================================
@@ -232,15 +361,18 @@ export class GeoService {
           resolve(data);
         } catch (e) {
           if (retryCount < 3) {
-            setTimeout(() => {
-              this.requestQueue.unshift({
-                point,
-                retryCount: retryCount + 1,
-                resolve,
-                reject,
-              });
-              this._processQueue();
-            }, 2000 * (retryCount + 1));
+            setTimeout(
+              () => {
+                this.requestQueue.unshift({
+                  point,
+                  retryCount: retryCount + 1,
+                  resolve,
+                  reject,
+                });
+                this._processQueue();
+              },
+              2000 * (retryCount + 1),
+            );
             return;
           } else {
             reject(e);
@@ -250,18 +382,6 @@ export class GeoService {
     } finally {
       this.isProcessingQueue = false;
       if (this.requestQueue.length > 0) this._processQueue();
-    }
-  }
-
-  async _loadMuniMaster() {
-    if (this.muniCache) return this.muniCache;
-    try {
-      const res = await fetch(this.MUNI_JSON_PATH);
-      if (!res.ok) throw new Error("Failed");
-      this.muniCache = await res.json();
-      return this.muniCache;
-    } catch {
-      return { municipalities: [] };
     }
   }
 }

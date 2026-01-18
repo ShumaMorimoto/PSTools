@@ -1,7 +1,13 @@
-﻿export function createPopupContent(data, marker, { onSave, onDelete, onUpdateAddress, onCopy }) {
+﻿export function createPopupContent(
+  data,
+  marker,
+  { onSave, onDelete, onUpdateAddress, onCopy }
+) {
   const container = document.createElement("div");
   container.className = "popup-card";
   container.setAttribute("data-mode", "show");
+
+  L.DomEvent.disableClickPropagation(container);
 
   const lat = data.lat?.toFixed(5) || "?";
   const lon = (data.lon || data.lng)?.toFixed(5) || "?";
@@ -19,9 +25,13 @@
       </div>
       <div class="edit-mode">
         <label class="p-label">履歴名称</label>
-        <input type="text" class="p-input" name="name" value="${data.name || ""}">
+        <input type="text" class="p-input" name="name" value="${
+          data.name || ""
+        }">
         <label class="p-label">備考</label>
-        <textarea class="p-input" name="desc" rows="2">${data.desc || ""}</textarea>
+        <textarea class="p-input" name="desc" rows="2">${
+          data.desc || ""
+        }</textarea>
         <label class="p-label">キーワード</label>
         <input type="text" class="p-input" name="keyword" value="${initialKeyword}">
       </div>
@@ -41,10 +51,13 @@
   const setMode = (mode) => container.setAttribute("data-mode", mode);
 
   // イベント設定
-  container.querySelector("#p-header-coord").onclick = () => onCopy?.(`${lat}, ${lon}`);
-  container.querySelector(".btn-update-trigger").onclick = () => onUpdateAddress();
+  container.querySelector("#p-header-coord").onclick = () =>
+    onCopy?.(`${lat}, ${lon}`);
+  container.querySelector(".btn-update-trigger").onclick = () =>
+    onUpdateAddress();
   container.querySelector(".btn-edit").onclick = () => setMode("editable");
-  container.querySelector(".btn-close-popup").onclick = () => marker.closePopup();
+  container.querySelector(".btn-close-popup").onclick = () =>
+    marker.closePopup();
   container.querySelector(".btn-cancel-edit").onclick = () => setMode("show");
 
   // 【重要】保存処理の修正
@@ -60,15 +73,19 @@
       desc: nextDesc,
       extensions: {
         ...(data.extensions || {}),
-        keyword: nextKeyword
-      }
+        keyword: nextKeyword,
+      },
     });
 
     // 2. 画面表示の即時更新（これが抜けると表示が古いままになる）
-    container.querySelector(".view-mode .p-title").textContent = nextName || "名称未設定";
-    container.querySelector(".view-mode .p-desc").textContent = nextDesc || "---";
-    container.querySelector(".view-mode .p-tag").textContent = nextKeyword ? `# ${nextKeyword}` : "";
-    
+    container.querySelector(".view-mode .p-title").textContent =
+      nextName || "名称未設定";
+    container.querySelector(".view-mode .p-desc").textContent =
+      nextDesc || "---";
+    container.querySelector(".view-mode .p-tag").textContent = nextKeyword
+      ? `# ${nextKeyword}`
+      : "";
+
     // 3. データの内部参照も更新（次に編集を開いた時のため）
     if (!data.extensions) data.extensions = {};
     data.name = nextName;

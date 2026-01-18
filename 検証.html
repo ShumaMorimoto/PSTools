@@ -79,7 +79,7 @@ async function run(){
   const tasks=feats.map(async(f)=>{
    const p=f.properties;
    const g=f.geometry;
-   let r={t:p.title,c:p.AddressCode||"",pt:0,d:null,n:""};
+   let r={t:p.title,c:p.addressCode||"",pt:0,d:null,n:""};
    // Pt1
    if(r.c.length>=5){
     const m=master.find(x=>x.muniCd5===r.c.substring(0,5));

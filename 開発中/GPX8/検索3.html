@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoSearch 統合検証ツール</title>
+    <style>
+        body{font-family:sans-serif;padding:20px;background:#f5f5f5;color:#333}
+        .container{max-width:1300px;margin:0 auto;background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}
+        .header-flex{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+        .config-area{background:#fff3cd;padding:15px;margin-bottom:20px;border:1px solid #ffeeba;border-radius:4px}
+        .box{display:flex;gap:10px;margin-bottom:20px}
+        input[type=text]{flex:1;padding:12px;border:1px solid #ccc;border-radius:4px}
+        button{padding:10px 20px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:bold}
+        button:disabled{background:#ccc}
+        .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px}
+        .item{background:#e9ecef;padding:15px;text-align:center;border-radius:4px}
+        .val{font-weight:bold;font-size:1.2em;display:block}
+        .lbl{font-size:.8em;color:#666}
+        .filter-area{display:flex;gap:15px;background:#f8f9fa;padding:15px;border:1px solid #ddd;margin-bottom:10px;align-items:center}
+        select{padding:8px;border:1px solid #ccc;border-radius:4px}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th,td{padding:10px;border:1px solid #ddd;text-align:left;vertical-align:top}
+        th{background:#f8f9fa}
+        .p1{background:#d4edda}
+        .p2{background:#cce5ff}
+        .p3{background:#fff3cd}
+        .err{background:#f8d7da}
+        .hist-row{border-left: 5px solid #28a745}
+        .sub-info{font-size: 0.8em; color: #777; margin-top: 4px; line-height:1.2}
+        .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;color:#fff;margin-bottom:4px}
+        .bg-web{background:#007bff}.bg-hist{background:#28a745}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-flex">
+        <h2>GeoSearch 精度検証ツール</h2>
+        <div id="status" style="font-weight:bold"></div>
+    </div>
+
+    <div class="config-area">
+        <strong>1. municipalities.json の読み込み</strong>
+        <input type="file" id="fileInput" accept=".json">
+        <span id="loadMsg" style="margin-left:10px"></span>
+    </div>
+
+    <div class="box">
+        <select id="searchMode">
+            <option value="web">地理院検索のみ (geoService.search)</option>
+            <option value="all">履歴＋地理院 (SearchControl相当)</option>
+        </select>
+        <input type="text" id="queryInput" placeholder="検索ワード（例：横須賀市）" disabled>
+        <button id="execBtn" onclick="runSearch()" disabled>検索実行</button>
+    </div>
+
+    <div class="filter-area">
+        <strong>表示フィルタ:</strong>
+        <select id="filterPref"><option value="">すべての都道府県</option></select>
+        <select id="filterMuni"><option value="">すべての市区町村</option></select>
+        <label><input type="checkbox" id="onlyError"> 判定不明のみ</label>
+        <div style="margin-left:auto; font-size:0.85em; color:#666">
+            履歴Key: <code id="histKeyDisplay">-</code>
+        </div>
+    </div>
+
+    <div class="stats">
+        <div class="item"><span class="val" id="s-all">-</span><span class="lbl">総件数</span></div>
+        <div class="item"><span class="val" id="s-p1" style="color:green">-</span><span class="lbl">Pt1:Code</span></div>
+        <div class="item"><span class="val" id="s-p2" style="color:blue">-</span><span class="lbl">Pt2:Str</span></div>
+        <div class="item"><span class="val" id="s-p3" style="color:#856404">-</span><span class="lbl">Pt3:Geo</span></div>
+        <div class="item"><span class="val" id="s-time">-</span><span class="lbl">処理時間</span></div>
+    </div>
+
+    <table id="resultTable">
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Source / 名称</th>
+                <th>判定</th>
+                <th>特定自治体 (Master)</th>
+                <th>解決後 desc (最終出力)</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script type="module">
+    import { geoService } from "./js/components/geo-service.js";
+    import { initSearchControl } from "./js/components/leaflet-search.js";
+
+    initSearchControl();
+
+    const HISTORY_KEY = "leaflet_search_history_keyword_only";
+    document.getElementById('histKeyDisplay').textContent = HISTORY_KEY;
+
+    let lastResults = [];
+
+    // マスタ読み込み: geoServiceの内部プロパティを直接セットして強制初期化
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const text = await file.text();
+        try {
+            const data = JSON.parse(text);
+            const rawList = data.municipalities || [];
+
+            // プロダクトコードを書き換えずに内部変数をセット
+            geoService.muniArray = [...rawList].sort(
+                (a, b) => (b.prefecture + b.municipality).length - (a.prefecture + a.municipality).length
+            );
+            geoService.muniMap = new Map(geoService.muniArray.map((m) => [m.muniCd5, m]));
+
+            document.getElementById('loadMsg').textContent = `読込完了 (${rawList.length}件)`;
+            document.getElementById('queryInput').disabled = false;
+            document.getElementById('execBtn').disabled = false;
+        } catch(err) {
+            alert("JSON解析エラー: " + err.message);
+        }
+    });
+
+    window.runSearch = async function() {
+        const query = document.getElementById('queryInput').value.trim();
+        const mode = document.getElementById('searchMode').value;
+        if (query.length < 2) return;
+
+        document.getElementById('execBtn').disabled = true;
+        const startTime = performance.now();
+        
+        try {
+            let results = [];
+            
+            // 検索実行
+            let webResponse = await geoService.search(query);
+            
+            // API側で二重配列 [[...]] になっている場合の救済処理
+            const webResults = (Array.isArray(webResponse) && Array.isArray(webResponse[0])) 
+                               ? webResponse[0] 
+                               : webResponse;
+
+            if (mode === 'web') {
+                results = webResults.map(r => ({ ...r, source: 'web' }));
+            } else {
+                const historyJson = localStorage.getItem(HISTORY_KEY);
+                const history = (historyJson ? JSON.parse(historyJson) : [])
+                    .filter(h => (h.extensions?.keyword || h.name || "").toLowerCase().includes(query.toLowerCase()))
+                    .map(h => ({ ...h, source: 'history' }));
+                
+                results = [...history, ...webResults.map(r => ({ ...r, source: 'web' }))];
+            }
+
+            lastResults = results;
+            updateFilterOptions(results);
+            render();
+
+            document.getElementById('s-time').textContent = Math.round(performance.now() - startTime) + "ms";
+        } catch (err) {
+            console.error(err);
+            alert("検索失敗: " + err.message);
+        } finally {
+            document.getElementById('execBtn').disabled = false;
+        }
+    };
+
+    function updateFilterOptions(results) {
+        const prefs = [...new Set(results.map(r => r.extensions?.prefecture).filter(Boolean))].sort();
+        const pSelect = document.getElementById('filterPref');
+        pSelect.innerHTML = '<option value="">すべての都道府県</option>' + 
+                            prefs.map(p => `<option value="${p}">${p}</option>`).join('');
+        document.getElementById('filterMuni').innerHTML = '<option value="">すべての市区町村</option>';
+    }
+
+    document.getElementById('filterPref').addEventListener('change', (e) => {
+        const pref = e.target.value;
+        const filtered = pref ? lastResults.filter(r => r.extensions?.prefecture === pref) : lastResults;
+        const munis = [...new Set(filtered.map(r => r.extensions?.municipality).filter(Boolean))].sort();
+        const mSelect = document.getElementById('filterMuni');
+        mSelect.innerHTML = '<option value="">すべての市区町村</option>' + 
+                            munis.map(m => `<option value="${m}">${m}</option>`).join('');
+        render();
+    });
+
+    document.getElementById('filterMuni').addEventListener('change', render);
+    document.getElementById('onlyError').addEventListener('change', render);
+
+    function render() {
+        const pref = document.getElementById('filterPref').value;
+        const muni = document.getElementById('filterMuni').value;
+        const onlyErr = document.getElementById('onlyError').checked;
+
+        const filtered = lastResults.filter(r => {
+            const m1 = !pref || r.extensions?.prefecture === pref;
+            const m2 = !muni || r.extensions?.municipality === muni;
+            const pat = r.extensions?.matchPattern;
+            const m3 = !onlyErr || (pat === 0 || pat === undefined);
+            return m1 && m2 && m3;
+        });
+
+        const tbody = document.querySelector('#resultTable tbody');
+        tbody.innerHTML = '';
+        
+        const stats = { all: filtered.length, p1: 0, p2: 0, p3: 0 };
+        const classes = { 1: 'p1', 2: 'p2', 3: 'p3', 0: 'err' };
+        const labels = { 1: 'Pt1:Code', 2: 'Pt2:Str', 3: 'Pt3:Geo', 0: '不明' };
+
+        filtered.forEach((r, i) => {
+            const pat = r.extensions?.matchPattern || 0;
+            if (stats.hasOwnProperty(`p${pat}`)) stats[`p${pat}`]++;
+
+            const tr = document.createElement('tr');
+            if (pat) tr.className = classes[pat]; else tr.className = 'err';
+            if (r.source === 'history') tr.classList.add('hist-row');
+
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td>
+                    <span class="badge ${r.source === 'history' ? 'bg-hist' : 'bg-web'}">${r.source === 'history' ? '履歴' : '地理院'}</span><br>
+                    <strong>${r.name || '名称未設定'}</strong>
+                    <div class="sub-info">Lat: ${r.lat?.toFixed(6) || '-'} / Lon: ${r.lon?.toFixed(6) || '-'}</div>
+                </td>
+                <td style="font-weight:bold">${labels[pat]}</td>
+                <td>
+                    ${r.extensions?.prefecture ? `
+                        ${r.extensions.prefecture}${r.extensions.municipality}
+                        <div class="sub-info">Code: ${r.extensions.muniCd5 || '-'}<br>Town: ${r.extensions.town || '-'}</div>
+                    ` : '-'}
+                </td>
+                <td>
+                    ${r.desc || '-'}
+                    <div class="sub-info">※ matchPattern: ${pat}</div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('s-all').textContent = stats.all;
+        document.getElementById('s-p1').textContent = stats.p1;
+        document.getElementById('s-p2').textContent = stats.p2;
+        document.getElementById('s-p3').textContent = stats.p3;
+    }
+</script>
+</body>
+</html>
