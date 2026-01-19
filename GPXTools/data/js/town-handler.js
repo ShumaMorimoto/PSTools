@@ -119,12 +119,13 @@ export default class TownHandler {
   }
 
   async _loadPreviewData() {
-    // 1. 自治体情報の解決 (resolve)
-    // resolveを呼ぶことで this.tempPoint に extensions 等が補充される
-    this.tempPoint = await geoService.resolve(this.tempPoint);
+    // 1. 自治体情報の解決
+    // 引数の this.tempPoint 自体に extensions と desc が生える
+    await geoService.resolve(this.tempPoint);
+
     if (!this.tempPoint.extensions) return;
 
-    // 2. 境界線の取得と描画
+    // 2. 境界線の取得と描画 (fetchBoundaryも補完された情報を使う)
     const geojson = await geoService.fetchBoundary(this.tempPoint);
     if (geojson) {
       if (this.boundaryLayer) this.selector.map.removeLayer(this.boundaryLayer);
@@ -133,27 +134,24 @@ export default class TownHandler {
     }
 
     // 3. 自治体内全町字の取得
-    const towns = await geoService.fetchCityTowns(this.tempPoint);
-    this.previewTowns = towns;
+    // すでに prefecture, municipality が注入されているのでそのまま渡せる
+    this.previewTowns = await geoService.fetchCityTowns(this.tempPoint);
 
     // 4. プレビュー描画
     if (this.previewLayer) this.selector.map.removeLayer(this.previewLayer);
     this.previewLayer = L.layerGroup().addTo(this.selector.map);
 
-    towns.forEach((t) => {
+    this.previewTowns.forEach((t) => {
       L.circleMarker([t.lat, t.lon], {
-        // .lng ではなく .lon に統一
         radius: 4,
         color: "#ff6600",
       }).addTo(this.previewLayer);
     });
 
     console.log(
-      `👁️ 町字プレビュー: ${towns.length} 件 (${this.tempPoint.desc})`
+      `👁️ 町字プレビュー: ${this.previewTowns.length} 件 (${this.tempPoint.desc})`
     );
   }
-
-  // ... (changeState, _start, _preview, _clear 等はロジックに変更なし) ...
 
   changeState(newState) {
     this.state = newState;

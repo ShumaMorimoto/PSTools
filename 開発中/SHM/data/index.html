@@ -1,0 +1,60 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>位置情報送信</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  <h2>位置情報をサーバーに送信</h2>
+  <p id="status">待機中...</p>
+  <button onclick="sendLocation()">今すぐ送信</button>
+
+  <pre id="result"></pre>
+
+  <script>
+    const SERVER_URL = 'http://192.168.0.23:8080/api/location';  // ← 自分のPCのIPに変更！
+
+    function sendLocation() {
+      if (!navigator.geolocation) {
+        alert("位置情報が利用できません");
+        return;
+      }
+
+      document.getElementById('status').textContent = "取得中...";
+
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const data = {
+            latitude:  pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy:  pos.coords.accuracy,
+            timestamp: new Date(pos.timestamp).toISOString(),
+            altitude:  pos.coords.altitude || null,
+            heading:   pos.coords.heading   || null,
+            speed:     pos.coords.speed     || null
+          };
+
+          fetch(SERVER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          })
+          .then(r => r.json())
+          .then(res => {
+            document.getElementById('status').textContent = "送信成功！";
+            document.getElementById('result').textContent = JSON.stringify(res, null, 2);
+          })
+          .catch(err => {
+            document.getElementById('status').textContent = "エラー: " + err;
+          });
+        },
+        err => {
+          document.getElementById('status').textContent = "位置情報エラー: " + err.message;
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  </script>
+</body>
+</html>

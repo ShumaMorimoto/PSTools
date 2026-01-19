@@ -3,6 +3,7 @@ import GPXService from "./gpx-service.js";
 import MapInitializer from "./map-initializer.js";
 import MarkerHandler from "./marker-handler.js";
 import ImageHandler from "./image-handler.js";
+import { markerHistory } from "./marker/marker-history.js";
 import TownHandler from "./town-handler.js";
 import AreaHandler from "./area-handler.js";
 import UIManager from "./ui-manager.js";
@@ -83,18 +84,38 @@ export default class MapSelector {
     this.currentHandler = this.handlers[MapSelector.Mode.DEFAULT];
     this.uiManager.updateModeButtons(this.currentMode);
 
-     // 検索結果選択時のプレビュー処理をバインド
-    this.searchControl.bindOnLocationSelected(
-      this.handlers[MapSelector.Mode.DEFAULT].preview.onSelected
-    );
-
+    // 検索結果選択時のプレビュー処理をバインド
+    if (this.searchControl) {
+      this.searchControl._markerHistory = markerHistory;
+      this.searchControl.bindOnLocationSelected(
+        this.handlers[MapSelector.Mode.DEFAULT].preview.onSelected,
+      );
+    }
 
     // Toast通知の初期化
     initToast(document.getElementById(this.controls.toastId));
 
-    // 初期データがあればロード
-    if (initData) {
-      this.handlers[MapSelector.Mode.DEFAULT].setModel(initData);
+// --- ★追加: 履歴から最新の座標を取得して地図を移動 ---
+    this._setInitialViewFromHistory();
+
+//    // 初期データがあればロード
+//    if (initData) {
+//      this.handlers[MapSelector.Mode.DEFAULT].setModel(initData);
+//    }
+  }
+
+  /**
+   * 履歴の最新データに基づいて初期表示位置を調整する
+   */
+  _setInitialViewFromHistory() {
+    const history = markerHistory.getAll();
+    if (history && history.length > 0) {
+      const latest = history[0]; // 保存時に unshift しているので [0] が最新
+      if (latest.lat && latest.lon) {
+        // ズームレベルは初期設定(12など)を維持するか、少し寄る(15など)
+        const zoom = this.initialView[2] || 15;
+        this.map.setView([latest.lat, latest.lon], zoom);
+      }
     }
   }
 

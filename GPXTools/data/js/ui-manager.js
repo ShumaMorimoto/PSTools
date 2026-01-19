@@ -24,7 +24,8 @@ export default class UIManager {
     const ModeConfig = this.selector.constructor.ModeConfig;
     Object.entries(ModeConfig).forEach(([m, cfg]) => {
       const btnId = cfg.buttonId;
-      const shouldEnable = m === mode || mode === this.selector.constructor.Mode.DEFAULT;
+      const shouldEnable =
+        m === mode || mode === this.selector.constructor.Mode.DEFAULT;
       if (shouldEnable) {
         this.selector.mapInitializer.groups.modeOptions.enable(btnId);
       } else {
@@ -68,14 +69,23 @@ export default class UIManager {
   // ---------------------------------------------------
   handleGpxSave = async () => {
     const pts = this.selector.gpxService.getTrkpts();
-    // GPXService.TypeMap の muitiRoute に対応（属性として出力）
+    // GPXService.TypeMap の muitiRoute に対応
     pts.forEach((pt) => (pt.muitiRoute = "1"));
 
     const center = this.selector.map.getCenter();
     let locationName = "";
+
     try {
-      const point = await geoService.resolve({ lat: center.lat, lon: center.lng });
-      if (point) locationName = `【周辺】${point.extensions.prefecture}${point.extensions.municipality}`;
+      // 1. 座標のみのオブジェクトを用意
+      const point = { lat: center.lat, lon: center.lng };
+
+      // 2. geoService に「補完」を依頼
+      // 実行後、point.extensions.prefecture 等が自動的に生える
+      await geoService.resolve(point);
+
+      if (point.extensions?.municipality) {
+        locationName = `【周辺】${point.extensions.prefecture}${point.extensions.municipality}`;
+      }
     } catch (e) {
       console.warn("自治体名取得失敗:", e);
     }
@@ -83,7 +93,7 @@ export default class UIManager {
     const defaultFilename = locationName ? `${locationName}.gpx` : "route.gpx";
     await this._executeGpxSave(pts, defaultFilename);
   };
-
+  
   // ---------------------------------------------------
   // 公開：検索履歴のGPX保存 (extensionsをそのままXML化)
   // ---------------------------------------------------
@@ -96,15 +106,15 @@ export default class UIManager {
 
     try {
       const historyData = JSON.parse(historyRaw);
-      
-      // GPXService.createElementFromObject は extensions 以下の 
+
+      // GPXService.createElementFromObject は extensions 以下の
       // keyword, timestamp, count を再帰的に XML タグに変換する
-      const pts = historyData.map(item => ({
+      const pts = historyData.map((item) => ({
         lat: item.lat,
         lon: item.lon,
         name: item.name,
         desc: item.desc,
-        extensions: item.extensions // オブジェクトをそのまま渡す
+        extensions: item.extensions, // オブジェクトをそのまま渡す
       }));
 
       await this._executeGpxSave(pts, "検索履歴.gpx");
@@ -123,7 +133,7 @@ export default class UIManager {
       const gpxText = await FileService.read(file);
       const tempService = new GPXService();
       tempService.loadFromXml(gpxText);
-      
+
       // GPXService.elementToObject により、XMLタグ構造が
       // 自動的に extensions オブジェクトとして復元される
       const importedPts = tempService.getTrkpts();
@@ -137,10 +147,10 @@ export default class UIManager {
       let history = currentHistoryRaw ? JSON.parse(currentHistoryRaw) : [];
 
       let addCount = 0;
-      importedPts.forEach(pt => {
+      importedPts.forEach((pt) => {
         // 重複判定: 座標(lat, lon) と 名称(name) で照合
-        const isDuplicate = history.some(h => 
-          h.lat === pt.lat && h.lon === pt.lon && h.name === pt.name
+        const isDuplicate = history.some(
+          (h) => h.lat === pt.lat && h.lon === pt.lon && h.name === pt.name
         );
 
         if (!isDuplicate) {
@@ -150,7 +160,7 @@ export default class UIManager {
             lon: pt.lon,
             name: pt.name,
             desc: pt.desc || "",
-            extensions: pt.extensions || {} // 復元されたオブジェクトをそのまま格納
+            extensions: pt.extensions || {}, // 復元されたオブジェクトをそのまま格納
           };
           history.unshift(newEntry);
           addCount++;
@@ -180,7 +190,7 @@ export default class UIManager {
     await FileService.save(gpxText, {
       filename: filename,
       mimeType: "application/gpx+xml",
-      extension: "gpx"
+      extension: "gpx",
     });
   }
 }
