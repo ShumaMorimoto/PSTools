@@ -61,10 +61,12 @@ export default class MarkerBoundary {
       marker.options.interactive = enabled;
       const el = marker.getElement();
       if (el) {
+        // 🚩 DOMレベルでクリックを透過・解除させる
         el.style.pointerEvents = mode;
       } else {
         marker.once("add", () => {
-          marker.getElement().style.pointerEvents = mode;
+          const element = marker.getElement();
+          if (element) element.style.pointerEvents = mode;
         });
       }
       if (!enabled && marker.getPopup()) {
@@ -76,6 +78,8 @@ export default class MarkerBoundary {
   toggle() {
     this.show = !this.show;
     this.redraw();
+    // 状態変更後に改めてインタラクションを同期
+    this.setInteractive(this.handler.state === "idle");
   }
 
   redraw() {
@@ -183,20 +187,30 @@ export default class MarkerBoundary {
     });
   }
 
-_plotLocalHistory(muniCd) {
+  _plotLocalHistory(muniCd) {
     this.historyGroup.clearLayers();
     const localItems = markerHistory.getByMuniCd(muniCd);
     const footprintIcon = this._createFootprintIcon();
+
+    // 🚩 描画時のインタラクション状態を確定
+    const isIdle = this.handler.state === "idle";
+    const pointerMode = isIdle ? "auto" : "none";
 
     localItems.forEach((item) => {
       const marker = L.marker([item.lat, item.lon], {
         icon: footprintIcon,
         zIndexOffset: 500,
         draggable: true, // 1. ドラッグを有効化
-        interactive: (this.handler.state === "idle")
+        interactive: isIdle,
       }).addTo(this.historyGroup);
 
       marker.trkpt = item;
+
+      // 🚩 生成と同時に DOM レベルの透過制御を同期
+      marker.once("add", () => {
+        const el = marker.getElement();
+        if (el) el.style.pointerEvents = pointerMode;
+      });
 
       // --- ドラッグ終了時の処理を追加 ---
       marker.on("dragend", async (e) => {
@@ -206,7 +220,7 @@ _plotLocalHistory(muniCd) {
         marker.trkpt.lon = pos.lng;
         marker.trkpt.desc = null;
         marker.trkpt.extensions.muniCd5 = null;
-        
+
         // 2. 住所を再解決（オプション）
         try {
           await geoService.resolveAddress(marker.trkpt);
@@ -218,7 +232,9 @@ _plotLocalHistory(muniCd) {
         markerHistory.save(marker.trkpt);
 
         // 4. UI更新を通知
-        dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, { point: marker.trkpt });
+        dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, {
+          point: marker.trkpt,
+        });
         notify("📍 足跡の位置を修正しました");
       });
 

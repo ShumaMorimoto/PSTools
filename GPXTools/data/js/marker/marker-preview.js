@@ -6,7 +6,7 @@ import {
   MarkerEventTypes,
   dispatchMarkerEvent,
 } from "../marker/marker-events.js";
-import { markerHistory } from "../marker/marker-history.js"; // ← 追加
+import { markerHistory } from "../marker/marker-history.js";
 
 /**
  * 検索結果などの一時的なプレビューマーカーを管理するクラス。
@@ -32,8 +32,10 @@ export default class MarkerPreview {
 
   /**
    * ポイント参照（trkpt）からプレビューマーカーを特定する
+   * MarkerPopup 等の外位クラスから呼ばれるため、確実に公開する
    */
   getPreviewByPoint(point) {
+    if (!point) return null;
     return this.previewMarkers.find((pm) => pm.trkpt === point);
   }
 
@@ -65,6 +67,9 @@ export default class MarkerPreview {
     }
   }
 
+  /**
+   * 外部（MarkerHandler等）からマーカーを追加するメイン入り口
+   */
   add(trkpt) {
     const pm = this._createPreviewMarker(trkpt);
     this.previewMarkers.push(pm);
@@ -75,10 +80,12 @@ export default class MarkerPreview {
    * ポップアップの中身を完全に差し替える（表示の同期）
    */
   refreshPopup(pm) {
+    if (!pm) return;
     const content = this._getPopupContent(pm);
     if (pm.getPopup()) {
       pm.setPopupContent(content);
     } else {
+      // プレビューなので、bind と同時に開く
       pm.bindPopup(content, { minWidth: 240, maxWidth: 240 }).openPopup();
     }
   }
@@ -98,15 +105,19 @@ export default class MarkerPreview {
         pm.trkpt.lat = pos.lat;
         pm.trkpt.lon = pos.lng;
 
-        await geoService.resolveAddress(pm.trkpt);
+        try {
+          await geoService.resolveAddress(pm.trkpt);
 
-        // 💾 照会した住所を履歴に保存
-        markerHistory.save(pm.trkpt);
+          // 💾 照会した住所を履歴に保存
+          markerHistory.save(pm.trkpt);
 
-        dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, {
-          point: pm.trkpt,
-        });
-        notify("🔄 住所情報を照会しました");
+          dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, {
+            point: pm.trkpt,
+          });
+          notify("🔄 住所情報を照会しました");
+        } catch (err) {
+          notify("❌ 住所照会失敗");
+        }
       },
 
       onSave: (newData) => {
@@ -116,7 +127,7 @@ export default class MarkerPreview {
         pm.trkpt.lat = pos.lat;
         pm.trkpt.lon = pos.lng;
         if (pm.trkpt.extensions) {
-          pm.trkpt.extensions.keyword = newData.extensions.keyword;
+          pm.trkpt.extensions.keyword = newData.extensions?.keyword;
         }
 
         // 💾 編集内容を履歴に保存
@@ -132,12 +143,16 @@ export default class MarkerPreview {
     });
   }
 
+  /**
+   * 内部用：マーカーインスタンスの生成とイベント登録
+   */
   _createPreviewMarker(trkpt) {
     const pm = L.marker([trkpt.lat, trkpt.lon], {
       draggable: true,
+      zIndexOffset: 1000, // プレビューなので最前面に
       icon: L.divIcon({
         className: "preview-marker",
-        html: `<div style="width:24px; height:24px; border-radius:50%; background: rgba(255, 80, 80, 0.8); border: 2px solid #900;"></div>`,
+        html: `<div style="width:24px; height:24px; border-radius:50%; background: rgba(255, 80, 80, 0.8); border: 2px solid #900; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
         iconSize: [24, 24],
         iconAnchor: [12, 12],
       }),
@@ -149,38 +164,53 @@ export default class MarkerPreview {
     // 初期表示
     this.refreshPopup(pm);
 
-    // ドラッグ時：本マーカーと同様の座標反映と住所解決
+    // ドラッグ時：座標反映と住所解決
     pm.on("dragend", async (e) => {
       const pos = e.target.getLatLng();
       pm.trkpt.lat = pos.lat;
       pm.trkpt.lon = pos.lng;
       pm.trkpt.desc = null;
-      pm.trkpt.extensions.muniCd5 = null;
+      if (pm.trkpt.extensions) {
+        pm.trkpt.extensions.muniCd5 = null;
+      }
 
-      // geoService で住所を再解決
-      await geoService.resolveAddress(pm.trkpt);
+      try {
+        // geoService で住所を再解決
+        await geoService.resolveAddress(pm.trkpt);
 
-      // 履歴に反映
-      // 💾 ドラッグ後の座標と住所を履歴に反映
-      markerHistory.save(pm.trkpt);
+        // 💾 ドラッグ後の座標と住所を履歴に反映
+        markerHistory.save(pm.trkpt);
 
-      // 📣 通知してポップアップを更新
-      dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, { point: pm.trkpt });
+        // 📣 通知してポップアップを更新
+        dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, { point: pm.trkpt });
+      } catch (err) {
+        console.error("プレビュードラッグ解決失敗:", err);
+      }
     });
 
+    // 3分後に自動消去
     pm._timer = setTimeout(() => this.remove(pm), 180000);
     return pm;
   }
 
+  /**
+   * 特定のマーカーを削除
+   */
   remove(pm) {
     if (!pm) return;
     clearTimeout(pm._timer);
-    this.handler.map.removeLayer(pm);
+    if (this.handler.map.hasLayer(pm)) {
+      this.handler.map.removeLayer(pm);
+    }
     this.previewMarkers = this.previewMarkers.filter((x) => x !== pm);
   }
 
+  /**
+   * 全プレビューマーカーを掃除
+   */
   clear() {
-    this.previewMarkers.forEach((pm) => this.remove(pm));
+    // 配列のコピーを作って確実に全削除
+    [...this.previewMarkers].forEach((pm) => this.remove(pm));
     this.previewMarkers = [];
   }
 }

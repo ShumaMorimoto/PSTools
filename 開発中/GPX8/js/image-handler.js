@@ -20,8 +20,7 @@
   // ---------------------------------------------------
   // 初期化（onAdd だけ呼ぶ）
   // ---------------------------------------------------
-  init() {
-  }
+  init() {}
 
   // ---------------------------------------------------
   // ボタン押下（テンプレ準拠）
@@ -173,6 +172,9 @@
     try {
       this.selector.imgGroup.eachLayer((layer) => {
         if (layer.editing?.enable) layer.editing.enable();
+        if (layer.getElement()) {
+          layer.getElement().style.pointerEvents = "auto";
+        }
       });
     } catch (e) {
       console.warn("enableEditing failed", e);
@@ -184,6 +186,9 @@
       this.selector.imgGroup.eachLayer((layer) => {
         if (layer.editing?.disable) layer.editing.disable();
         if (layer.deselect) layer.deselect();
+        if (layer.getElement()) {
+          layer.getElement().style.pointerEvents = "none";
+        }
       });
     } catch (e) {
       console.warn("disableEditing failed", e);

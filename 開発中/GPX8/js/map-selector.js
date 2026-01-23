@@ -193,8 +193,8 @@ export default class MapSelector {
   addPoints(pts) {
     this.handlers[MapSelector.Mode.DEFAULT].addPoints(pts);
   }
-  removeMarker(marker, removeTrkpt = true) {
-    this.handlers[MapSelector.Mode.DEFAULT].removeMarker(marker, removeTrkpt);
+  removeMarker(marker, split = false) {
+    this.handlers[MapSelector.Mode.DEFAULT].removeMarker(marker, split);
   }
   clearMarkers() {
     this.handlers[MapSelector.Mode.DEFAULT].clearMarkers();

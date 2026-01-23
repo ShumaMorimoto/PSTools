@@ -22,7 +22,7 @@ export function initPointListPanel() {
       this._panel = L.DomUtil.create(
         "div",
         "leaflet-side-panel",
-        map.getContainer()
+        map.getContainer(),
       );
 
       // --- 再適用：ボタンとかぶらないための補正 ---
@@ -108,8 +108,8 @@ export function initPointListPanel() {
         li.innerHTML = `
           <div class="item-main" style="flex-grow: 1; cursor: pointer; padding-right: 10px;">
             <strong style="color: #007bff;">${i + 1}.</strong> ${
-          p.name || p.desc || coordStr
-        }
+              p.name || p.desc || coordStr
+            }
           </div>
           <span class="item-delete-btn" style="cursor: pointer; padding: 4px 8px; color: #ccc; font-size: 20px; line-height: 1;">&times;</span>
         `;
@@ -124,7 +124,7 @@ export function initPointListPanel() {
         const delBtn = li.querySelector(".item-delete-btn");
         L.DomEvent.on(delBtn, "click", (e) => {
           L.DomEvent.stopPropagation(e);
-          if (confirm("この拠点を削除しますか？")) this.options.onDelete?.(i);
+          this.options.onDelete?.(i);
         });
       });
     },

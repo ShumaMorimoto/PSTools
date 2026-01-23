@@ -21,12 +21,12 @@ export default class MarkerPopup {
       if (ind && ind.point === point) return this.refresh(ind, "indicator");
 
       // 3. プレビュー (MarkerPreview)
-      const prev = this.handler.preview.getPreviewByPoint(point);
+      const prev = this.handler.preview.getMarkerByPoint(point);
       if (prev) return this.refresh(prev, "preview");
 
       // 4. あしあと (MarkerBoundary) ★他と形式が統一されました
-      const hist = this.handler.boundary.getMarkerByPoint(point);
-      if (hist) return this.refresh(hist, "preview");
+//      const hist = this.handler.boundary.getMarkerByPoint(point);
+//      if (hist) return this.refresh(hist, "preview");
     });
   }
 
@@ -86,7 +86,7 @@ export default class MarkerPopup {
       ...common,
       onUpdateAddress: () => this.handler.address.updateAddress(entry.point),
       onDelete: () => {
-        if (confirm("削除しますか？")) this.handler.removeMarker(marker);
+        this.handler.removeMarker(marker);
       },
       onSave: (newData) => this.handler.updatePoint(entry.point, newData),
     });

@@ -20,6 +20,7 @@ export class GeoService {
 
     this.requestQueue = [];
     this.isProcessingQueue = false;
+    this.ready = this._loadMuniMaster();
   }
 
   /**
@@ -98,7 +99,7 @@ export class GeoService {
   // 2. ResolveAddress: 位置情報に自治体情報を付与する
   // =========================================================
   async resolveAddress(point) {
-    await this._loadMuniMaster();
+    await this.ready;
     let muniCd5 = point.extensions?.muniCd5 || null;
     const originalTitle = point.desc || ""; // GSIの検索結果 title
     let info = null;
@@ -179,8 +180,7 @@ export class GeoService {
    */
   async search(query) {
     if (!query || query.trim().length < 2) return [];
-
-    await this._loadMuniMaster();
+    await this.ready;
 
     try {
       const url = `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(
@@ -252,7 +252,7 @@ export class GeoService {
   async fetchCityTowns(point) {
     let target = point;
     if (!target.extensions?.prefecture || !target.extensions?.municipality) {
-      target = await this.resolveAddress({ ...point }); // 元を壊さないようコピーで解決
+      target = await this.resolveAddress({ ...point });
     }
 
     const { prefecture, municipality } = target.extensions || {};
@@ -264,16 +264,25 @@ export class GeoService {
       if (!res.ok) return [];
       const towns = await res.json();
 
-      return towns.map((t) => ({
-        lat: Number(t.lat),
-        lon: Number(t.lng),
-        name: t.town,
-        desc: `${prefecture}${municipality}${t.town}`,
-        extensions: {
-          ...target.extensions,
-          town: t.town,
-        },
-      }));
+      // lat または lng が null/undefined のものを除外
+      return towns
+        .filter(
+          (t) =>
+            t.lat !== null &&
+            t.lng !== null &&
+            t.lat !== undefined &&
+            t.lng !== undefined,
+        )
+        .map((t) => ({
+          lat: Number(t.lat),
+          lon: Number(t.lng),
+          name: t.town,
+          desc: `${prefecture}${municipality}${t.town}`,
+          extensions: {
+            ...target.extensions,
+            town: t.town,
+          },
+        }));
     } catch {
       return [];
     }
