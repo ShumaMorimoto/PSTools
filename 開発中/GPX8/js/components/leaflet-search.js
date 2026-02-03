@@ -21,12 +21,12 @@ export function initSearchControl() {
       this._markerHistory = this.options.markerHistory;
       this._rawResults = [];
       this._debounceTimer = null;
-      this._candidateLayer = null;
+      this._currentEntries = [];
+      this._candidateLayer = L.layerGroup();
     },
 
     onAdd: function (map) {
       this._map = map;
-      // 🚩 親コンテナ：ここに input と panel を縦に並べて重なりを防ぐ
       this._container = L.DomUtil.create(
         "div",
         "leaflet-search-parent-container",
@@ -64,8 +64,6 @@ export function initSearchControl() {
         this._container,
       );
       this._panel.style.display = "none";
-
-      // --- 【重要】バグを修正したイベント登録 ---
 
       // 1. クリアボタン
       L.DomEvent.on(
@@ -107,63 +105,27 @@ export function initSearchControl() {
     _hidePanel: function () {
       if (!this._panel) return;
       this._panel.style.display = "none";
-
-      // レイヤーの削除も安全に行う
-      if (this._candidateLayer && this._map) {
-        if (this._map.hasLayer(this._candidateLayer)) {
-          this._map.removeLayer(this._candidateLayer);
-        }
-        this._candidateLayer = null;
-      }
+      if (this._candidateLayer) this._candidateLayer.clearLayers();
+      this._currentEntries = []; // 台帳もクリア
     },
 
-    // 🚩 追加：自治体内の履歴のみを取得して「統一された描画フロー」に乗せる
     showHistoryByMuni: async function (muniCd5) {
       await geoService.ready;
-
-      // 1. 履歴インスタンスから該当自治体のものを抽出（既存の search メソッド等を流用）
-      // ※ query を空文字にすることで、全件からフィルタリングする
-      const history = (this._markerHistory?.search("") || [])
+      const history = (this._markerHistory?.getAll() || [])
         .filter((item) => item.extensions?.muniCd5 === muniCd5)
         .map((h) => ({ ...h, source: "history" }));
 
-      // 2. 検索結果としてセットし、パネルを描画
       this._rawResults = history;
       this._input.value = "";
       this._clearBtn.style.display = "none";
 
       this._renderPanelLayout();
 
-      // 3. 描画されたプルダウンの値を直接書き換えてフィルタを走らせる
       if (this._prefSelect && this._muniSelect) {
         this._prefSelect.value = muniCd5.substring(0, 2);
         this._updateMuniOptions();
         this._muniSelect.value = muniCd5;
-        this._applyFilter(); // ここでマーカー設置とリスト更新が走る
-      }
-    },
-
-    // 🚩 方針：自治体内の履歴だけを抽出してパネルを表示する
-    showHistoryByMuni: async function (muniCd5) {
-      await geoService.ready; // マスタロード待ち
-
-      // 1. 履歴から当該自治体のものだけを全抽出
-      const history = (this._markerHistory?.getAll() || [])
-        .filter((item) => item.extensions?.muniCd5 === muniCd5)
-        .map((h) => ({ ...h, source: "history" }));
-
-      // 2. 検索結果としてセット
-      this._rawResults = history;
-
-      // 3. パネルを描画（既存の描画ロジックをそのまま流用）
-      this._renderPanelLayout();
-
-      // 4. プルダウンをその自治体に固定
-      if (this._prefSelect && this._muniSelect) {
-        this._prefSelect.value = muniCd5.substring(0, 2);
-        this._updateMuniOptions();
-        this._muniSelect.value = muniCd5;
-        this._applyFilter(); // ここでマーカー設置とリスト描画が走る
+        this._applyFilter();
       }
     },
 
@@ -173,19 +135,13 @@ export function initSearchControl() {
           ...h,
           source: "history",
         }));
-
-        // 🚩 historyOnly が true なら Web検索を空にする
-        const webMapped = this._historyOnly
-          ? []
-          : (await geoService.search(query)).map((r) => ({
-              ...r,
-              source: "web",
-            }));
+        const webMapped = (await geoService.search(query)).map((r) => ({
+          ...r,
+          source: "web",
+        }));
 
         this._rawResults = [...history, ...webMapped];
-
         this._renderPanelLayout();
-        // 🚩 _renderPanelLayout 内でプルダウンが作られた後、自動で _applyFilter が呼ばれる既存の流れを維持
       } catch (err) {
         console.error("Search failed:", err);
       }
@@ -195,7 +151,6 @@ export function initSearchControl() {
       this._panel.innerHTML = "";
       this._panel.style.display = "flex";
 
-      // --- 省略なし：ヘッダー・セレクト・イベント登録は元のコードを完全維持 ---
       const header = L.DomUtil.create("div", "panel-header", this._panel);
       this._countEl = L.DomUtil.create("span", "results-count", header);
       this._countEl.innerHTML = `検索結果: ${this._rawResults.length}件`;
@@ -279,23 +234,22 @@ export function initSearchControl() {
     _applyFilter: function () {
       const pCode = this._prefSelect.value;
       const mCode = this._muniSelect.value;
-      const query = this._input.value.trim(); // ← キーワードを取得
+      const query = this._input.value.trim();
 
-      // 判定ロジックに query を確実に渡す
       const filtered = this._rawResults.filter((r) => {
         if (!this._markerHistory) return true;
-        // markerHistory.match 内で name や keyword を query で判定しているため、これが必要
         return this._markerHistory.match(r, query, pCode, mCode);
       });
 
-      // --- 以下、描画処理（省略なし） ---
       if (this._countEl) {
         this._countEl.innerHTML = `検索結果: ${filtered.length}件`;
       }
 
-      if (this._candidateLayer) this._map.removeLayer(this._candidateLayer);
-      this._candidateLayer = L.layerGroup().addTo(this._map);
-
+      this._candidateLayer.clearLayers();
+      if (!this._map.hasLayer(this._candidateLayer)) {
+        this._candidateLayer.addTo(this._map);
+      }
+      this._currentEntries = [];
       this._listContainer.innerHTML = "";
 
       if (filtered.length === 0) {
@@ -309,8 +263,8 @@ export function initSearchControl() {
       }
 
       filtered.forEach((item) => {
-        // マーカー追加
-        L.circleMarker([item.lat, item.lon], {
+        // 1. マーカー（ドット）の作成
+        const marker = L.circleMarker([item.lat, item.lon], {
           radius: 7,
           fillColor: item.source === "history" ? "#4CAF50" : "#2196F3",
           color: "#ffffff",
@@ -320,7 +274,7 @@ export function initSearchControl() {
           pane: "markerPane",
         }).addTo(this._candidateLayer);
 
-        // リスト追加
+        // 2. リストアイテム（li）の作成
         const li = L.DomUtil.create("div", "search-item", this._listContainer);
         const isHist = item.source === "history";
         li.innerHTML = `
@@ -332,6 +286,21 @@ export function initSearchControl() {
             <div class="item-addr">${item.desc}</div>
           </div>`;
 
+        // 🚩 3. 台帳(Entry)へ登録：itemには何も持たせない
+        const entry = { item, li, marker };
+        this._currentEntries.push(entry);
+
+        // --- 🚩 A. マーカーホバー時のイベント ---
+        marker.on("mouseover", () => this._focusList(li));
+        marker.on("mouseout", () => this._clearFocus());
+        L.DomEvent.on(li, "contextmenu", (e) => {
+          L.DomEvent.preventDefault(e); // ブラウザの右クリックメニューを禁止
+          this._focusMarker(marker);
+          this._focusList(li);
+        });
+        //        L.DomEvent.on(li, "mouseleave", () => this._clearFocus());
+        L.DomEvent.on(li, "click", () => this._selectItem(item, li));
+
         if (isHist) {
           const deleteBtn = L.DomUtil.create("button", "item-delete-btn", li);
           deleteBtn.innerHTML = "🗑";
@@ -340,7 +309,31 @@ export function initSearchControl() {
             this._deleteFromHistory(item);
           });
         }
-        L.DomEvent.on(li, "click", () => this._selectItem(item));
+      });
+    },
+
+    // 🚩 エントリー単位でフォーカスする（ドットとリストを同時強調）
+    _focusMarker: function (marker, isSmooth = false) {
+      if (!marker) return;
+      this._clearFocus();
+      marker.setStyle({ radius: 10, weight: 6 });
+      this._map.panTo(marker.getLatLng(), { animate: false });
+    },
+
+    _focusList: function (li, isSmooth = false) {
+      if (!li) return;
+      this._clearFocus();
+      li.classList.add("is-focused");
+      li.scrollIntoView({
+        behavior: isSmooth ? "smooth" : "auto",
+        block: "nearest",
+      });
+    },
+
+    _clearFocus: function () {
+      this._currentEntries.forEach((e) => {
+        e.li.classList.remove("is-focused");
+        e.marker.setStyle({ radius: 7, weight: 3 });
       });
     },
 
@@ -352,14 +345,16 @@ export function initSearchControl() {
       this._applyFilter();
     },
 
-    _selectItem: function (item) {
-      // markerHistory.save() でカウントアップと重複排除を実行
+    _selectItem: function (item, li) {
+      // 1. 純粋な item (DOMを含まない) を保存
       const savedItem = this._markerHistory
         ? this._markerHistory.save(item)
         : item;
 
-      if (this.options.onLocationSelected)
-        this.options.onLocationSelected(savedItem, this._map, this);
+      // 2. 保存が終わった「後」で、MarkerPreviewに渡す直前にだけ li を添える
+      if (this.options.onLocationSelected) {
+        this.options.onLocationSelected(savedItem, li);
+      }
       this._map.flyTo([item.lat, item.lon], 16);
     },
 

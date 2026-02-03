@@ -7,9 +7,44 @@ export default class MarkerContextMenu {
     this.handler = handler;
   }
 
+  /**
+   * 通常マーカー用バインド
+   */
   bindMarker(m) {
+    const items = [
+      { text: "🗑 マーカー削除", callback: (e) => this._deleteMarker(e) },
+      { text: "✂ ルート分割", callback: (e) => this._splitRoute(e) },
+      { text: "🚩 始点設定", callback: (e) => this._setAsStart(e) },
+    ];
+    this._bindCommon(m, "📌", items);
+  }
+
+  /**
+   * しるし（Indicator）用バインド
+   */
+  bindIndicator(m) {
+    const items = [
+      {
+        text: "🗑 しるしを消去",
+        callback: () => this.handler.indicator.clear(),
+      },
+      {
+        text: "➕ 地点を登録",
+        callback: () => this.handler.indicator.refreshPopup(),
+      },
+    ];
+    this._bindCommon(m, "📍", items);
+  }
+
+  /**
+   * 内部共通ロジック：座標コピーなどの共通項目を付与してバインド
+   * @param {L.Marker} m - 対象オブジェクト
+   * @param {string} symbol - 表示用アイコン (📌 or 📍)
+   * @param {Array} specificItems - 個別のメニュー項目
+   */
+  _bindCommon(m, symbol, specificItems) {
     if (m._contextMenuBound) return;
-    m.unbindContextMenu();
+    if (typeof m.unbindContextMenu === "function") m.unbindContextMenu();
 
     const { lat, lng } = m.getLatLng();
 
@@ -17,51 +52,38 @@ export default class MarkerContextMenu {
       contextmenu: true,
       contextmenuItems: [
         {
-          text: `📌 ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+          text: `${symbol} ${lat.toFixed(5)}, ${lng.toFixed(5)}`,
           callback: (e) => this._copyLatLng(e),
         },
-        { text: "🗑 マーカー削除", callback: (e) => this._deleteMarker(e) },
-        { text: "✂ ルート分割", callback: (e) => this._splitRoute(e) },
-        { text: "🚩 始点設定", callback: (e) => this._setAsStart(e) },
-        { text: "🗺 境界表示", callback: (e) => this._showBoundary(e) },
+        { separator: true },
+        ...specificItems,
       ],
     });
 
     m._contextMenuBound = true;
   }
 
-  _copyLatLng(e) {
-    const m = e.relatedTarget; // 右クリックされた Marker
-    const { lat, lng } = m.getLatLng();
-    const text = `${lat},${lng}`;
+  // --- ハンドラメソッド群 (共通利用) ---
 
+  _copyLatLng(e) {
+    const m = e.relatedTarget;
+    const { lat, lng } = m.getLatLng();
     navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        notify("📋 座標をコピーしました");
-      })
-      .catch((err) => {
-        console.error("Clipboard copy failed:", err);
-      });
+      .writeText(`${lat},${lng}`)
+      .then(() => notify("📋 座標をコピーしました"));
   }
 
   _deleteMarker(e) {
-    const m = e.relatedTarget; // ← 右クリックされた Marker
-    this.handler.removeMarker(m);
+    this.handler.removeMarker(e.relatedTarget);
   }
+
   _splitRoute(e) {
-    const m = e.relatedTarget; // ← 右クリックされた Marker
-    this.handler.removeMarker(m, true);
+    this.handler.removeMarker(e.relatedTarget, true);
   }
+
   async _setAsStart(e) {
-    const m = e.relatedTarget; // ← 右クリックされた Marker
+    const m = e.relatedTarget;
     this.handler.jumpMarker(m);
     await this.handler.reorderMarkers();
   }
-
-  _showBoundary(e) {}
-  _duplicateMarker(e) {}
-  _lockMarker(e) {}
-  _openInfoPanel(e) {}
-
 }

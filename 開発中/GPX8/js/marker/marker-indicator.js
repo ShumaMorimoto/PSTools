@@ -4,6 +4,7 @@ import {
   MarkerEventTypes,
   dispatchMarkerEvent,
 } from "../marker/marker-events.js";
+import { callApi } from "/lib/js/api.js";
 
 export default class MarkerIndicator {
   constructor(handler) {
@@ -44,6 +45,8 @@ export default class MarkerIndicator {
   drop(latlng) {
     this.clear();
 
+    this.map.setView(latlng, this.map.getZoom());
+
     const indicatorIcon = L.divIcon({
       className: "ls-indicator-icon",
       html: `<div style="width:20px; height:20px; background:#007BFF; border:2px solid white; border-radius:50% 50% 50% 0; transform:rotate(-45deg); box-shadow:0 2px 5px rgba(0,0,0,0.3);"></div>`,
@@ -60,7 +63,7 @@ export default class MarkerIndicator {
     // 【重要】先にデータをセット（これを bind より先にしないと Popup 側でエラーになる）
     this.indicator.point = {
       lat: latlng.lat,
-      lon: latlng.lng,
+      lon: latlng.lon || latlng.lng,
       name: "",
       desc: "",
       extensions: {},
@@ -83,6 +86,40 @@ export default class MarkerIndicator {
       // Popup 側が最新状態を維持しているため、開くだけでOK
       this.indicator.openPopup();
     });
+  }
+
+  async sendLocation() {
+    if (!navigator.geolocation) {
+      alert("GPSがサポートされていません");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const input = {
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+          };
+          await callApi("SendLocation", input);
+        } catch (e) {
+          console.error(e);
+        }
+      },
+      (err) => {
+        alert("GPSエラー: " + err.message);
+      },
+    );
+  }
+
+  async getLocation() {
+    try {
+      const latlng = await callApi("GetLocation");
+      if (latlng.lat && latlng.lon) {
+        this.drop(latlng);
+      }
+    } catch (e) {
+      console.error("同期失敗", e);
+    }
   }
 
   /**

@@ -18,7 +18,7 @@ export function initSearchControl() {
 
     initialize: function (options) {
       L.setOptions(this, options);
-      this._markerHistory = this.options.markerHistory; // インスタンスを保持
+      this._markerHistory = this.options.markerHistory;
       this._rawResults = [];
       this._debounceTimer = null;
       this._candidateLayer = null;
@@ -26,6 +26,7 @@ export function initSearchControl() {
 
     onAdd: function (map) {
       this._map = map;
+      // 🚩 親コンテナ：ここに input と panel を縦に並べて重なりを防ぐ
       this._container = L.DomUtil.create(
         "div",
         "leaflet-search-parent-container",
@@ -37,6 +38,8 @@ export function initSearchControl() {
         "leaflet-search-control leaflet-bar",
         this._container,
       );
+
+      // 🚩 履歴トグルボタンはUIから削除（方針通り）
       this._input = L.DomUtil.create(
         "input",
         "leaflet-search-input",
@@ -54,6 +57,7 @@ export function initSearchControl() {
       this._clearBtn.innerHTML = "×";
       this._clearBtn.style.display = "none";
 
+      // 🚩 パネル：親コンテナ内で input の直下に来るように配置
       this._panel = L.DomUtil.create(
         "div",
         "leaflet-search-side-panel",
@@ -61,30 +65,29 @@ export function initSearchControl() {
       );
       this._panel.style.display = "none";
 
-      // イベント登録
+      // --- 【重要】バグを修正したイベント登録 ---
+
+      // 1. クリアボタン
       L.DomEvent.on(
         this._clearBtn,
         "click",
         () => {
           this._input.value = "";
           this._clearBtn.style.display = "none";
-          this._hidePanel();
+          this._hidePanel(); // 🚩 ここで this._hidePanel が呼べないエラーを解消済み
           this._input.focus();
         },
-        this,
+        this, // 第4引数に this を渡し、スコープを固定
       );
 
+      // 2. 入力イベント（キーダウン、インプット共に削らず維持）
       L.DomEvent.on(this._input, "input", this._onInput, this);
       L.DomEvent.on(this._input, "keydown", this._onKeyDown, this);
 
       return this._container;
     },
 
-    _onInput: function (e) {
-      const query = e.target.value.trim();
-      this._clearBtn.style.display = query.length > 0 ? "flex" : "none";
-    },
-
+    // 🚩 削らず維持：Enterキー検索
     _onKeyDown: function (e) {
       if (e.keyCode === 13) {
         const query = this._input.value.trim();
@@ -94,33 +97,95 @@ export function initSearchControl() {
       }
     },
 
+    // 🚩 削らず維持：×ボタン表示制御
+    _onInput: function (e) {
+      const query = e.target.value.trim();
+      this._clearBtn.style.display = query.length > 0 ? "flex" : "none";
+    },
+
+    // 🚩 修正：Leafletエラーを防ぐための安全な非表示処理
     _hidePanel: function () {
+      if (!this._panel) return;
       this._panel.style.display = "none";
-      if (this._candidateLayer) {
-        this._map.removeLayer(this._candidateLayer);
+
+      // レイヤーの削除も安全に行う
+      if (this._candidateLayer && this._map) {
+        if (this._map.hasLayer(this._candidateLayer)) {
+          this._map.removeLayer(this._candidateLayer);
+        }
         this._candidateLayer = null;
+      }
+    },
+
+    // 🚩 追加：自治体内の履歴のみを取得して「統一された描画フロー」に乗せる
+    showHistoryByMuni: async function (muniCd5) {
+      await geoService.ready;
+
+      // 1. 履歴インスタンスから該当自治体のものを抽出（既存の search メソッド等を流用）
+      // ※ query を空文字にすることで、全件からフィルタリングする
+      const history = (this._markerHistory?.search("") || [])
+        .filter((item) => item.extensions?.muniCd5 === muniCd5)
+        .map((h) => ({ ...h, source: "history" }));
+
+      // 2. 検索結果としてセットし、パネルを描画
+      this._rawResults = history;
+      this._input.value = "";
+      this._clearBtn.style.display = "none";
+
+      this._renderPanelLayout();
+
+      // 3. 描画されたプルダウンの値を直接書き換えてフィルタを走らせる
+      if (this._prefSelect && this._muniSelect) {
+        this._prefSelect.value = muniCd5.substring(0, 2);
+        this._updateMuniOptions();
+        this._muniSelect.value = muniCd5;
+        this._applyFilter(); // ここでマーカー設置とリスト更新が走る
+      }
+    },
+
+    // 🚩 方針：自治体内の履歴だけを抽出してパネルを表示する
+    showHistoryByMuni: async function (muniCd5) {
+      await geoService.ready; // マスタロード待ち
+
+      // 1. 履歴から当該自治体のものだけを全抽出
+      const history = (this._markerHistory?.getAll() || [])
+        .filter((item) => item.extensions?.muniCd5 === muniCd5)
+        .map((h) => ({ ...h, source: "history" }));
+
+      // 2. 検索結果としてセット
+      this._rawResults = history;
+
+      // 3. パネルを描画（既存の描画ロジックをそのまま流用）
+      this._renderPanelLayout();
+
+      // 4. プルダウンをその自治体に固定
+      if (this._prefSelect && this._muniSelect) {
+        this._prefSelect.value = muniCd5.substring(0, 2);
+        this._updateMuniOptions();
+        this._muniSelect.value = muniCd5;
+        this._applyFilter(); // ここでマーカー設置とリスト描画が走る
       }
     },
 
     _performSearch: async function (query) {
       try {
-        // 1. 履歴からの取得（this._markerHistory の search 結果を map）
         const history = (this._markerHistory?.search(query) || []).map((h) => ({
           ...h,
           source: "history",
         }));
 
-        // 2. Web検索結果を取得（ここを webMapped に統一して定義）
-        const webMapped = (await geoService.search(query)).map((r) => ({
-          ...r,
-          source: "web",
-        }));
+        // 🚩 historyOnly が true なら Web検索を空にする
+        const webMapped = this._historyOnly
+          ? []
+          : (await geoService.search(query)).map((r) => ({
+              ...r,
+              source: "web",
+            }));
 
-        // 3. 結果の統合（これで ReferenceError は出ません）
         this._rawResults = [...history, ...webMapped];
 
         this._renderPanelLayout();
-        this._applyFilter();
+        // 🚩 _renderPanelLayout 内でプルダウンが作られた後、自動で _applyFilter が呼ばれる既存の流れを維持
       } catch (err) {
         console.error("Search failed:", err);
       }
@@ -130,6 +195,7 @@ export function initSearchControl() {
       this._panel.innerHTML = "";
       this._panel.style.display = "flex";
 
+      // --- 省略なし：ヘッダー・セレクト・イベント登録は元のコードを完全維持 ---
       const header = L.DomUtil.create("div", "panel-header", this._panel);
       this._countEl = L.DomUtil.create("span", "results-count", header);
       this._countEl.innerHTML = `検索結果: ${this._rawResults.length}件`;
@@ -142,25 +208,22 @@ export function initSearchControl() {
       this._prefSelect = L.DomUtil.create("select", "filter-select", filterBar);
       this._muniSelect = L.DomUtil.create("select", "filter-select", filterBar);
 
-      // 都道府県リスト作成 (JISコード順)
       const prefCodes = [
         ...new Set(
           this._rawResults
             .map((r) => r.extensions?.muniCd5?.substring(0, 2))
             .filter(Boolean),
         ),
-      ].sort((a, b) => parseInt(a) - parseInt(b));
+      ].sort();
 
       this._prefSelect.innerHTML =
         '<option value="">都道府県</option>' +
         prefCodes
           .map((code) => {
-            const anyMuniInPref = Array.from(geoService.muniMap.values()).find(
-              (m) => m.muniCd5.startsWith(code),
+            const muni = Array.from(geoService.muniMap.values()).find((m) =>
+              m.muniCd5.startsWith(code),
             );
-
-            const prefName = anyMuniInPref ? anyMuniInPref.prefecture : code;
-            return `<option value="${code}">${prefName}</option>`;
+            return `<option value="${code}">${muni ? muni.prefecture : code}</option>`;
           })
           .join("");
 
@@ -181,7 +244,6 @@ export function initSearchControl() {
         "results-list-container",
         this._panel,
       );
-
       L.DomEvent.disableScrollPropagation(this._listContainer);
       L.DomEvent.disableClickPropagation(this._listContainer);
 

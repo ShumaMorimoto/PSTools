@@ -51,6 +51,7 @@ export default class MarkerHandler {
     this.boundary.init();
     this.polyline.init();
     if (this.cluster.init) this.cluster.init();
+    this.preview.init();
 
     this.indicator.map = this.map;
     this.searchControl = this.selector.searchControl;

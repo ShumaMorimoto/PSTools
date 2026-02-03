@@ -47,3 +47,35 @@ export async function shutdown() {
   if (!res.ok) throw new Error(res.statusText);
   return res.json();
 }
+
+/**
+ * 現在の位置情報を取得する (Promise ラッパー)
+ */
+export function getCurrentPosition(options = { enableHighAccuracy: true }) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Geolocation not supported"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+}
+
+/**
+ * 位置情報をサーバーにアップロードする
+ * 既存の callApi を再利用
+ */
+export async function uploadLocation() {
+  try {
+    const pos = await getCurrentPosition();
+    const data = {
+      lat: pos.coords.latitude,
+      lon: pos.coords.longitude
+    };
+    // 既存の callApi を使って /api/location へ POST
+    return await callApi("location", data);
+  } catch (err) {
+    console.error("Failed to upload location:", err);
+    throw err;
+  }
+}

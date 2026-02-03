@@ -51,8 +51,10 @@ export default class MarkerHandler {
     this.boundary.init();
     this.polyline.init();
     if (this.cluster.init) this.cluster.init();
+    this.preview.init();
 
     this.indicator.map = this.map;
+    this.searchControl = this.selector.searchControl;
 
     // 1. リストやレイヤー構成が変わった時の再描画
     markerEvents.addEventListener(MarkerEventTypes.LIST_CHANGED, () =>

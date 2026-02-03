@@ -21,12 +21,13 @@ const buttonGroups = {
       icon: '<i class="fas fa-pencil-alt"></i>',
       title: "Polyline",
     },
-    {
+    /*    {
       id: "cluster",
       status: "off",
       icon: '<i class="fas fa-braille"></i>',
       title: "クラスタ",
     },
+    */
     {
       id: "boundary",
       status: "off",
@@ -83,22 +84,6 @@ const buttonGroups = {
       title: "GPX保存",
     },
   ],
-  historyOptions: [
-    {
-      id: "histLoad",
-      status: "off",
-      icon: '<i class="fas fa-history"></i>',
-      title: "履歴読込",
-      fileInput: true,
-      accept: ".gpx",
-    },
-    {
-      id: "histSave",
-      status: "off",
-      icon: '<i class="fas fa-hdd"></i>',
-      title: "履歴保存",
-    },
-  ],
   updateOptions: [
     {
       id: "routeUpdate",
@@ -119,12 +104,44 @@ const buttonGroups = {
       title: "クリア",
     },
   ],
+
+  historyOptions: [
+    {
+      id: "histLoad",
+      status: "off",
+      icon: '<i class="fas fa-history"></i>',
+      title: "履歴読込",
+      fileInput: true,
+      accept: ".gpx",
+    },
+    {
+      id: "histSave",
+      status: "off",
+      icon: '<i class="fas fa-hdd"></i>',
+      title: "履歴保存",
+    },
+  ],
+  // buttonGroups オブジェクトの中に追加
+  syncOptions: [
+    {
+      id: "sendLocation",
+      status: "off",
+      icon: '<i class="fas fa-mobile-alt"></i>', // スマホ送信アイコン
+      title: "スマホから現在地送信",
+    },
+    {
+      id: "getLocation",
+      status: "off",
+      icon: '<i class="fas fa-satellite-dish"></i>', // PC取得アイコン
+      title: "スマホの現在地を取得",
+    },
+  ],
 };
 
 export default class MapInitializer {
   constructor(selector) {
     this.selector = selector;
-    this.groups = {}; 
+    this.groups = {};
   }
 
   /**
@@ -140,9 +157,10 @@ export default class MapInitializer {
       contextmenu: true,
       contextmenuWidth: 160,
       contextmenuItems: [],
+      zoomControl: false,
     }).setView(
       [this.selector.initialView[0], this.selector.initialView[1]],
-      this.selector.initialView[2]
+      this.selector.initialView[2],
     );
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -152,20 +170,31 @@ export default class MapInitializer {
 
     this.selector.map.on("click", (e) => this.selector.handleMapClick(e));
 
+    this.selector.searchControl = L.control
+      .searchWithHistory({ position: "topright" })
+      .addTo(this.selector.map);
+
+    // 2. ズームコントロールを右側（'topright' または 'bottomright'）に追加
+    L.control
+      .zoom({
+        position: "topright",
+      })
+      .addTo(this.selector.map);
+
     // ボタンの生成（ここではイベント登録はしない）
     Object.entries(buttonGroups).forEach(([groupName, buttons]) => {
+      // syncOptions の場合は topright、それ以外は topleft
+      const pos = groupName === "syncOptions" ? "topright" : "topleft";
+
       const group = L.control
-        .buttonGroup({ position: "topleft", buttons })
+        .buttonGroup({ position: pos, buttons })
         .addTo(this.selector.map);
+
       this.groups[groupName] = group;
       buttons.forEach((btn) => {
         if (btn.status) group.setStatus(btn.id, btn.status);
       });
     });
-
-    this.selector.searchControl = L.control
-      .searchWithHistory({ position: "topright" })
-      .addTo(this.selector.map);
 
     this.selector.coordinatesControl = L.control
       .coordinateDistance({ position: "bottomleft" })
@@ -186,7 +215,7 @@ export default class MapInitializer {
     const updateUI = () => {
       const handler = this.selector.handlers.default;
       this.selector.coordinatesControl.updateDistance(
-        handler.calcTotalDistance()
+        handler.calcTotalDistance(),
       );
       if (this.selector.pointListControl.isOpen()) {
         this.selector.pointListControl.updateList();
@@ -198,7 +227,9 @@ export default class MapInitializer {
 
     try {
       if (typeof L.distortableCollection === "function") {
-        this.selector.imgGroup = L.distortableCollection().addTo(this.selector.map);
+        this.selector.imgGroup = L.distortableCollection().addTo(
+          this.selector.map,
+        );
       }
     } catch (e) {
       console.warn("Image collection init failed", e);
@@ -215,30 +246,42 @@ export default class MapInitializer {
     this.groups.mainOptions.setButtonHandler("list", {
       onClick: () => {
         const isOpen = this.selector.pointListControl.toggle();
-        this.groups.mainOptions.setStatus("list", isOpen ? "active" : "default");
+        this.groups.mainOptions.setStatus(
+          "list",
+          isOpen ? "active" : "default",
+        );
       },
     });
 
     // --- Redraw Options ---
     this.groups.redrawOptions.setButtonHandler("polyline", {
       onClick: () => {
-        const next = this.groups.redrawOptions.getStatus("polyline") === "on" ? "off" : "on";
+        const next =
+          this.groups.redrawOptions.getStatus("polyline") === "on"
+            ? "off"
+            : "on";
         this.groups.redrawOptions.setStatus("polyline", next);
         this.selector.handleTogglePolyline(next);
       },
     });
 
-    this.groups.redrawOptions.setButtonHandler("cluster", {
+    /*    this.groups.redrawOptions.setButtonHandler("cluster", {
       onClick: () => {
-        const next = this.groups.redrawOptions.getStatus("cluster") === "on" ? "off" : "on";
+        const next =
+          this.groups.redrawOptions.getStatus("cluster") === "on"
+            ? "off"
+            : "on";
         this.groups.redrawOptions.setStatus("cluster", next);
         this.selector.handleToggleCluster(next);
       },
     });
-
+*/
     this.groups.redrawOptions.setButtonHandler("boundary", {
       onClick: () => {
-        const next = this.groups.redrawOptions.getStatus("boundary") === "on" ? "off" : "on";
+        const next =
+          this.groups.redrawOptions.getStatus("boundary") === "on"
+            ? "off"
+            : "on";
         this.groups.redrawOptions.setStatus("boundary", next);
         this.selector.handleToggleBoundary(next);
       },
@@ -253,7 +296,8 @@ export default class MapInitializer {
     });
 
     this.groups.modeOptions.setButtonHandler("addImage", {
-      cndFileInput: (map, btnId) => this.groups.modeOptions.getStatus(btnId) === "idle",
+      cndFileInput: (map, btnId) =>
+        this.groups.modeOptions.getStatus(btnId) === "idle",
       onClick: () => {
         this.selector.setMode(modes.IMAGE_MODE);
         this.selector.handlers.imageMode.onActionButtonClick?.();
@@ -313,6 +357,15 @@ export default class MapInitializer {
 
     this.groups.updateOptions.setButtonHandler("clear", {
       onClick: () => this.selector.clearMarkers(),
+    });
+
+    // --- Sync Options ---
+    this.groups.syncOptions.setButtonHandler("sendLocation", {
+      onClick: async () => this.selector.sendLocation(),
+    });
+    
+    this.groups.syncOptions.setButtonHandler("getLocation", {
+      onClick: async () => this.selector.getLocation(),
     });
   }
 }

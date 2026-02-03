@@ -211,4 +211,10 @@ export default class MapSelector {
   reorderMarkers() {
     this.handlers[MapSelector.Mode.DEFAULT].reorderMarkers();
   }
+  sendLocation(){
+    this.handlers[MapSelector.Mode.DEFAULT].indicator.sendLocation();
+  }
+  getLocation(){
+    this.handlers[MapSelector.Mode.DEFAULT].indicator.getLocation();
+  }
 }

@@ -12,12 +12,8 @@ import { markerHistory } from "../marker/marker-history.js";
 export default class MarkerPreview {
   constructor(handler) {
     this.handler = handler;
-    this.searchMarkers = []; // 検索プレビュー用（個別に管理）
     this.historyGroup = L.layerGroup(); // 自治体履歴用（一括管理）
-
-    if (this.handler.map) {
-      this.historyGroup.addTo(this.handler.map);
-    }
+    this.searchGroup = L.layerGroup(); // 検索結果用（一括管理）
 
     this.onSelected = this.onSelected.bind(this);
 
@@ -27,6 +23,11 @@ export default class MarkerPreview {
       const pm = this.getMarkerByPoint(point);
       if (pm) this.handler.popup.bindPreview(pm);
     });
+  }
+
+  init() {
+    this.historyGroup.addTo(this.handler.map);
+    this.searchGroup.addTo(this.handler.map);
   }
 
   /**
@@ -40,17 +41,16 @@ export default class MarkerPreview {
     this.historyGroup.eachLayer((marker) => {
       marker.options.interactive = enabled;
       const el = marker.getElement();
-      if (el) {
-        el.style.pointerEvents = mode; // 🚩 ここでクリックの可否を強制
-      }
+      if (el) el.style.pointerEvents = mode; // 🚩 ここでクリックの可否を強制
       if (!enabled && marker.getPopup()) marker.closePopup();
     });
 
     // 検索結果側も同様
-    this.searchMarkers.forEach((marker) => {
+    this.searchGroup.eachLayer((marker) => {
       marker.options.interactive = enabled;
       const el = marker.getElement();
-      if (el) el.style.pointerEvents = mode;
+      if (el) el.style.pointerEvents = mode; // 🚩 ここでクリックの可否を強制
+      if (!enabled && marker.getPopup()) marker.closePopup();
     });
   }
 
@@ -62,15 +62,22 @@ export default class MarkerPreview {
     if (!point) return null;
 
     // 1. 検索プレビュー配列から探す
-    const s = this.searchMarkers.find((m) => m.trkpt === point);
-    if (s) return s;
+    let h = null;
+    this.searchGroup.eachLayer((marker) => {
+      if (
+        marker.item === point ||
+        (marker.item._id && marker.item._id === point._id)
+      ) {
+        h = marker;
+      }
+    });
+    if (h) return h;
 
     // 2. 履歴グループから探す
-    let h = null;
     this.historyGroup.eachLayer((marker) => {
       if (
-        marker.trkpt === point ||
-        (marker.trkpt.id && marker.trkpt.id === point.id)
+        marker.item === point ||
+        (marker.item._id && marker.item._id === point._id)
       ) {
         h = marker;
       }
@@ -90,16 +97,34 @@ export default class MarkerPreview {
    * 検索結果などが選択された時
    */
   async onSelected(item) {
-    this.clearSearchPreviews();
-    const trkpt = { ...item };
-    const pm = this.add(trkpt, "search");
+    // 1. すでに同じ座標（またはID）のマーカーがMAP上にあるか確認
+    let pm = this.getMarkerByPoint(item);
 
-    if (item.source === "web") {
+    if (!pm) {
+      // 🚩 item をそのまま渡せば _createMarker 内で linkedLi が引き継がれる
+      pm = this.add(item, "search");
+    }
+
+    this.handler.map.setView(pm.getLatLng(), 16);
+    pm.openPopup();
+
+    // 🚩 追加：SearchControl 側の強調メソッドを呼び出す
+    const ctrl = this.handler.searchControl;
+    if (ctrl) {
+      const entry = ctrl._currentEntries.find((e) => e.item === item);
+      if (entry) {
+        // 台帳のエントリーを渡して、リストとドットを同時にフォーカス
+        //        ctrl._focusEntry(entry);
+      }
+    }
+
+    // 住所解決（sourceがwebかつ住所が未解決の場合など）
+    if (item.source === "web" && (!item.address || item.address === "")) {
       try {
-        await geoService.resolveAddress(pm.trkpt);
-        markerHistory.save(pm.trkpt);
+        await geoService.resolveAddress(item);
+        markerHistory.save(item);
         dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, {
-          point: pm.trkpt,
+          point: pm.item,
         });
       } catch (err) {
         console.error("プレビュー住所補完失敗:", err);
@@ -109,98 +134,78 @@ export default class MarkerPreview {
 
   /**
    * 汎用的なマーカー追加
+   * 🚩 第3引数に linkedLi を追加
    */
-  add(trkpt, mode = "search") {
-    return this._createMarker(trkpt, mode);
+  add(item, mode = "search") {
+    return this._createMarker(item, mode);
   }
 
   /**
    * マーカー作成の核心部
    */
-  _createMarker(trkpt, mode) {
+  _createMarker(item, mode) {
     const isHistory = mode === "history";
     const icon = isHistory ? this._getFootprintIcon() : this._getSearchIcon();
 
-    const pm = L.marker([trkpt.lat, trkpt.lon], {
+    const pm = L.marker([item.lat, item.lon], {
       icon: icon,
       zIndexOffset: isHistory ? 1000 : 2000,
       draggable: true,
       interactive: true,
     });
 
-pm.trkpt = trkpt;
+    pm.item = item;
 
-    // --- 🚩 修正：イベントを待たずに、追加処理の後に直接実行する関数 ---
-    const syncPointerEvents = () => {
+    const ctrl = this.handler.searchControl;
+    const entry = ctrl?._currentEntries?.find((e) => e.item === item);
+
+    // --- 🚩 ホバー連動の追加 ---
+    pm.on("mouseover", () => {
+      ctrl._focusList(entry.li, false); // 台帳方式の強調メソッドを呼ぶ
+      this._focusPreviewMarker(pm);
+    });
+    pm.on("mouseout", () => {
+      if (ctrl) ctrl._clearFocus();
+      this._resetPreviewMarker(pm);
+    });
+
+    // 🚩 最初のコードで成功していた add 直後の制御
+    pm.once("add", () => {
       const el = pm.getElement();
       if (el) {
-        // console.log("Applying style directly for:", trkpt.name);
-        const isIdle = this.handler.state === "idle";
-        el.style.pointerEvents = isIdle ? "auto" : "none";
-      } else {
-        // 万が一DOMがまだなければ、一度だけaddイベントを待つ（念のための保険）
-        pm.once("add", () => {
-          const el = pm.getElement();
-          if (el) {
-            const isIdle = this.handler.state === "idle";
-            el.style.pointerEvents = isIdle ? "auto" : "none";
-          }
-        });
+        el.style.pointerEvents = "auto";
+        el.style.cursor = "pointer";
       }
-    };
+    });
 
     // レイヤーへの追加
     if (isHistory) {
       this.historyGroup.addLayer(pm); // 🚩 ここで実質的に add される
     } else {
-      if (this.handler.map) {
-        pm.addTo(this.handler.map);
-        this.searchMarkers.push(pm);
-        this.handler.map.setView(pm.getLatLng(), 16);
-        pm._timer = setTimeout(() => this.remove(pm), 180000);
-      }
-    }
-
-    // 🚩 追加が終わった直後に実行
-    syncPointerEvents();
-
-    
-    // --- 🚩 追記：addイベントが間に合わなかった場合（既にDOMがある場合）の予備処理 ---
-    const el = pm.getElement();
-    if (el && !el.style.pointerEvents) {
-      const isIdle = this.handler.state === "idle";
-      el.style.pointerEvents = isIdle ? "auto" : "none";
+      this.searchGroup.addLayer(pm); // 🚩 ここで実質的に add される
+      pm._timer = setTimeout(() => this.remove(pm), 180000);
     }
 
     // 共通のポップアップ処理
-    if (this.handler.popup) {
-      this.handler.popup.bindPreview(pm);
-    }
-
-    // 履歴マーカーでもクリックでポップアップを出すために必要
-    pm.openPopup();
+    this.handler.popup.bindPreview(pm);
 
     // ドラッグ時の連動
     pm.on("dragend", async (e) => {
       const pos = e.target.getLatLng();
-      pm.trkpt.lat = pos.lat;
-      pm.trkpt.lon = pos.lng;
-      if (pm.trkpt.extensions) pm.trkpt.extensions.muniCd5 = null;
+      pm.item.lat = pos.lat;
+      pm.item.lon = pos.lng;
+      if (pm.item.extensions) pm.item.extensions.muniCd5 = null;
 
       try {
-        await geoService.resolveAddress(pm.trkpt);
-        markerHistory.save(pm.trkpt);
+        await geoService.resolveAddress(pm.item);
+        markerHistory.save(pm.item);
         dispatchMarkerEvent(MarkerEventTypes.POINT_UPDATED, {
-          point: pm.trkpt,
+          point: pm.item,
         });
-        if (isHistory) pm.setTooltipContent(pm.trkpt.name || "");
       } catch (err) {
         console.error("Address resolution failed on dragend:", err);
       }
     });
-
-    if (isHistory) pm.bindTooltip(trkpt.name || "");
-
     return pm;
   }
 
@@ -209,12 +214,7 @@ pm.trkpt = trkpt;
    */
   remove(pm) {
     if (!pm) return;
-    if (pm._timer) clearTimeout(pm._timer);
-    this.searchMarkers = this.searchMarkers.filter((x) => x !== pm);
-
-    if (this.handler.map && this.handler.map.hasLayer(pm)) {
-      this.handler.map.removeLayer(pm);
-    }
+    this.searchGroup.removeLayer(pm);
     this.historyGroup.removeLayer(pm);
   }
 
@@ -222,12 +222,8 @@ pm.trkpt = trkpt;
    * 全消去
    */
   clear() {
-    this.clearSearchPreviews();
+    this.searchGroup.clearLayers();
     this.historyGroup.clearLayers();
-  }
-
-  clearSearchPreviews() {
-    [...this.searchMarkers].forEach((pm) => this.remove(pm));
   }
 
   _getSearchIcon() {
@@ -240,12 +236,34 @@ pm.trkpt = trkpt;
   }
 
   _getFootprintIcon() {
-    const svgPath = `M12,2c-1.1,0-2,0.9-2,2s0.9,2,2,2s2-0.9,2-2S13.1,2,12,2z M7,7c-1.1,0-2,0.9-2,2s0.9,2,2,2s2-0.9,2-2S8.1,7,7,7z M17,7 c-1.1,0-2,0.9-2,2s0.9,2,2,2s2-0.9,2-2S18.1,7,17,7z M12,8c-2.2,0-4,1.8-4,4c0,1.5,0.8,2.8,2,3.5V18c0,1.1,0.9,2,2,2s2-0.9,2-2v-2.5 c1.2-0.7,2-2,2-3.5C16,9.8,14.2,8,12,8z`;
+    // 🚩 旗（Flag）のSVGパス
+    const svgPath = `M14.4,6L14,4H5V21H7V14H12.6L13,16H20V6H14.4Z`;
+
     return L.divIcon({
-      className: "footprint-marker",
-      html: `<div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;"><svg viewBox="0 0 24 24" width="28" height="28"><path d="${svgPath}" fill="#28a745" /></svg></div>`,
+      className: "flag-marker", // クラス名も変更可能
+      html: `
+        <div style="display:flex; align-items:center; justify-content:center; width:30px; height:30px;">
+          <svg viewBox="0 0 24 24" width="28" height="28" style="filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff);">
+            <path d="${svgPath}" fill="#f31212" />
+          </svg>
+        </div>`,
       iconSize: [30, 30],
-      iconAnchor: [15, 15],
+      iconAnchor: [7, 21], // 🚩 旗のポールの下端（左下付近）を基準点に設定
     });
+  }
+  // 🚩 補助メソッド：仮マーカー（赤丸・旗）自体の強調
+  _focusPreviewMarker(marker) {
+    //   const el = marker.getElement();
+    //   if (el && !this._isDragging) {
+    // 🚩 ドラッグ中は実行させないガード
+    //      el.classList.add("is-focused-marker");
+    //    }
+  }
+
+  _resetPreviewMarker(marker) {
+    //    const el = marker.getElement();
+    //    if (el) {
+    //      el.classList.remove("is-focused-marker");
+    //    }
   }
 }

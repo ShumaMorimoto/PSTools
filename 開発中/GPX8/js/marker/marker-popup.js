@@ -110,7 +110,7 @@ export default class MarkerPopup {
   }
 
   _getPreviewContent(pm, common) {
-    const point = pm.trkpt;
+    const point = pm.item;
     return createPopupContent(point, pm, {
       ...common,
       onUpdateAddress: async () => {

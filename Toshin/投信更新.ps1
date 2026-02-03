@@ -58,7 +58,7 @@ function UpdateJika() {
 
     if ($unupdated.Count -gt 0) {
         Write-Log "★★★ START: 投信更新（残り $($unupdated.Count) 件） ★★★"
-        $toshin = [ToshinDAO]::new($false)
+        $toshin = [ToshinDAO]::new($true)
         try {
             foreach ($row in $unupdated) {
                 $elapsed = Measure-Command {
